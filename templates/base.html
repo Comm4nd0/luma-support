@@ -16,6 +16,14 @@
       <span class="brand-mark"></span>
       <span class="brand-text">Luma <strong>Support</strong></span>
     </a>
+
+    <!-- Hamburger toggle: pure-CSS via the sibling-selector trick.
+         Hidden on desktop, shown ≤768px. -->
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+    <label for="nav-toggle" class="nav-toggle-btn" aria-label="Toggle menu">
+      <span></span>
+    </label>
+
     <nav class="nav">
       <a href="{% url 'portal:dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
       <a href="{% url 'portal:ticket_list' %}" class="{% if active == 'tickets' %}active{% endif %}">Tickets</a>
@@ -24,10 +32,10 @@
     </nav>
     <div class="user-actions">
       <span class="user-email">{{ user.email }}</span>
-      <a class="btn btn-ghost" href="{% url 'admin:index' %}">Admin</a>
+      <a class="btn btn-ghost btn-sm" href="{% url 'admin:index' %}">Admin</a>
       <form method="post" action="{% url 'portal:logout' %}" class="inline-form">
         {% csrf_token %}
-        <button class="btn btn-ghost" type="submit">Sign out</button>
+        <button class="btn btn-ghost btn-sm" type="submit">Sign out</button>
       </form>
     </div>
   </div>

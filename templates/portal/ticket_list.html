@@ -30,43 +30,78 @@
   <a class="btn btn-ghost" href="{% url 'portal:ticket_list' %}">Reset</a>
 </form>
 
-<div class="card">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Subject</th>
-        <th>Client</th>
-        <th>Priority</th>
-        <th>Status</th>
-        <th>Assigned</th>
-        <th>SLA</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in tickets %}
+<!-- Desktop / tablet: table. Hidden on mobile via .list-table { display:none }. -->
+<div class="card list-table">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
         <tr>
-          <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
-          <td>{{ t.subject|truncatechars:60 }}</td>
-          <td><a href="{% url 'portal:client_detail' t.client.pk %}">{{ t.client.name }}</a></td>
-          <td><span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span></td>
-          <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
-          <td>{{ t.assigned_to.email|default:"—" }}</td>
-          <td class="sla
-            {% if t.is_breached %}sla-breach
-            {% elif t.sla_deadline and t.time_remaining.total_seconds < 1800 %}sla-warn
-            {% else %}sla-ok{% endif %}">
-            {% if t.sla_deadline %}
-              {% if t.is_breached %}BREACHED · {{ t.sla_deadline|naturaltime }}
-              {% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
-            {% else %}—{% endif %}
-          </td>
+          <th>#</th>
+          <th>Subject</th>
+          <th>Client</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Assigned</th>
+          <th>SLA</th>
         </tr>
-      {% empty %}
-        <tr><td colspan="7" class="muted">No tickets match these filters.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+          <tr>
+            <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
+            <td>{{ t.subject|truncatechars:60 }}</td>
+            <td><a href="{% url 'portal:client_detail' t.client.pk %}">{{ t.client.name }}</a></td>
+            <td><span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span></td>
+            <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td>{{ t.assigned_to.email|default:"—" }}</td>
+            <td class="sla
+              {% if t.is_breached %}sla-breach
+              {% elif t.sla_deadline and t.time_remaining.total_seconds < 1800 %}sla-warn
+              {% else %}sla-ok{% endif %}">
+              {% if t.sla_deadline %}
+                {% if t.is_breached %}BREACHED · {{ t.sla_deadline|naturaltime }}
+                {% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="muted">No tickets match these filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Mobile: stacked cards. Hidden on desktop via .cards-mobile { display:none }. -->
+<div class="cards-mobile">
+  {% for t in tickets %}
+    <a class="list-card" href="{% url 'portal:ticket_detail' t.pk %}">
+      <div class="list-card-head">
+        <div>
+          <div class="list-card-title">{{ t.subject|truncatechars:80 }}</div>
+          <div class="list-card-meta">#{{ t.pk }} · {{ t.client.name }}</div>
+        </div>
+        {% if t.sla_deadline %}
+          <span class="sla-badge
+            {% if t.is_breached %}sla-breach
+            {% elif t.time_remaining.total_seconds < 1800 %}sla-warn{% endif %}">
+            {% if t.is_breached %}breached{% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
+          </span>
+        {% endif %}
+      </div>
+      <div class="list-card-row">
+        <div class="list-card-pills">
+          <span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span>
+          <span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span>
+        </div>
+        <div class="muted" style="font-size: 12px;">
+          {{ t.assigned_to.email|default:"unassigned" }}
+        </div>
+      </div>
+    </a>
+  {% empty %}
+    <div class="card muted">No tickets match these filters.</div>
+  {% endfor %}
 </div>
 
 {% if is_paginated %}

@@ -6,32 +6,60 @@
   <a class="btn" href="{% url 'portal:client_create' %}">+ New client</a>
 </div>
 
-<div class="card">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Company</th>
-        <th>Care plan</th>
-        <th>Renewal</th>
-        <th>Open tickets</th>
-        <th>Email</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in clients %}
+<!-- Desktop / tablet: table. -->
+<div class="card list-table">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
         <tr>
-          <td><a href="{% url 'portal:client_detail' c.pk %}">{{ c.name }}</a></td>
-          <td>{{ c.company|default:"—" }}</td>
-          <td><span class="pill pill-tier-{{ c.care_plan_tier }}">{{ c.get_care_plan_tier_display }}</span></td>
-          <td>{{ c.care_plan_renewal|default:"—" }}</td>
-          <td>{{ c.open_tickets }}</td>
-          <td>{{ c.email|default:"—" }}</td>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Care plan</th>
+          <th>Renewal</th>
+          <th>Open tickets</th>
+          <th>Email</th>
         </tr>
-      {% empty %}
-        <tr><td colspan="6" class="muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for c in clients %}
+          <tr>
+            <td><a href="{% url 'portal:client_detail' c.pk %}">{{ c.name }}</a></td>
+            <td>{{ c.company|default:"—" }}</td>
+            <td><span class="pill pill-tier-{{ c.care_plan_tier }}">{{ c.get_care_plan_tier_display }}</span></td>
+            <td>{{ c.care_plan_renewal|default:"—" }}</td>
+            <td>{{ c.open_tickets }}</td>
+            <td>{{ c.email|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Mobile: stacked cards. -->
+<div class="cards-mobile">
+  {% for c in clients %}
+    <a class="list-card" href="{% url 'portal:client_detail' c.pk %}">
+      <div class="list-card-head">
+        <div>
+          <div class="list-card-title">{{ c.name }}</div>
+          <div class="list-card-meta">{{ c.company|default:"—" }}</div>
+        </div>
+        <span class="pill pill-tier-{{ c.care_plan_tier }}">{{ c.get_care_plan_tier_display }}</span>
+      </div>
+      <div class="list-card-row">
+        <div class="muted" style="font-size: 13px;">
+          {{ c.open_tickets }} open ticket{{ c.open_tickets|pluralize }}
+        </div>
+        <div class="muted" style="font-size: 12px;">
+          {% if c.care_plan_renewal %}renews {{ c.care_plan_renewal }}{% endif %}
+        </div>
+      </div>
+    </a>
+  {% empty %}
+    <div class="card muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</div>
+  {% endfor %}
 </div>
 {% endblock %}

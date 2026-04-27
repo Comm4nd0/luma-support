@@ -1,6 +1,7 @@
 """Populate the database with demo data so the portal is usable on day one.
 
 Idempotent — running it twice gives you the same result, not duplicates.
+Passwords are reset on every run so devs can rely on the printed credentials.
 
 Usage:
     python manage.py seed_demo
@@ -16,6 +17,20 @@ from knowledge.models import Article
 from tickets.models import Ticket
 
 
+def _upsert_user(User, *, email, password, **fields):
+    """Create or update a user, always running the password through set_password()."""
+    user = User.objects.filter(email=email).first()
+    if user is None:
+        # create_user() runs the password through the hasher and validators.
+        user = User.objects.create_user(email=email, password=password, **fields)
+    else:
+        for key, value in fields.items():
+            setattr(user, key, value)
+        user.set_password(password)
+        user.save()
+    return user
+
+
 class Command(BaseCommand):
     help = "Seed demo clients, systems, users, tickets, and KB articles."
 
@@ -23,33 +38,25 @@ class Command(BaseCommand):
         User = get_user_model()
 
         # --- Users -----------------------------------------------------
-        admin, _ = User.objects.get_or_create(
+        admin = _upsert_user(
+            User,
             email="marco@lumatechsolutions.co.uk",
-            defaults={
-                "first_name": "Marco",
-                "last_name": "Baldanza",
-                "role": "admin",
-                "is_staff": True,
-                "is_superuser": True,
-            },
+            password="luma_admin_password",
+            first_name="Marco",
+            last_name="Baldanza",
+            role="admin",
+            is_staff=True,
+            is_superuser=True,
         )
-        if not admin.has_usable_password():
-            admin.set_password("luma_admin_password")
-            admin.save()
-            self.stdout.write("  · admin password set to: luma_admin_password")
-
-        engineer, _ = User.objects.get_or_create(
+        engineer = _upsert_user(
+            User,
             email="engineer@lumatechsolutions.co.uk",
-            defaults={
-                "first_name": "Demo",
-                "last_name": "Engineer",
-                "role": "engineer",
-                "is_staff": True,
-            },
+            password="luma_engineer_password",
+            first_name="Demo",
+            last_name="Engineer",
+            role="engineer",
+            is_staff=True,
         )
-        if not engineer.has_usable_password():
-            engineer.set_password("luma_engineer_password")
-            engineer.save()
 
         # --- Clients ---------------------------------------------------
         clients_def = [
@@ -83,9 +90,8 @@ class Command(BaseCommand):
             (clients[1], SystemType.SECURITY, "CCTV"),
             (clients[2], SystemType.WEBSITE, "Boutique store"),
         ]
-        systems = []
         for client, type_, name in systems_def:
-            s, _ = System.objects.get_or_create(
+            System.objects.get_or_create(
                 client=client,
                 name=name,
                 defaults={
@@ -96,7 +102,6 @@ class Command(BaseCommand):
                     "devices_json": {"devices": []},
                 },
             )
-            systems.append(s)
 
         # --- Tickets ---------------------------------------------------
         tickets_def = [
@@ -104,7 +109,7 @@ class Command(BaseCommand):
             (clients[0], "Wi-Fi dropping in back office", "high", "assigned"),
             (clients[0], "Add staff member to email list", "medium", "new"),
             (clients[2], "404 on /shop page", "medium", "waiting"),
-            (clients[3], "Quote request — small office network", "low", "new"),
+            (clients[3], "Quote request - small office network", "low", "new"),
         ]
         for client, subject, priority, status in tickets_def:
             existing = Ticket.objects.filter(client=client, subject=subject).first()
@@ -120,7 +125,7 @@ class Command(BaseCommand):
                 created_by=admin,
             )
             t.save()
-            # Backdate one for variety so SLA shows interesting state.
+            # Backdate the critical one so its SLA is breached on the dashboard.
             if subject.startswith("Lights"):
                 Ticket.objects.filter(pk=t.pk).update(
                     created_at=timezone.now() - timedelta(hours=3),
@@ -139,7 +144,9 @@ class Command(BaseCommand):
             (
                 "UniFi: factory reset an access point",
                 "network",
-                "1. Hold the reset button for 10 seconds.\n2. Wait for the LED to flash.\n3. Re-adopt in the controller.",
+                "1. Hold the reset button for 10 seconds.\n"
+                "2. Wait for the LED to flash.\n"
+                "3. Re-adopt in the controller.",
                 True,
             ),
         ]

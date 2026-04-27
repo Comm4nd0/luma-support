@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-luma_support}
+      POSTGRES_USER: ${POSTGRES_USER:-luma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luma_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-luma}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8006:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn luma_support.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile -"
+
+  celery:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A luma_support worker -l info
+
+  celery-beat:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A luma_support beat -l info
+
+volumes:
+  postgres_data:

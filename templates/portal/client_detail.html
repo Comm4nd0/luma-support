@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ client.name }} · Luma Support{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin-bottom: 4px;">{{ client.name }}</h1>
+    <div class="muted">
+      {{ client.company }} ·
+      <span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }} care plan</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn btn-ghost" href="{% url 'portal:client_edit' client.pk %}">Edit</a>
+    <a class="btn" href="{% url 'portal:ticket_create' %}?client={{ client.pk }}">+ New ticket</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <h2>Tickets ({{ tickets|length }})</h2>
+      <table class="table">
+        <thead><tr><th>#</th><th>Subject</th><th>Priority</th><th>Status</th><th>SLA</th></tr></thead>
+        <tbody>
+          {% for t in tickets %}
+            <tr>
+              <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
+              <td>{{ t.subject|truncatechars:50 }}</td>
+              <td><span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span></td>
+              <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
+              <td class="sla {% if t.is_breached %}sla-breach{% endif %}">
+                {{ t.sla_deadline|naturaltime|default:"—" }}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No tickets yet for this client.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>Systems ({{ systems|length }})</h2>
+      <table class="table">
+        <thead><tr><th>Name</th><th>Type</th><th>Installed</th><th>Monitoring</th></tr></thead>
+        <tbody>
+          {% for s in systems %}
+            <tr>
+              <td>{{ s.name }}</td>
+              <td>{{ s.get_type_display }}</td>
+              <td>{{ s.installed_date|default:"—" }}</td>
+              <td>{% if s.monitoring_url %}<a href="{{ s.monitoring_url }}" target="_blank" rel="noopener">link</a>{% else %}—{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="muted">No systems registered.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top: 10px;">
+        Manage systems in <a href="{% url 'admin:clients_system_changelist' %}?client__id__exact={{ client.pk }}">admin</a>.
+      </p>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Contact</h3>
+      <dl class="kv">
+        <dt>Email</dt><dd>{{ client.email|default:"—" }}</dd>
+        <dt>Phone</dt><dd>{{ client.phone|default:"—" }}</dd>
+        <dt>Address</dt><dd style="white-space: pre-wrap;">{{ client.address|default:"—" }}</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Care plan</h3>
+      <dl class="kv">
+        <dt>Tier</dt><dd><span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }}</span></dd>
+        <dt>Start</dt><dd>{{ client.care_plan_start|default:"—" }}</dd>
+        <dt>Renewal</dt><dd>{{ client.care_plan_renewal|default:"—" }}</dd>
+      </dl>
+    </div>
+
+    {% if client.notes %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Notes</h3>
+      <div style="white-space: pre-wrap;">{{ client.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

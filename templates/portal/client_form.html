@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} client · Luma Support{% endblock %}
+{% block content %}
+<h1>{% if object %}Edit client{% else %}New client{% endif %}</h1>
+
+<div class="card" style="max-width: 800px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Name</label>{{ form.name }}{{ form.name.errors }}
+      </div>
+      <div class="form-row">
+        <label>Company</label>{{ form.company }}{{ form.company.errors }}
+      </div>
+      <div class="form-row">
+        <label>Email</label>{{ form.email }}{{ form.email.errors }}
+      </div>
+      <div class="form-row">
+        <label>Phone</label>{{ form.phone }}{{ form.phone.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Address</label>{{ form.address }}{{ form.address.errors }}
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Care plan tier</label>{{ form.care_plan_tier }}{{ form.care_plan_tier.errors }}
+      </div>
+      <div class="form-row">
+        <label>Care plan start</label>{{ form.care_plan_start }}{{ form.care_plan_start.errors }}
+      </div>
+      <div class="form-row">
+        <label>Care plan renewal</label>{{ form.care_plan_renewal }}{{ form.care_plan_renewal.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notes</label>{{ form.notes }}{{ form.notes.errors }}
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save client</button>
+      <a class="btn btn-ghost" href="{% url 'portal:client_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

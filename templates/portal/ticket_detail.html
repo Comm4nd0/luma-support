@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}#{{ ticket.pk }} {{ ticket.subject }} · Luma Support{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin-bottom: 4px;">#{{ ticket.pk }} · {{ ticket.subject }}</h1>
+    <div class="muted">
+      Opened by {{ ticket.created_by.email|default:"system" }} ·
+      {{ ticket.created_at|naturaltime }} ·
+      <a href="{% url 'portal:client_detail' ticket.client.pk %}">{{ ticket.client.name }}</a>
+    </div>
+  </div>
+  <div>
+    <span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+    <span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <!-- LEFT: description, notes, timeline -->
+  <div>
+    <div class="card">
+      <h2>Description</h2>
+      <div style="white-space: pre-wrap;">{{ ticket.description|default:"(none)" }}</div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>Notes & activity</h2>
+      {% for note in notes %}
+        <div class="note {% if note.internal %}internal{% endif %}">
+          <div class="meta">
+            <strong>{{ note.author.email|default:"system" }}</strong>
+            · {{ note.created_at|naturaltime }}
+            {% if note.internal %}· internal{% endif %}
+          </div>
+          <div style="margin-top: 4px; white-space: pre-wrap;">{{ note.body }}</div>
+        </div>
+      {% empty %}
+        <p class="muted">No notes yet.</p>
+      {% endfor %}
+
+      <form method="post" action="{% url 'portal:ticket_note' ticket.pk %}" style="margin-top: 12px;">
+        {% csrf_token %}
+        <div class="form-row">
+          <label>Add a note</label>
+          <textarea name="body" required></textarea>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <label class="muted" style="display: flex; gap: 6px; align-items: center;">
+            <input type="checkbox" name="internal" checked />
+            Internal only
+          </label>
+          <button class="btn" type="submit">Post note</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>Time log</h2>
+      <table class="table">
+        <thead><tr><th>When</th><th>Engineer</th><th>Minutes</th><th>Description</th><th>Billable</th></tr></thead>
+        <tbody>
+          {% for entry in time_entries %}
+            <tr>
+              <td>{{ entry.created_at|naturaltime }}</td>
+              <td>{{ entry.user.email }}</td>
+              <td>{{ entry.minutes }}</td>
+              <td>{{ entry.description }}</td>
+              <td>{% if entry.billable %}✓{% else %}—{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No time logged.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th colspan="2">Total</th><th>{{ ticket.total_minutes_logged }} min</th><th colspan="2"></th></tr>
+        </tfoot>
+      </table>
+
+      <form method="post" action="{% url 'portal:time_log' ticket.pk %}" style="margin-top: 16px;">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Minutes</label>
+            <input type="number" name="minutes" min="1" required />
+          </div>
+          <div class="form-row">
+            <label>What did you do?</label>
+            <input type="text" name="description" />
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <label class="muted" style="display: flex; gap: 6px; align-items: center;">
+            <input type="checkbox" name="billable" checked /> Billable
+          </label>
+          <button class="btn" type="submit">Log time</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT: side panel -->
+  <div>
+    <div class="card">
+      <h3>SLA</h3>
+      {% if ticket.sla_deadline %}
+        <div class="sla
+          {% if ticket.is_breached %}sla-breach
+          {% elif ticket.time_remaining.total_seconds < 1800 %}sla-warn
+          {% else %}sla-ok{% endif %}" style="font-size: 18px;">
+          {% if ticket.is_breached %}
+            BREACHED · {{ ticket.sla_deadline|naturaltime }}
+          {% else %}
+            {{ ticket.sla_deadline|naturaltime }}
+          {% endif %}
+        </div>
+        <div class="muted">{{ ticket.sla_deadline }}</div>
+      {% else %}
+        <span class="muted">No SLA</span>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Status</h3>
+      <form method="post" action="{% url 'portal:ticket_status' ticket.pk %}">
+        {% csrf_token %}
+        <div class="toolbar">
+          {% for value, label in status_choices %}
+            <button class="btn btn-sm {% if ticket.status == value %}{% else %}btn-ghost{% endif %}"
+                    name="status" value="{{ value }}" type="submit">{{ label }}</button>
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Details</h3>
+      <dl class="kv">
+        <dt>Client</dt><dd><a href="{% url 'portal:client_detail' ticket.client.pk %}">{{ ticket.client.name }}</a></dd>
+        <dt>System</dt><dd>{{ ticket.system|default:"—" }}</dd>
+        <dt>Assigned</dt><dd>{{ ticket.assigned_to.email|default:"unassigned" }}</dd>
+        <dt>Created</dt><dd>{{ ticket.created_at }}</dd>
+        {% if ticket.resolved_at %}<dt>Resolved</dt><dd>{{ ticket.resolved_at|naturaltime }}</dd>{% endif %}
+        {% if ticket.closed_at %}<dt>Closed</dt><dd>{{ ticket.closed_at|naturaltime }}</dd>{% endif %}
+      </dl>
+    </div>
+
+    {% if attachments %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Attachments</h3>
+      <ul>
+        {% for a in attachments %}
+          <li><a href="{{ a.file.url }}">{{ a.filename }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

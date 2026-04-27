@@ -1,0 +1,50 @@
+{% load static humanize %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Luma Support{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{% url 'portal:dashboard' %}">
+      <span class="brand-mark"></span>
+      <span class="brand-text">Luma <strong>Support</strong></span>
+    </a>
+    <nav class="nav">
+      <a href="{% url 'portal:dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{% url 'portal:ticket_list' %}" class="{% if active == 'tickets' %}active{% endif %}">Tickets</a>
+      <a href="{% url 'portal:client_list' %}" class="{% if active == 'clients' %}active{% endif %}">Clients</a>
+      <a href="{% url 'portal:kb_list' %}" class="{% if active == 'kb' %}active{% endif %}">Knowledge</a>
+    </nav>
+    <div class="user-actions">
+      <span class="user-email">{{ user.email }}</span>
+      <a class="btn btn-ghost" href="{% url 'admin:index' %}">Admin</a>
+      <form method="post" action="{% url 'portal:logout' %}" class="inline-form">
+        {% csrf_token %}
+        <button class="btn btn-ghost" type="submit">Sign out</button>
+      </form>
+    </div>
+  </div>
+</header>
+{% endif %}
+<main class="page">
+  {% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="msg msg-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  Luma Tech Solutions · <a href="{{ BRAND.url }}" target="_blank" rel="noopener">lumatechsolutions.co.uk</a>
+</footer>
+</body>
+</html>

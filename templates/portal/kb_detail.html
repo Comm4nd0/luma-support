@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} · KB{% endblock %}
+{% block content %}
+<a class="btn btn-ghost btn-sm" href="{% url 'portal:kb_list' %}">← Back</a>
+<article class="card" style="margin-top: 16px; max-width: 820px;">
+  <div class="muted" style="font-size: 11px; text-transform: uppercase;">{{ article.get_category_display }}</div>
+  <h1 style="margin-top: 6px;">{{ article.title }}</h1>
+  <div class="muted" style="margin-bottom: 16px;">
+    Updated {{ article.updated_at|date:"d M Y" }}
+    {% if article.client_visible %} · client-visible{% endif %}
+  </div>
+  <div style="white-space: pre-wrap;">{{ article.content }}</div>
+</article>
+{% endblock %}

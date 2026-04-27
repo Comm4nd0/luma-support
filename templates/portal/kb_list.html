@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Knowledge base · Luma Support{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Knowledge base</h1>
+  <a class="btn" href="{% url 'admin:knowledge_article_add' %}">+ New article</a>
+</div>
+
+<form class="filterbar" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search articles…" style="max-width: 360px;" />
+  <button class="btn" type="submit">Search</button>
+</form>
+
+<div class="grid grid-2">
+  {% for a in articles %}
+    <a class="card" href="{% url 'portal:kb_detail' a.slug %}" style="text-decoration: none; color: inherit;">
+      <div class="muted" style="font-size: 11px; text-transform: uppercase;">{{ a.get_category_display }}</div>
+      <h3 style="margin: 6px 0 4px;">{{ a.title }}</h3>
+      <div class="muted" style="font-size: 12px;">
+        {{ a.published_at|default:a.created_at|date:"d M Y" }}
+        {% if a.client_visible %} · client-visible{% endif %}
+      </div>
+    </a>
+  {% empty %}
+    <p class="muted">No articles yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

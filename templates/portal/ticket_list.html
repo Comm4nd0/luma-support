@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Tickets · Luma Support{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Tickets</h1>
+  <a class="btn" href="{% url 'portal:ticket_create' %}">+ New ticket</a>
+</div>
+
+<form class="filterbar" method="get">
+  <select name="status">
+    <option value="">All statuses</option>
+    {% for value, label in statuses %}
+      <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="priority">
+    <option value="">All priorities</option>
+    {% for value, label in priorities %}
+      <option value="{{ value }}" {% if filters.priority == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="client">
+    <option value="">All clients</option>
+    {% for c in clients %}
+      <option value="{{ c.pk }}" {% if filters.client == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn" type="submit">Filter</button>
+  <a class="btn btn-ghost" href="{% url 'portal:ticket_list' %}">Reset</a>
+</form>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Subject</th>
+        <th>Client</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Assigned</th>
+        <th>SLA</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tickets %}
+        <tr>
+          <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
+          <td>{{ t.subject|truncatechars:60 }}</td>
+          <td><a href="{% url 'portal:client_detail' t.client.pk %}">{{ t.client.name }}</a></td>
+          <td><span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span></td>
+          <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
+          <td>{{ t.assigned_to.email|default:"—" }}</td>
+          <td class="sla
+            {% if t.is_breached %}sla-breach
+            {% elif t.sla_deadline and t.time_remaining.total_seconds < 1800 %}sla-warn
+            {% else %}sla-ok{% endif %}">
+            {% if t.sla_deadline %}
+              {% if t.is_breached %}BREACHED · {{ t.sla_deadline|naturaltime }}
+              {% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="muted">No tickets match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="toolbar" style="margin-top: 16px; justify-content: center;">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-ghost btn-sm" href="?page={{ page_obj.previous_page_number }}">← Prev</a>
+  {% endif %}
+  <span class="muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a class="btn btn-ghost btn-sm" href="?page={{ page_obj.next_page_number }}">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

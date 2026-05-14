@@ -1,18 +1,23 @@
 """Admin-only portal pages for invoices and Xero settings."""
 from __future__ import annotations
 
+import secrets
+from datetime import timedelta
+
 from django import forms
 from django.contrib import messages
 from django.db import transaction
 from django.forms import inlineformset_factory
+from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import DetailView, ListView, View
 from django.views.generic.edit import CreateView, UpdateView
 
 from clients.models import Client
 
-from .models import Invoice, InvoiceLine
+from .models import Invoice, InvoiceLine, XeroConnection
 from .permissions import AdminPortalMixin
 from .services import generate_time_invoice
 
@@ -197,8 +202,6 @@ class XeroSettingsView(AdminPortalMixin, View):
     def get(self, request):
         from django.template.response import TemplateResponse
 
-        from .models import XeroConnection
-
         try:
             conn = XeroConnection.objects.get(pk=1)
         except XeroConnection.DoesNotExist:
@@ -208,3 +211,80 @@ class XeroSettingsView(AdminPortalMixin, View):
             self.template_name,
             {"active": "billing", "connection": conn},
         )
+
+
+class XeroConnectView(AdminPortalMixin, View):
+    """Kick off the OAuth flow — stash state in session and redirect to Xero."""
+
+    def get(self, request):
+        from .xero import oauth
+
+        state = secrets.token_urlsafe(32)
+        request.session["xero_oauth_state"] = state
+        return redirect(oauth.authorize_url(state))
+
+
+class XeroOAuthCallbackView(AdminPortalMixin, View):
+    def get(self, request):
+        from .xero import oauth
+
+        state = request.GET.get("state", "")
+        code = request.GET.get("code", "")
+        expected = request.session.pop("xero_oauth_state", None)
+        if not expected or state != expected:
+            return HttpResponseBadRequest("Invalid OAuth state.")
+        if not code:
+            return HttpResponseBadRequest("Missing authorization code.")
+
+        tokens = oauth.exchange_code(code)
+        connections = oauth.list_connections(tokens["access_token"])
+        if not connections:
+            messages.error(request, "Xero returned no connected organisations.")
+            return redirect("portal:xero_settings")
+        tenant_id = connections[0]["tenantId"]
+
+        conn, _ = XeroConnection.objects.get_or_create(
+            pk=1,
+            defaults={
+                "tenant_id": tenant_id,
+                "access_token": tokens["access_token"],
+                "expires_at": timezone.now()
+                + timedelta(seconds=int(tokens["expires_in"])),
+                "connected_by": request.user,
+            },
+        )
+        conn.tenant_id = tenant_id
+        conn.access_token = tokens["access_token"]
+        conn.expires_at = timezone.now() + timedelta(
+            seconds=int(tokens["expires_in"])
+        )
+        conn.connected_by = request.user
+        conn.set_refresh_token(tokens["refresh_token"])
+        conn.save()
+        messages.success(request, "Xero connected.")
+        return redirect("portal:xero_settings")
+
+
+class XeroDisconnectView(AdminPortalMixin, View):
+    def post(self, request):
+        XeroConnection.objects.all().delete()
+        messages.success(request, "Xero disconnected.")
+        return redirect("portal:xero_settings")
+
+
+class InvoiceSendView(AdminPortalMixin, View):
+    """Enqueue a push of the invoice to Xero."""
+
+    def post(self, request, pk):
+        from .tasks import push_invoice_to_xero
+
+        invoice = get_object_or_404(Invoice, pk=pk)
+        if invoice.xero_invoice_id:
+            messages.info(request, "Already pushed to Xero.")
+            return redirect("portal:invoice_detail", pk=pk)
+        if not XeroConnection.objects.exists():
+            messages.error(request, "Connect Xero first.")
+            return redirect("portal:xero_settings")
+        push_invoice_to_xero.delay(invoice.pk, "AUTHORISED")
+        messages.success(request, "Push to Xero queued.")
+        return redirect("portal:invoice_detail", pk=pk)

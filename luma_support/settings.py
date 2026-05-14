@@ -207,6 +207,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.generate_contract_invoices",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
     },
+    "sync-xero-payments": {
+        "task": "billing.tasks.sync_xero_payments",
+        "schedule": timedelta(minutes=15),
+    },
 }
 
 # --- Email --------------------------------------------------------------

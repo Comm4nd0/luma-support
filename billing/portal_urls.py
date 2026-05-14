@@ -29,4 +29,24 @@ urlpatterns = [
         portal_views.XeroSettingsView.as_view(),
         name="xero_settings",
     ),
+    path(
+        "billing/invoices/<int:pk>/send/",
+        portal_views.InvoiceSendView.as_view(),
+        name="invoice_send",
+    ),
+    path(
+        "billing/xero/connect/",
+        portal_views.XeroConnectView.as_view(),
+        name="xero_connect",
+    ),
+    path(
+        "billing/xero/oauth/callback/",
+        portal_views.XeroOAuthCallbackView.as_view(),
+        name="xero_oauth_callback",
+    ),
+    path(
+        "billing/xero/disconnect/",
+        portal_views.XeroDisconnectView.as_view(),
+        name="xero_disconnect",
+    ),
 ]

@@ -12,13 +12,16 @@
       <dt>Connected by</dt><dd>{{ connection.connected_by.email }}</dd>
       <dt>Connected at</dt><dd>{{ connection.connected_at }}</dd>
     </dl>
-    <p class="muted">Disconnect is available in the Django admin once the OAuth flow is wired up.</p>
+    <form method="post" action="{% url 'portal:xero_disconnect' %}" class="inline-form">
+      {% csrf_token %}
+      <button class="btn btn-ghost" type="submit">Disconnect</button>
+    </form>
   {% else %}
     <h3>Not connected</h3>
     <p class="muted">
-      The Xero OAuth flow is set up but not yet wired into the portal in this commit.
-      Once it is, a Connect button will appear here.
+      Connect a Xero organisation to push invoices and pull payments.
     </p>
+    <a class="btn" href="{% url 'portal:xero_connect' %}">Connect to Xero</a>
   {% endif %}
 </div>
 {% endblock %}

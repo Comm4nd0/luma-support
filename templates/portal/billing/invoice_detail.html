@@ -15,6 +15,12 @@
     {% if invoice.status == 'draft' %}
       <a class="btn btn-ghost" href="{% url 'portal:invoice_edit' invoice.pk %}">Edit</a>
     {% endif %}
+    {% if not invoice.xero_invoice_id and invoice.lines.all %}
+      <form method="post" action="{% url 'portal:invoice_send' invoice.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button class="btn" type="submit">Send to Xero</button>
+      </form>
+    {% endif %}
   </div>
 </div>
 

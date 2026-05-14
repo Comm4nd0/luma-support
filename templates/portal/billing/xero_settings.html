@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Xero settings · Luma Support{% endblock %}
+{% block content %}
+<h1>Xero</h1>
+
+<div class="card" style="max-width: 700px;">
+  {% if connection %}
+    <h3>Connected</h3>
+    <dl class="kv">
+      <dt>Tenant ID</dt><dd class="muted">{{ connection.tenant_id }}</dd>
+      <dt>Expires</dt><dd>{{ connection.expires_at }}</dd>
+      <dt>Connected by</dt><dd>{{ connection.connected_by.email }}</dd>
+      <dt>Connected at</dt><dd>{{ connection.connected_at }}</dd>
+    </dl>
+    <p class="muted">Disconnect is available in the Django admin once the OAuth flow is wired up.</p>
+  {% else %}
+    <h3>Not connected</h3>
+    <p class="muted">
+      The Xero OAuth flow is set up but not yet wired into the portal in this commit.
+      Once it is, a Connect button will appear here.
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

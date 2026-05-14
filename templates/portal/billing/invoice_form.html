@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} invoice · Luma Support{% endblock %}
+{% block content %}
+<h1>{% if object %}Edit invoice #{{ object.pk }}{% else %}New invoice{% endif %}</h1>
+
+<div class="card" style="max-width: 1000px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Client</label>{{ form.client }}{{ form.client.errors }}
+      </div>
+      <div class="form-row">
+        <label>Due date</label>{{ form.due_date }}{{ form.due_date.errors }}
+      </div>
+      <div class="form-row">
+        <label>Currency</label>{{ form.currency }}{{ form.currency.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notes</label>{{ form.notes }}{{ form.notes.errors }}
+    </div>
+
+    <h3 style="margin-top: 20px;">Lines</h3>
+    {{ lines.management_form }}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Qty</th>
+          <th>Unit amount</th>
+          <th>Account</th>
+          <th>Tax type</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for line_form in lines %}
+        {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
+        <tr>
+          <td>{{ line_form.description }}{{ line_form.description.errors }}</td>
+          <td>{{ line_form.quantity }}{{ line_form.quantity.errors }}</td>
+          <td>{{ line_form.unit_amount }}{{ line_form.unit_amount.errors }}</td>
+          <td>{{ line_form.account_code }}</td>
+          <td>{{ line_form.tax_type }}</td>
+          <td>{{ line_form.DELETE }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if lines.non_form_errors %}
+      <div class="muted">{{ lines.non_form_errors }}</div>
+    {% endif %}
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Save invoice</button>
+      <a class="btn btn-ghost" href="{% url 'portal:invoice_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

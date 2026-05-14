@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Invoice #{{ invoice.pk }} · Luma Support{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin: 0;">Invoice #{{ invoice.pk }}</h1>
+    <div class="muted">
+      <a href="{% url 'portal:client_detail' invoice.client.pk %}">{{ invoice.client.name }}</a> ·
+      {{ invoice.get_kind_display }} ·
+      <span class="pill pill-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn btn-ghost" href="{% url 'portal:invoice_list' %}">Back</a>
+    {% if invoice.status == 'draft' %}
+      <a class="btn btn-ghost" href="{% url 'portal:invoice_edit' invoice.pk %}">Edit</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="detail-grid" style="margin-top: 16px;">
+  <div>
+    <div class="card">
+      <h2>Lines</h2>
+      <table class="table">
+        <thead>
+          <tr><th>Description</th><th>Qty</th><th>Unit</th><th>Tax</th><th style="text-align:right;">Line total</th></tr>
+        </thead>
+        <tbody>
+          {% for line in invoice.lines.all %}
+            <tr>
+              <td>{{ line.description }}</td>
+              <td>{{ line.quantity }}</td>
+              <td>{{ line.unit_amount }}</td>
+              <td class="muted">{{ line.tax_type|default:"—" }}</td>
+              <td style="text-align:right;">{{ line.line_total }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No lines.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th colspan="4" style="text-align:right;">Subtotal</th><th style="text-align:right;">{{ invoice.subtotal }}</th></tr>
+          <tr><th colspan="4" style="text-align:right;">Tax</th><th style="text-align:right;">{{ invoice.tax }}</th></tr>
+          <tr><th colspan="4" style="text-align:right;">Total ({{ invoice.currency }})</th><th style="text-align:right;">{{ invoice.total }}</th></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    {% if invoice.payments.all %}
+    <div class="card" style="margin-top: 16px;">
+      <h2>Payments</h2>
+      <table class="table">
+        <thead><tr><th>Date</th><th>Amount</th><th>Reference</th></tr></thead>
+        <tbody>
+          {% for p in invoice.payments.all %}
+            <tr>
+              <td>{{ p.paid_at|date:"Y-m-d" }}</td>
+              <td>{{ p.amount }}</td>
+              <td class="muted">{{ p.reference|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Details</h3>
+      <dl class="kv">
+        <dt>Period</dt><dd>{{ invoice.period_start|default:"—" }} → {{ invoice.period_end|default:"—" }}</dd>
+        <dt>Due</dt><dd>{{ invoice.due_date|default:"—" }}</dd>
+        <dt>Created</dt><dd>{{ invoice.created_at|date:"Y-m-d H:i" }}</dd>
+        <dt>Sent</dt><dd>{{ invoice.sent_at|default:"—" }}</dd>
+        <dt>Paid</dt><dd>{{ invoice.paid_at|default:"—" }}</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Xero</h3>
+      <dl class="kv">
+        <dt>Invoice ID</dt><dd class="muted">{{ invoice.xero_invoice_id|default:"—" }}</dd>
+        <dt>Status</dt><dd class="muted">{{ invoice.xero_status|default:"—" }}</dd>
+        <dt>Synced</dt><dd class="muted">{{ invoice.xero_synced_at|default:"—" }}</dd>
+      </dl>
+    </div>
+
+    {% if invoice.notes %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Notes</h3>
+      <div style="white-space: pre-wrap;">{{ invoice.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -7,7 +7,8 @@
     <h1 style="margin-bottom: 4px;">{{ client.name }}</h1>
     <div class="muted">
       {{ client.company }} ·
-      <span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }} care plan</span>
+      <span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }} care plan</span> ·
+      {{ client.get_customer_type_display }}
     </div>
   </div>
   <div class="toolbar">
@@ -40,6 +41,37 @@
       </table>
     </div>
 
+    {% if user.is_admin_role %}
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <h2 style="margin: 0;">Invoices</h2>
+        <div class="toolbar">
+          <form method="post" action="{% url 'portal:client_generate_time_invoice' client.pk %}" class="inline-form">
+            {% csrf_token %}
+            <button class="btn btn-ghost btn-sm" type="submit">Generate from unbilled time</button>
+          </form>
+          <a class="btn btn-sm" href="{% url 'portal:invoice_create' %}?client={{ client.pk }}">+ New invoice</a>
+        </div>
+      </div>
+      <table class="table">
+        <thead><tr><th>#</th><th>Kind</th><th>Status</th><th>Total</th><th>Created</th></tr></thead>
+        <tbody>
+          {% for inv in client.invoices.all|slice:":10" %}
+            <tr>
+              <td><a href="{% url 'portal:invoice_detail' inv.pk %}">#{{ inv.pk }}</a></td>
+              <td>{{ inv.get_kind_display }}</td>
+              <td><span class="pill pill-{{ inv.status }}">{{ inv.get_status_display }}</span></td>
+              <td>{{ inv.currency }} {{ inv.total }}</td>
+              <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No invoices yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
     <div class="card" style="margin-top: 20px;">
       <h2>Systems ({{ systems|length }})</h2>
       <table class="table">
@@ -67,9 +99,14 @@
     <div class="card">
       <h3>Contact</h3>
       <dl class="kv">
+        <dt>Type</dt><dd>{{ client.get_customer_type_display }}</dd>
         <dt>Email</dt><dd>{{ client.email|default:"—" }}</dd>
         <dt>Phone</dt><dd>{{ client.phone|default:"—" }}</dd>
+        <dt>VAT</dt><dd>{{ client.vat_number|default:"—" }}</dd>
         <dt>Address</dt><dd style="white-space: pre-wrap;">{{ client.address|default:"—" }}</dd>
+        {% if client.billing_address %}
+        <dt>Billing</dt><dd style="white-space: pre-wrap;">{{ client.billing_address }}</dd>
+        {% endif %}
       </dl>
     </div>
 
@@ -79,6 +116,10 @@
         <dt>Tier</dt><dd><span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }}</span></dd>
         <dt>Start</dt><dd>{{ client.care_plan_start|default:"—" }}</dd>
         <dt>Renewal</dt><dd>{{ client.care_plan_renewal|default:"—" }}</dd>
+        {% if user.is_admin_role %}
+        <dt>Monthly fee</dt><dd>{% if client.monthly_fee %}{{ client.monthly_fee }}{% else %}—{% endif %}</dd>
+        <dt>Hourly rate</dt><dd>{% if client.hourly_rate %}{{ client.hourly_rate }}{% else %}<span class="muted">default</span>{% endif %}</dd>
+        {% endif %}
       </dl>
     </div>
 

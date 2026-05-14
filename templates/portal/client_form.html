@@ -14,14 +14,23 @@
         <label>Company</label>{{ form.company }}{{ form.company.errors }}
       </div>
       <div class="form-row">
+        <label>Customer type</label>{{ form.customer_type }}{{ form.customer_type.errors }}
+      </div>
+      <div class="form-row">
         <label>Email</label>{{ form.email }}{{ form.email.errors }}
       </div>
       <div class="form-row">
         <label>Phone</label>{{ form.phone }}{{ form.phone.errors }}
       </div>
+      <div class="form-row">
+        <label>VAT number</label>{{ form.vat_number }}{{ form.vat_number.errors }}
+      </div>
     </div>
     <div class="form-row">
       <label>Address</label>{{ form.address }}{{ form.address.errors }}
+    </div>
+    <div class="form-row">
+      <label>Billing address <span class="muted">(blank uses main address)</span></label>{{ form.billing_address }}{{ form.billing_address.errors }}
     </div>
     <div class="form-grid">
       <div class="form-row">
@@ -32,6 +41,12 @@
       </div>
       <div class="form-row">
         <label>Care plan renewal</label>{{ form.care_plan_renewal }}{{ form.care_plan_renewal.errors }}
+      </div>
+      <div class="form-row">
+        <label>Hourly rate <span class="muted">(blank uses default)</span></label>{{ form.hourly_rate }}{{ form.hourly_rate.errors }}
+      </div>
+      <div class="form-row">
+        <label>Monthly fee</label>{{ form.monthly_fee }}{{ form.monthly_fee.errors }}
       </div>
     </div>
     <div class="form-row">

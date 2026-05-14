@@ -8,6 +8,7 @@ api_v1 = [
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),
     path("accounts/", include("accounts.urls")),
+    path("billing/", include("billing.urls")),
     path("clients/", include("clients.urls")),
     path("tickets/", include("tickets.urls")),
     path("knowledge/", include("knowledge.urls")),

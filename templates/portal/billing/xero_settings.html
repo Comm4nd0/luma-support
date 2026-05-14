@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Xero settings · Luma Support{% endblock %}
+{% block content %}
+<h1>Xero</h1>
+
+<div class="card" style="max-width: 700px;">
+  {% if connection %}
+    <h3>Connected</h3>
+    <dl class="kv">
+      <dt>Tenant ID</dt><dd class="muted">{{ connection.tenant_id }}</dd>
+      <dt>Expires</dt><dd>{{ connection.expires_at }}</dd>
+      <dt>Connected by</dt><dd>{{ connection.connected_by.email }}</dd>
+      <dt>Connected at</dt><dd>{{ connection.connected_at }}</dd>
+    </dl>
+    <form method="post" action="{% url 'portal:xero_disconnect' %}" class="inline-form">
+      {% csrf_token %}
+      <button class="btn btn-ghost" type="submit">Disconnect</button>
+    </form>
+  {% else %}
+    <h3>Not connected</h3>
+    <p class="muted">
+      Connect a Xero organisation to push invoices and pull payments.
+    </p>
+    <a class="btn" href="{% url 'portal:xero_connect' %}">Connect to Xero</a>
+  {% endif %}
+</div>
+{% endblock %}

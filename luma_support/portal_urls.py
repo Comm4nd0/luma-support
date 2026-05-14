@@ -3,6 +3,7 @@ from django.contrib.auth.views import LogoutView
 from django.urls import path
 from django.views.generic import RedirectView
 
+from billing import portal_urls as billing_portal_urls
 from luma_support import portal_views as views
 
 app_name = "portal"
@@ -43,4 +44,6 @@ urlpatterns = [
     # Knowledge
     path("kb/", views.ArticleListView.as_view(), name="kb_list"),
     path("kb/<slug:slug>/", views.ArticleDetailView.as_view(), name="kb_detail"),
+    # Billing (admin only — gating enforced inside the views)
+    *billing_portal_urls.urlpatterns,
 ]

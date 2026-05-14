@@ -4,6 +4,7 @@ The Ticket model owns the SLA deadline computation and the
 status-transition timestamps (resolved_at / closed_at).
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -157,6 +158,14 @@ class TimeEntry(models.Model):
     description = models.CharField(max_length=500, blank=True)
     billable = models.BooleanField(default=True)
 
+    invoice_line = models.ForeignKey(
+        "billing.InvoiceLine",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -164,6 +173,13 @@ class TimeEntry(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.minutes}m on #{self.ticket_id}"
+
+    def hours(self) -> Decimal:
+        return (Decimal(self.minutes) / Decimal(60)).quantize(Decimal("0.01"))
+
+    def cost(self) -> Decimal:
+        rate = self.ticket.client.effective_hourly_rate()
+        return (self.hours() * rate).quantize(Decimal("0.01"))
 
 
 def attachment_upload_path(instance, filename):

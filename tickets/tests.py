@@ -1,10 +1,11 @@
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
 
 from clients.models import CarePlanTier, Client
-from tickets.models import Ticket
+from tickets.models import Ticket, TimeEntry
 from tickets.sla import auto_priority_for, deadline_for
 
 
@@ -44,3 +45,22 @@ def test_deadline_for_uses_priority_table():
     now = timezone.now()
     assert deadline_for(now, "critical") - now == timedelta(hours=2)
     assert deadline_for(now, "low") - now == timedelta(hours=48)
+
+
+@pytest.mark.django_db
+def test_time_entry_cost_uses_client_rate(admin_user, settings):
+    settings.DEFAULT_HOURLY_RATE = Decimal("75.00")
+    c = Client.objects.create(name="Hi rate", hourly_rate=Decimal("90.00"))
+    t = Ticket.objects.create(client=c, subject="x")
+    e = TimeEntry.objects.create(ticket=t, user=admin_user, minutes=90)
+    assert e.hours() == Decimal("1.50")
+    assert e.cost() == Decimal("135.00")
+
+
+@pytest.mark.django_db
+def test_time_entry_cost_falls_back_to_default(admin_user, settings):
+    settings.DEFAULT_HOURLY_RATE = Decimal("75.00")
+    c = Client.objects.create(name="No rate")
+    t = Ticket.objects.create(client=c, subject="x")
+    e = TimeEntry.objects.create(ticket=t, user=admin_user, minutes=60)
+    assert e.cost() == Decimal("75.00")

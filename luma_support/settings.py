@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django_extensions",
     # Local
     "accounts",
+    "billing",
     "clients",
     "tickets",
     "knowledge",

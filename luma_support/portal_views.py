@@ -21,7 +21,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from clients.models import Client, System
+from clients.models import Client, Contact, System
 from knowledge.models import Article
 from tickets.models import Ticket, TicketNote, TimeEntry
 
@@ -320,11 +320,36 @@ class ClientForm(forms.ModelForm):
         }
 
 
+def _sync_primary_contact(client: Client) -> None:
+    """Mirror Client.name/email/phone onto a single primary Contact row."""
+    primary = client.contacts.filter(is_primary=True).first()
+    if primary is None:
+        Contact.objects.create(
+            client=client,
+            name=client.name,
+            email=client.email,
+            phone=client.phone,
+            is_primary=True,
+        )
+        return
+    primary.name = client.name
+    primary.email = client.email
+    primary.phone = client.phone
+    primary.save(update_fields=["name", "email", "phone", "updated_at"])
+
+
 class ClientCreateView(LoginRequiredMixin, CreateView):
     model = Client
     form_class = ClientForm
     template_name = "portal/client_form.html"
-    success_url = reverse_lazy("portal:client_list")
+
+    def get_success_url(self):
+        return reverse("portal:client_detail", args=[self.object.pk])
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _sync_primary_contact(self.object)
+        return response
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -340,6 +365,11 @@ class ClientUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse("portal:client_detail", args=[self.object.pk])
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        _sync_primary_contact(self.object)
+        return response
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "clients"
@@ -354,11 +384,126 @@ class ClientDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["systems"] = self.object.systems.all()
+        ctx["contacts"] = self.object.contacts.all()
         ctx["tickets"] = self.object.tickets.select_related("assigned_to").order_by(
             "-created_at"
         )[:50]
         ctx["active"] = "clients"
         return ctx
+
+
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = Contact
+        fields = ["name", "email", "phone", "title", "is_primary"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-input"}),
+            "email": forms.EmailInput(attrs={"class": "form-input"}),
+            "phone": forms.TextInput(attrs={"class": "form-input"}),
+            "title": forms.TextInput(attrs={"class": "form-input"}),
+        }
+
+
+class ContactCreateView(LoginRequiredMixin, View):
+    template_name = "portal/contact_form.html"
+
+    def get(self, request, client_pk):
+        from django.template.response import TemplateResponse
+
+        client = get_object_or_404(Client, pk=client_pk)
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {"form": ContactForm(), "client": client, "active": "clients"},
+        )
+
+    def post(self, request, client_pk):
+        from django.template.response import TemplateResponse
+
+        client = get_object_or_404(Client, pk=client_pk)
+        form = ContactForm(request.POST)
+        if not form.is_valid():
+            return TemplateResponse(
+                request,
+                self.template_name,
+                {"form": form, "client": client, "active": "clients"},
+            )
+        contact = form.save(commit=False)
+        contact.client = client
+        if contact.is_primary:
+            client.contacts.filter(is_primary=True).update(is_primary=False)
+            client.name = contact.name
+            client.email = contact.email
+            client.phone = contact.phone
+            client.save(update_fields=["name", "email", "phone", "updated_at"])
+        contact.save()
+        messages.success(request, f"Added contact {contact.name}.")
+        return redirect("portal:client_detail", pk=client.pk)
+
+
+class ContactUpdateView(LoginRequiredMixin, View):
+    template_name = "portal/contact_form.html"
+
+    def get(self, request, pk):
+        from django.template.response import TemplateResponse
+
+        contact = get_object_or_404(Contact, pk=pk)
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "form": ContactForm(instance=contact),
+                "client": contact.client,
+                "contact": contact,
+                "active": "clients",
+            },
+        )
+
+    def post(self, request, pk):
+        from django.template.response import TemplateResponse
+
+        contact = get_object_or_404(Contact, pk=pk)
+        form = ContactForm(request.POST, instance=contact)
+        if not form.is_valid():
+            return TemplateResponse(
+                request,
+                self.template_name,
+                {
+                    "form": form,
+                    "client": contact.client,
+                    "contact": contact,
+                    "active": "clients",
+                },
+            )
+        updated = form.save(commit=False)
+        if updated.is_primary:
+            contact.client.contacts.filter(is_primary=True).exclude(
+                pk=contact.pk
+            ).update(is_primary=False)
+            contact.client.name = updated.name
+            contact.client.email = updated.email
+            contact.client.phone = updated.phone
+            contact.client.save(
+                update_fields=["name", "email", "phone", "updated_at"]
+            )
+        updated.save()
+        messages.success(request, f"Updated contact {updated.name}.")
+        return redirect("portal:client_detail", pk=contact.client_id)
+
+
+class ContactDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        contact = get_object_or_404(Contact, pk=pk)
+        client_id = contact.client_id
+        if contact.is_primary:
+            messages.error(
+                request,
+                "Cannot delete the primary contact. Promote another contact first.",
+            )
+        else:
+            contact.delete()
+            messages.success(request, "Contact removed.")
+        return redirect("portal:client_detail", pk=client_id)
 
 
 # ---------------------------------------------------------------------

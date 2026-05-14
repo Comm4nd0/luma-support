@@ -26,6 +26,14 @@
         <label>VAT number</label>{{ form.vat_number }}{{ form.vat_number.errors }}
       </div>
     </div>
+    <p class="muted" style="margin-top: -8px;">
+      These details become the client's <strong>primary contact</strong>.
+      {% if object %}
+        Add additional contacts on the <a href="{% url 'portal:client_detail' object.pk %}">client detail page</a>.
+      {% else %}
+        After saving, you can add more contacts on the client detail page.
+      {% endif %}
+    </p>
     <div class="form-row">
       <label>Address</label>{{ form.address }}{{ form.address.errors }}
     </div>

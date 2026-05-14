@@ -73,6 +73,28 @@ class Client(models.Model):
         return Decimal(str(settings.DEFAULT_HOURLY_RATE))
 
 
+class Contact(models.Model):
+    """A person at a client organization."""
+
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="contacts"
+    )
+    name = models.CharField(max_length=200)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    title = models.CharField(max_length=120, blank=True)
+    is_primary = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_primary", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.client.name})"
+
+
 class SystemType(models.TextChoices):
     NETWORK = "network", "Network"
     AUTOMATION = "automation", "Home Automation"

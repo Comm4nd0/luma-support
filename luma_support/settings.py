@@ -1,5 +1,6 @@
 """Django settings for luma_support project."""
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from decouple import Csv, config
@@ -223,6 +224,22 @@ FERNET_KEY = config(
 
 # --- Site ---------------------------------------------------------------
 SITE_URL = config("SITE_URL", default="http://localhost:8006")
+
+# --- Billing / Xero -----------------------------------------------------
+DEFAULT_HOURLY_RATE = config("DEFAULT_HOURLY_RATE", default="75.00", cast=Decimal)
+DEFAULT_CURRENCY = config("DEFAULT_CURRENCY", default="GBP")
+DEFAULT_TAX_TYPE = config("DEFAULT_TAX_TYPE", default="OUTPUT2")
+DEFAULT_ACCOUNT_CODE = config("DEFAULT_ACCOUNT_CODE", default="200")
+
+XERO_CLIENT_ID = config("XERO_CLIENT_ID", default="")
+XERO_CLIENT_SECRET = config("XERO_CLIENT_SECRET", default="")
+XERO_REDIRECT_URI = config(
+    "XERO_REDIRECT_URI", default=f"{SITE_URL}/billing/xero/oauth/callback/"
+)
+XERO_SCOPES = config(
+    "XERO_SCOPES",
+    default="offline_access accounting.contacts accounting.transactions",
+)
 
 # --- Logging ------------------------------------------------------------
 LOGGING = {

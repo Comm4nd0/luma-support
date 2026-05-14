@@ -15,12 +15,16 @@ class ClientAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "company",
+        "customer_type",
         "email",
         "care_plan_tier",
+        "monthly_fee",
+        "hourly_rate",
         "care_plan_renewal",
     )
-    list_filter = ("care_plan_tier",)
-    search_fields = ("name", "company", "email")
+    list_filter = ("customer_type", "care_plan_tier")
+    search_fields = ("name", "company", "email", "vat_number")
+    readonly_fields = ("xero_contact_id", "xero_synced_at")
     inlines = [SystemInline]
 
 

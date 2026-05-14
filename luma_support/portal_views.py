@@ -279,26 +279,42 @@ class ClientForm(forms.ModelForm):
         fields = [
             "name",
             "company",
+            "customer_type",
             "email",
             "phone",
             "address",
+            "billing_address",
+            "vat_number",
             "care_plan_tier",
             "care_plan_start",
             "care_plan_renewal",
+            "hourly_rate",
+            "monthly_fee",
             "notes",
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-input"}),
             "company": forms.TextInput(attrs={"class": "form-input"}),
+            "customer_type": forms.Select(attrs={"class": "form-input"}),
             "email": forms.EmailInput(attrs={"class": "form-input"}),
             "phone": forms.TextInput(attrs={"class": "form-input"}),
             "address": forms.Textarea(attrs={"class": "form-input", "rows": 3}),
+            "billing_address": forms.Textarea(
+                attrs={"class": "form-input", "rows": 3}
+            ),
+            "vat_number": forms.TextInput(attrs={"class": "form-input"}),
             "care_plan_tier": forms.Select(attrs={"class": "form-input"}),
             "care_plan_start": forms.DateInput(
                 attrs={"class": "form-input", "type": "date"}
             ),
             "care_plan_renewal": forms.DateInput(
                 attrs={"class": "form-input", "type": "date"}
+            ),
+            "hourly_rate": forms.NumberInput(
+                attrs={"class": "form-input", "step": "0.01", "min": "0"}
+            ),
+            "monthly_fee": forms.NumberInput(
+                attrs={"class": "form-input", "step": "0.01", "min": "0"}
             ),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": 4}),
         }

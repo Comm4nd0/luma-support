@@ -57,16 +57,28 @@ class ClientSerializer(serializers.ModelSerializer):
             "email",
             "phone",
             "address",
+            "customer_type",
+            "vat_number",
+            "billing_address",
             "care_plan_tier",
             "care_plan_start",
             "care_plan_renewal",
+            "hourly_rate",
+            "monthly_fee",
+            "xero_contact_id",
+            "xero_synced_at",
             "notes",
             "systems",
             "open_ticket_count",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("created_at", "updated_at")
+        read_only_fields = (
+            "xero_contact_id",
+            "xero_synced_at",
+            "created_at",
+            "updated_at",
+        )
 
     def get_open_ticket_count(self, obj) -> int:
         from tickets.models import Ticket

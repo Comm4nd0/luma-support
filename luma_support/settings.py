@@ -196,10 +196,16 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
+from celery.schedules import crontab  # noqa: E402
+
 CELERY_BEAT_SCHEDULE = {
     "sla-warning-check": {
         "task": "notifications.tasks.check_sla_warnings",
         "schedule": timedelta(minutes=5),
+    },
+    "generate-contract-invoices": {
+        "task": "billing.tasks.generate_contract_invoices",
+        "schedule": crontab(hour=2, minute=0, day_of_month=1),
     },
 }
 

@@ -1,5 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -23,13 +24,26 @@ class TicketViewSet(viewsets.ModelViewSet):
     ordering_fields = ["sla_deadline", "created_at", "priority"]
     ordering = ["sla_deadline", "-created_at"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.can_view_all:
+            return qs
+        return qs.filter(client_id=user.client_id) if user.client_id else qs.none()
+
     def get_serializer_class(self):
         if self.action == "list":
             return TicketListSerializer
         return TicketSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        user = self.request.user
+        if not user.can_view_all:
+            if not user.client_id:
+                raise PermissionDenied("No client associated with your account.")
+            serializer.save(created_by=user, client_id=user.client_id)
+            return
+        serializer.save(created_by=user)
 
     # --- custom actions ----------------------------------------------
     @action(detail=True, methods=["post"], url_path="status")
@@ -80,6 +94,9 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="sla-warnings")
     def sla_warnings(self, request):
         qs = Ticket.objects.sla_warnings()
+        user = request.user
+        if not user.can_view_all:
+            qs = qs.filter(client_id=user.client_id) if user.client_id else qs.none()
         return Response(TicketListSerializer(qs, many=True).data)
 
 
@@ -87,6 +104,17 @@ class TimeEntryViewSet(viewsets.ModelViewSet):
     queryset = TimeEntry.objects.select_related("ticket", "user").all()
     serializer_class = TimeEntrySerializer
     filterset_fields = ["ticket", "user", "billable"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.can_view_all:
+            return qs
+        return (
+            qs.filter(ticket__client_id=user.client_id)
+            if user.client_id
+            else qs.none()
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

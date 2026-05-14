@@ -7,7 +7,8 @@ ticketing system from a browser without using the API directly.
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -24,6 +25,33 @@ from django.views.generic import (
 from clients.models import Client, Contact, System
 from knowledge.models import Article
 from tickets.models import Ticket, TicketNote, TimeEntry
+
+
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restrict a portal view to staff (admin/engineer) and superusers."""
+
+    raise_exception = False
+
+    def test_func(self) -> bool:
+        u = self.request.user
+        return bool(u.is_authenticated and getattr(u, "can_view_all", False))
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return super().handle_no_permission()
+        return redirect("portal:dashboard")
+
+
+def _scope_tickets(qs, user):
+    if user.can_view_all:
+        return qs
+    return qs.filter(client_id=user.client_id) if user.client_id else qs.none()
+
+
+def _scope_clients(qs, user):
+    if user.can_view_all:
+        return qs
+    return qs.filter(pk=user.client_id) if user.client_id else qs.none()
 
 
 # ---------------------------------------------------------------------
@@ -74,22 +102,24 @@ class DashboardView(LoginRequiredMixin, View):
         from django.template.response import TemplateResponse
 
         open_q = ~Q(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
+        tickets = _scope_tickets(Ticket.objects.all(), request.user)
+        clients = _scope_clients(Client.objects.all(), request.user)
         by_priority = (
-            Ticket.objects.filter(open_q)
+            tickets.filter(open_q)
             .values("priority")
             .annotate(count=Count("id"))
             .order_by("priority")
         )
-        sla_warnings = Ticket.objects.sla_warnings()[:10]
-        recent = Ticket.objects.select_related("client", "assigned_to").order_by(
+        sla_warnings = _scope_tickets(Ticket.objects.sla_warnings(), request.user)[:10]
+        recent = tickets.select_related("client", "assigned_to").order_by(
             "-created_at"
         )[:10]
         context = {
             "by_priority": list(by_priority),
             "sla_warnings": sla_warnings,
             "recent": recent,
-            "open_count": Ticket.objects.filter(open_q).count(),
-            "client_count": Client.objects.count(),
+            "open_count": tickets.filter(open_q).count(),
+            "client_count": clients.count(),
             "active": "dashboard",
         }
         return TemplateResponse(request, self.template_name, context)
@@ -107,7 +137,10 @@ class TicketListView(LoginRequiredMixin, ListView):
     context_object_name = "tickets"
 
     def get_queryset(self):
-        qs = Ticket.objects.select_related("client", "assigned_to", "system")
+        qs = _scope_tickets(
+            Ticket.objects.select_related("client", "assigned_to", "system"),
+            self.request.user,
+        )
         status = self.request.GET.get("status")
         priority = self.request.GET.get("priority")
         client = self.request.GET.get("client")
@@ -121,7 +154,9 @@ class TicketListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["clients"] = Client.objects.order_by("name")
+        ctx["clients"] = _scope_clients(
+            Client.objects.all(), self.request.user
+        ).order_by("name")
         ctx["statuses"] = Ticket.Status.choices
         ctx["priorities"] = Ticket.Priority.choices
         ctx["filters"] = {
@@ -153,8 +188,31 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
     form_class = TicketForm
     template_name = "portal/ticket_form.html"
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        user = self.request.user
+        if not user.can_view_all:
+            if not user.client_id:
+                raise PermissionDenied(
+                    "Your account is not linked to a client."
+                )
+            form.fields["client"].queryset = Client.objects.filter(
+                pk=user.client_id
+            )
+            form.fields["client"].initial = user.client_id
+            form.fields["client"].disabled = True
+            form.fields["system"].queryset = System.objects.filter(
+                client_id=user.client_id
+            )
+            # Hide internal-only assignment for client users.
+            form.fields.pop("assigned_to", None)
+        return form
+
     def form_valid(self, form):
-        form.instance.created_by = self.request.user
+        user = self.request.user
+        form.instance.created_by = user
+        if not user.can_view_all:
+            form.instance.client_id = user.client_id
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -172,8 +230,11 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "ticket"
 
     def get_queryset(self):
-        return Ticket.objects.select_related(
-            "client", "system", "assigned_to", "created_by"
+        return _scope_tickets(
+            Ticket.objects.select_related(
+                "client", "system", "assigned_to", "created_by"
+            ),
+            self.request.user,
         )
 
     def get_context_data(self, **kwargs):
@@ -181,7 +242,10 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         ctx["active"] = "tickets"
         ctx["time_entries"] = self.object.time_entries.select_related("user")
         ctx["attachments"] = self.object.attachments.all()
-        ctx["notes"] = self.object.notes.select_related("author").order_by("created_at")
+        notes = self.object.notes.select_related("author").order_by("created_at")
+        if not self.request.user.can_view_all:
+            notes = notes.filter(internal=False)
+        ctx["notes"] = notes
         ctx["status_choices"] = Ticket.Status.choices
         ctx["now"] = timezone.now()
         return ctx
@@ -189,7 +253,7 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
 
 class TicketStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        ticket = get_object_or_404(Ticket, pk=pk)
+        ticket = get_object_or_404(_scope_tickets(Ticket.objects.all(), request.user), pk=pk)
         new_status = request.POST.get("status")
         valid = {value for value, _ in Ticket.Status.choices}
         if new_status not in valid:
@@ -210,7 +274,7 @@ class TimeEntryForm(forms.ModelForm):
         }
 
 
-class TimeEntryCreateView(LoginRequiredMixin, View):
+class TimeEntryCreateView(StaffRequiredMixin, View):
     def post(self, request, pk):
         ticket = get_object_or_404(Ticket, pk=pk)
         form = TimeEntryForm(request.POST)
@@ -227,9 +291,14 @@ class TimeEntryCreateView(LoginRequiredMixin, View):
 
 class TicketNoteCreateView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        ticket = get_object_or_404(Ticket, pk=pk)
+        ticket = get_object_or_404(
+            _scope_tickets(Ticket.objects.all(), request.user), pk=pk
+        )
         body = request.POST.get("body", "").strip()
-        is_internal = request.POST.get("internal") == "on"
+        # Only staff can create internal notes; client users always file public notes.
+        is_internal = (
+            request.user.can_view_all and request.POST.get("internal") == "on"
+        )
         if not body:
             messages.error(request, "Note cannot be empty.")
         else:
@@ -255,7 +324,8 @@ class ClientListView(LoginRequiredMixin, ListView):
     context_object_name = "clients"
 
     def get_queryset(self):
-        return Client.objects.annotate(
+        qs = _scope_clients(Client.objects.all(), self.request.user)
+        return qs.annotate(
             open_tickets=Count(
                 "tickets",
                 filter=~Q(
@@ -338,7 +408,7 @@ def _sync_primary_contact(client: Client) -> None:
     primary.save(update_fields=["name", "email", "phone", "updated_at"])
 
 
-class ClientCreateView(LoginRequiredMixin, CreateView):
+class ClientCreateView(StaffRequiredMixin, CreateView):
     model = Client
     form_class = ClientForm
     template_name = "portal/client_form.html"
@@ -357,7 +427,7 @@ class ClientCreateView(LoginRequiredMixin, CreateView):
         return ctx
 
 
-class ClientUpdateView(LoginRequiredMixin, UpdateView):
+class ClientUpdateView(StaffRequiredMixin, UpdateView):
     model = Client
     form_class = ClientForm
     template_name = "portal/client_form.html"
@@ -380,6 +450,9 @@ class ClientDetailView(LoginRequiredMixin, DetailView):
     model = Client
     template_name = "portal/client_detail.html"
     context_object_name = "client"
+
+    def get_queryset(self):
+        return _scope_clients(Client.objects.all(), self.request.user)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -404,7 +477,7 @@ class ContactForm(forms.ModelForm):
         }
 
 
-class ContactCreateView(LoginRequiredMixin, View):
+class ContactCreateView(StaffRequiredMixin, View):
     template_name = "portal/contact_form.html"
 
     def get(self, request, client_pk):
@@ -441,7 +514,7 @@ class ContactCreateView(LoginRequiredMixin, View):
         return redirect("portal:client_detail", pk=client.pk)
 
 
-class ContactUpdateView(LoginRequiredMixin, View):
+class ContactUpdateView(StaffRequiredMixin, View):
     template_name = "portal/contact_form.html"
 
     def get(self, request, pk):
@@ -491,7 +564,7 @@ class ContactUpdateView(LoginRequiredMixin, View):
         return redirect("portal:client_detail", pk=contact.client_id)
 
 
-class ContactDeleteView(LoginRequiredMixin, View):
+class ContactDeleteView(StaffRequiredMixin, View):
     def post(self, request, pk):
         contact = get_object_or_404(Contact, pk=pk)
         client_id = contact.client_id
@@ -511,6 +584,12 @@ class ContactDeleteView(LoginRequiredMixin, View):
 # ---------------------------------------------------------------------
 
 
+def _scope_articles(user):
+    if user.can_view_all:
+        return Article.objects.published()
+    return Article.objects.visible_to_clients()
+
+
 class ArticleListView(LoginRequiredMixin, ListView):
     model = Article
     template_name = "portal/kb_list.html"
@@ -518,7 +597,7 @@ class ArticleListView(LoginRequiredMixin, ListView):
     context_object_name = "articles"
 
     def get_queryset(self):
-        qs = Article.objects.published()
+        qs = _scope_articles(self.request.user)
         q = self.request.GET.get("q")
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
@@ -537,6 +616,9 @@ class ArticleDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "article"
     slug_field = "slug"
     slug_url_kwarg = "slug"
+
+    def get_queryset(self):
+        return _scope_articles(self.request.user)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

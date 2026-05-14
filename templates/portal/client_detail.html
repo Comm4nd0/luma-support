@@ -73,6 +73,40 @@
     {% endif %}
 
     <div class="card" style="margin-top: 20px;">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <h2 style="margin: 0;">Contacts ({{ contacts|length }})</h2>
+        <a class="btn btn-ghost" href="{% url 'portal:contact_create' client.pk %}">+ Add contact</a>
+      </div>
+      <table class="table">
+        <thead><tr><th>Name</th><th>Title</th><th>Email</th><th>Phone</th><th></th></tr></thead>
+        <tbody>
+          {% for c in contacts %}
+            <tr>
+              <td>
+                {{ c.name }}
+                {% if c.is_primary %}<span class="pill pill-tier-professional">primary</span>{% endif %}
+              </td>
+              <td>{{ c.title|default:"—" }}</td>
+              <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+              <td>{{ c.phone|default:"—" }}</td>
+              <td style="text-align: right;">
+                <a class="btn btn-ghost" href="{% url 'portal:contact_edit' c.pk %}">Edit</a>
+                {% if not c.is_primary %}
+                <form method="post" action="{% url 'portal:contact_delete' c.pk %}" style="display: inline;">
+                  {% csrf_token %}
+                  <button class="btn btn-ghost" type="submit" onclick="return confirm('Remove this contact?');">Delete</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">No contacts yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
       <h2>Systems ({{ systems|length }})</h2>
       <table class="table">
         <thead><tr><th>Name</th><th>Type</th><th>Installed</th><th>Monitoring</th></tr></thead>

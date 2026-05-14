@@ -41,6 +41,22 @@ urlpatterns = [
         views.ClientUpdateView.as_view(),
         name="client_edit",
     ),
+    # Contacts
+    path(
+        "clients/<int:client_pk>/contacts/new/",
+        views.ContactCreateView.as_view(),
+        name="contact_create",
+    ),
+    path(
+        "contacts/<int:pk>/edit/",
+        views.ContactUpdateView.as_view(),
+        name="contact_edit",
+    ),
+    path(
+        "contacts/<int:pk>/delete/",
+        views.ContactDeleteView.as_view(),
+        name="contact_delete",
+    ),
     # Knowledge
     path("kb/", views.ArticleListView.as_view(), name="kb_list"),
     path("kb/<slug:slug>/", views.ArticleDetailView.as_view(), name="kb_detail"),

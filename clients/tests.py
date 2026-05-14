@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from clients.encryption import decrypt, encrypt
-from clients.models import Client, CustomerType, System, SystemType
+from clients.models import Client, Contact, CustomerType, System, SystemType
 
 
 @pytest.mark.django_db
@@ -49,3 +49,25 @@ def test_effective_hourly_rate_falls_back_to_settings(settings):
 def test_customer_type_defaults_to_home():
     c = Client.objects.create(name="D")
     assert c.customer_type == CustomerType.HOME
+
+
+@pytest.mark.django_db
+def test_client_can_have_multiple_contacts(client_record):
+    Contact.objects.create(
+        client=client_record,
+        name="Chris Procter",
+        email="chris@example.com",
+        is_primary=True,
+    )
+    Contact.objects.create(
+        client=client_record, name="Colin S", email="colin@example.com"
+    )
+    Contact.objects.create(
+        client=client_record, name="Luan Mahoney", email="luan@example.com"
+    )
+
+    contacts = list(client_record.contacts.all())
+    assert len(contacts) == 3
+    # is_primary contacts sort first per Meta.ordering.
+    assert contacts[0].is_primary is True
+    assert contacts[0].name == "Chris Procter"

@@ -1,6 +1,23 @@
 from rest_framework import serializers
 
-from .models import Client, System
+from .models import Client, Contact, System
+
+
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = (
+            "id",
+            "client",
+            "name",
+            "email",
+            "phone",
+            "title",
+            "is_primary",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("created_at", "updated_at")
 
 
 class SystemSerializer(serializers.ModelSerializer):
@@ -46,6 +63,7 @@ class SystemSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     systems = SystemSerializer(many=True, read_only=True)
+    contacts = ContactSerializer(many=True, read_only=True)
     open_ticket_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -69,6 +87,7 @@ class ClientSerializer(serializers.ModelSerializer):
             "xero_synced_at",
             "notes",
             "systems",
+            "contacts",
             "open_ticket_count",
             "created_at",
             "updated_at",

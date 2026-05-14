@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{% if contact %}Edit{% else %}New{% endif %} contact · {{ client.name }} · Luma Support{% endblock %}
+{% block content %}
+<h1>{% if contact %}Edit contact{% else %}New contact{% endif %}</h1>
+<p class="muted">for <a href="{% url 'portal:client_detail' client.pk %}">{{ client.name }}</a></p>
+
+<div class="card" style="max-width: 640px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Name</label>{{ form.name }}{{ form.name.errors }}
+      </div>
+      <div class="form-row">
+        <label>Title / role</label>{{ form.title }}{{ form.title.errors }}
+      </div>
+      <div class="form-row">
+        <label>Email</label>{{ form.email }}{{ form.email.errors }}
+      </div>
+      <div class="form-row">
+        <label>Phone</label>{{ form.phone }}{{ form.phone.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label style="display: flex; gap: 8px; align-items: center;">
+        {{ form.is_primary }} Primary contact
+      </label>
+      {{ form.is_primary.errors }}
+      <p class="muted" style="margin-top: 4px;">
+        Marking a contact as primary updates the client record's main name, email, and phone.
+      </p>
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save contact</button>
+      <a class="btn btn-ghost" href="{% url 'portal:client_detail' client.pk %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -81,3 +81,9 @@ class User(AbstractUser):
     @property
     def is_client(self) -> bool:
         return self.role == self.Role.CLIENT
+
+    @property
+    def can_view_all(self) -> bool:
+        """Staff (admin/engineer roles) and Django superusers see everything;
+        client users are scoped to their own client's data."""
+        return self.is_superuser or self.is_engineer

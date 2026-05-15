@@ -145,6 +145,15 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": config("THROTTLE_ANON", default="60/min"),
+        "user": config("THROTTLE_USER", default="1000/hour"),
+        "auth": config("THROTTLE_AUTH", default="10/min"),
+    },
 }
 
 SIMPLE_JWT = {
@@ -232,6 +241,14 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 FERNET_KEY = config(
     "FERNET_KEY", default="aXzDcRGfQa8H_wK3UZ4xG4LnkZbNz7q6uhZWqXoJZ5o="
 )
+
+# --- Push notifications --------------------------------------------------
+# Mobile app push goes through Firebase Cloud Messaging (FCM HTTP v1).
+# APNs is delivered via the same FCM project (upload the .p8 in the
+# Firebase console). FCM_ENABLED gates the whole stack so dev and CI
+# don't try to reach Firebase.
+FCM_ENABLED = config("FCM_ENABLED", default=False, cast=bool)
+FIREBASE_CREDENTIALS_JSON = config("FIREBASE_CREDENTIALS_JSON", default="")
 
 # --- Site ---------------------------------------------------------------
 SITE_URL = config("SITE_URL", default="http://localhost:8006")

@@ -88,8 +88,38 @@ class TicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         serializer = TicketNoteSerializer(data={**request.data, "ticket": ticket.pk})
         serializer.is_valid(raise_exception=True)
-        serializer.save(author=request.user, ticket=ticket)
+        note = serializer.save(author=request.user, ticket=ticket)
+        self._notify_note(ticket, note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _notify_note(ticket, note):
+        """Create a Notification for the counterparty when a non-internal
+        note lands. The notifications signal turns this into a push."""
+        if note.internal:
+            return
+        from notifications.models import Notification
+
+        author = note.author
+        recipients = set()
+        # When a client posts, notify the engineer; when an engineer posts,
+        # notify the client users tied to this ticket's client.
+        if author is None or author.is_client:
+            if ticket.assigned_to and ticket.assigned_to_id != getattr(author, "pk", None):
+                recipients.add(ticket.assigned_to)
+        else:
+            for u in ticket.client.users.filter(is_active=True):
+                if u.pk != getattr(author, "pk", None):
+                    recipients.add(u)
+
+        for user in recipients:
+            Notification.objects.create(
+                user=user,
+                type=Notification.Type.TICKET_UPDATE,
+                title=f"New note on #{ticket.pk}",
+                body=note.body[:240],
+                related_ticket=ticket,
+            )
 
     @action(detail=False, methods=["get"], url_path="sla-warnings")
     def sla_warnings(self, request):

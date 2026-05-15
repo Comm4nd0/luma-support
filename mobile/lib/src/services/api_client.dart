@@ -1,87 +1,56 @@
-import 'dart:convert';
-import 'dart:io';
+import 'package:dio/dio.dart';
 
-import 'package:http/http.dart' as http;
-
+import 'auth_interceptor.dart';
 import 'auth_service.dart';
 import 'config.dart';
 
+/// Thin Dio wrapper. Repositories take an [ApiClient] and call [dio]
+/// directly — that way unit tests can swap a fake Dio in without reaching
+/// into every repository.
+///
+/// When [dio] is omitted we build a production Dio and wire the auth
+/// interceptor onto it. When tests pass one in we leave it alone — they
+/// own the interceptor stack.
 class ApiClient {
-  ApiClient(this._auth);
+  ApiClient(AuthService auth, {Dio? dio}) : dio = dio ?? _buildDio(auth);
 
-  final AuthService _auth;
+  /// Used by widget/unit tests that already have a configured Dio.
+  ApiClient.withDio(this.dio);
 
-  Map<String, String> _headers({String? contentType = 'application/json'}) => {
-        if (contentType != null) 'Content-Type': contentType,
-        if (_auth.accessToken != null) 'Authorization': 'Bearer ${_auth.accessToken}',
-      };
+  final Dio dio;
 
-  Future<List<dynamic>> listTickets({String? status, String? priority}) async {
-    final params = <String, String>{};
-    if (status != null) params['status'] = status;
-    if (priority != null) params['priority'] = priority;
-    final uri = Uri.parse('$kApiBase/tickets/').replace(queryParameters: params);
-    final res = await http.get(uri, headers: _headers());
-    if (res.statusCode != 200) {
-      throw Exception('Failed to list tickets: ${res.statusCode}');
-    }
-    final data = jsonDecode(res.body);
-    return (data is Map && data.containsKey('results')) ? data['results'] as List : data as List;
-  }
-
-  Future<Map<String, dynamic>> getTicket(int id) async {
-    final res = await http.get(
-      Uri.parse('$kApiBase/tickets/$id/'),
-      headers: _headers(),
+  static Dio _buildDio(AuthService auth) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: kApiBase,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {'Content-Type': 'application/json'},
+        responseType: ResponseType.json,
+      ),
     );
-    return jsonDecode(res.body) as Map<String, dynamic>;
+    dio.interceptors.add(AuthInterceptor(auth, dio));
+    return dio;
   }
+}
 
-  Future<Map<String, dynamic>> createTicket(Map<String, dynamic> body) async {
-    final res = await http.post(
-      Uri.parse('$kApiBase/tickets/'),
-      headers: _headers(),
-      body: jsonEncode(body),
-    );
-    return jsonDecode(res.body) as Map<String, dynamic>;
-  }
+/// Single error type carrying status + parsed DRF error payload, raised
+/// by repositories so screens have one thing to catch.
+class ApiException implements Exception {
+  ApiException(this.statusCode, this.body, [this.message]);
 
-  Future<void> updateStatus(int ticketId, String status) async {
-    await http.post(
-      Uri.parse('$kApiBase/tickets/$ticketId/status/'),
-      headers: _headers(),
-      body: jsonEncode({'status': status}),
-    );
-  }
+  final int? statusCode;
+  final dynamic body;
+  final String? message;
 
-  Future<void> logTime(int ticketId, int minutes, String description,
-      {bool billable = true}) async {
-    await http.post(
-      Uri.parse('$kApiBase/tickets/$ticketId/time/'),
-      headers: _headers(),
-      body: jsonEncode({
-        'minutes': minutes,
-        'description': description,
-        'billable': billable,
-      }),
-    );
-  }
+  @override
+  String toString() => message ?? 'API error ($statusCode): $body';
 
-  Future<void> addNote(int ticketId, String body, {bool internal = true}) async {
-    await http.post(
-      Uri.parse('$kApiBase/tickets/$ticketId/notes/'),
-      headers: _headers(),
-      body: jsonEncode({'body': body, 'internal': internal}),
+  static ApiException fromDio(DioException e) {
+    return ApiException(
+      e.response?.statusCode,
+      e.response?.data,
+      e.message,
     );
-  }
-
-  Future<void> uploadAttachment(int ticketId, File file) async {
-    final req = http.MultipartRequest(
-      'POST',
-      Uri.parse('$kApiBase/tickets/$ticketId/attachments/'),
-    );
-    req.headers.addAll(_headers(contentType: null));
-    req.files.add(await http.MultipartFile.fromPath('file', file.path));
-    await req.send();
   }
 }

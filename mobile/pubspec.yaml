@@ -11,19 +11,47 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
-  http: ^1.2.1
+  dio: ^5.5.0
+  go_router: ^14.2.0
   flutter_secure_storage: ^9.2.2
   provider: ^6.1.2
   intl: ^0.19.0
   image_picker: ^1.1.0
+  flutter_markdown: ^0.7.1
   firebase_core: ^3.0.0
   firebase_messaging: ^15.0.0
+  firebase_crashlytics: ^4.0.0
   flutter_local_notifications: ^17.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 flutter:
   uses-material-design: true
+
+# App icon configuration. Marco drops a 1024x1024 PNG at
+# `assets/icon/icon.png` then runs:
+#   dart run flutter_launcher_icons
+# to generate the iOS + Android icon sets in the platform folders.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon.png"
+  background_color: "#0F172A"
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+# Launch screen / splash. Run `dart run flutter_native_splash:create`
+# after editing this block. The navy + teal matches lib/src/theme.dart.
+flutter_native_splash:
+  color: "#0F172A"
+  image: "assets/splash/luma.png"
+  android_12:
+    color: "#0F172A"
+    image: "assets/splash/luma_android12.png"

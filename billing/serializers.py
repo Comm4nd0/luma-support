@@ -4,6 +4,11 @@ from .models import Invoice, InvoiceLine, Payment
 
 
 class InvoiceLineSerializer(serializers.ModelSerializer):
+    # `id` is writable so the parent invoice's `update()` can diff incoming
+    # lines against existing rows; we override the default ModelSerializer
+    # behaviour (which would drop `id` as read-only).
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = InvoiceLine
         fields = (
@@ -74,6 +79,40 @@ class InvoiceSerializer(serializers.ModelSerializer):
         invoice.recalculate_totals()
         invoice.save(update_fields=["subtotal", "tax", "total", "updated_at"])
         return invoice
+
+    def update(self, instance, validated_data):
+        # Lines are managed as a full replacement: existing rows matched by
+        # `id` are updated, unmatched survivors deleted, items without `id`
+        # created. Totals are recomputed once at the end.
+        lines_data = validated_data.pop("lines", None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+
+        if lines_data is not None:
+            existing = {line.pk: line for line in instance.lines.all()}
+            seen_ids: set[int] = set()
+            for payload in lines_data:
+                line_id = payload.pop("id", None)
+                if line_id is not None and line_id in existing:
+                    line = existing[line_id]
+                    for f, v in payload.items():
+                        setattr(line, f, v)
+                    line.save()
+                    seen_ids.add(line_id)
+                else:
+                    InvoiceLine.objects.create(invoice=instance, **payload)
+            for pk, line in existing.items():
+                if pk not in seen_ids:
+                    line.delete()
+
+        # The viewset prefetches `lines`; that cache is now stale, and
+        # `recalculate_totals` walks `self.lines.all()`.
+        if hasattr(instance, "_prefetched_objects_cache"):
+            instance._prefetched_objects_cache.pop("lines", None)
+        instance.recalculate_totals()
+        instance.save(update_fields=["subtotal", "tax", "total", "updated_at"])
+        return instance
 
 
 class PaymentSerializer(serializers.ModelSerializer):

@@ -1,7 +1,7 @@
 name: luma_support_mobile
 description: Luma Support — mobile app for engineers and clients.
 publish_to: "none"
-version: 0.1.0+1
+version: 0.1.0+2
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

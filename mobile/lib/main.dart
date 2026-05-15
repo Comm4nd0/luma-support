@@ -18,11 +18,15 @@ import 'src/theme.dart';
 Future<void> main() async {
   // runZonedGuarded + FlutterError.onError catch every error path
   // — sync framework errors, async unhandled futures, and platform
-  // exceptions — and forward them to Crashlytics. Skipped in debug.
+  // exceptions — and forward them to Crashlytics in release. We only
+  // wire Crashlytics in when Firebase actually initialized, otherwise
+  // `FirebaseCrashlytics.instance` itself throws and the app boots
+  // to a white screen (the error handler then throws again from
+  // inside the zone, so `runApp` is never reached).
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
     await PushService.instance.initialize();
-    if (!kDebugMode) {
+    if (!kDebugMode && PushService.instance.isFirebaseReady) {
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
       PlatformDispatcher.instance.onError = (error, stack) {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
@@ -31,7 +35,7 @@ Future<void> main() async {
     }
     runApp(const LumaSupportApp());
   }, (error, stack) {
-    if (!kDebugMode) {
+    if (!kDebugMode && PushService.instance.isFirebaseReady) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     } else {
       debugPrint('Uncaught: $error\n$stack');

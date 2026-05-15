@@ -5,10 +5,14 @@ import 'package:provider/provider.dart';
 import 'screens/client_dashboard_screen.dart';
 import 'screens/client_detail_screen.dart';
 import 'screens/engineer_dashboard_screen.dart';
+import 'screens/invoice_create_screen.dart';
+import 'screens/invoice_detail_screen.dart';
+import 'screens/invoice_list_screen.dart';
 import 'screens/kb_detail_screen.dart';
 import 'screens/kb_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
+import 'screens/payments_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
@@ -41,6 +45,12 @@ GoRouter buildAppRouter({
         return loggingIn ? null : '/login';
       }
       if (loggingIn) return '/';
+      // Billing endpoints are admin-only on the server; redirect anyone
+      // else away rather than letting the screen 401.
+      if (state.matchedLocation.startsWith('/billing') &&
+          !currentUser.isAdmin) {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -108,6 +118,29 @@ GoRouter buildAppRouter({
               ? const ClientShell(child: NotificationsInboxScreen())
               : const EngineerShell(child: NotificationsInboxScreen());
         },
+      ),
+      GoRoute(
+        path: '/billing',
+        redirect: (_, __) => '/billing/invoices',
+      ),
+      GoRoute(
+        path: '/billing/invoices',
+        builder: (context, state) =>
+            const EngineerShell(child: InvoiceListScreen()),
+      ),
+      GoRoute(
+        path: '/billing/invoices/new',
+        builder: (_, __) => const InvoiceCreateScreen(),
+      ),
+      GoRoute(
+        path: '/billing/invoices/:id',
+        builder: (_, state) => InvoiceDetailScreen(
+          invoiceId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/billing/payments',
+        builder: (_, __) => const PaymentsScreen(),
       ),
       GoRoute(
         path: '/profile',

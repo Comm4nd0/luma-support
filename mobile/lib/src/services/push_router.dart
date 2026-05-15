@@ -20,6 +20,8 @@ class PushRouter {
 
     PushService.instance.setOnMessageOpened(_handle);
 
+    if (!PushService.instance.isFirebaseReady) return;
+
     // Cold-start case: the OS opened the app from a notification tap.
     FirebaseMessaging.instance.getInitialMessage().then((m) {
       if (m != null) _handle(m);

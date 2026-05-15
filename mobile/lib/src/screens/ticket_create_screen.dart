@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class TicketCreateScreen extends StatefulWidget {
   const TicketCreateScreen({super.key});
@@ -91,7 +93,7 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: _pickPhoto,
-            icon: const Icon(Icons.camera_alt),
+            icon: const LumaIcon(PhosphorIconsDuotone.camera),
             label: Text(_photo == null ? 'Add photo' : 'Photo selected'),
           ),
           const SizedBox(height: 16),

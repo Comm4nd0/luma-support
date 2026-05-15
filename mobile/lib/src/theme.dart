@@ -21,7 +21,7 @@ final ThemeData lumaTheme = ThemeData(
     foregroundColor: kText,
     elevation: 0,
   ),
-  cardTheme: const CardTheme(
+  cardTheme: const CardThemeData(
     color: kSurface,
     elevation: 0,
     shape: RoundedRectangleBorder(

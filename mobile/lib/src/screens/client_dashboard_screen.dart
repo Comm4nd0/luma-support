@@ -9,6 +9,8 @@ import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
 import 'widgets/ticket_tile.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class ClientDashboardScreen extends StatefulWidget {
   const ClientDashboardScreen({super.key});
@@ -57,7 +59,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/tickets/new'),
-        icon: const Icon(Icons.add),
+        icon: const LumaIcon(PhosphorIconsDuotone.plus),
         label: const Text('Submit a ticket'),
       ),
       body: RefreshIndicator(
@@ -97,7 +99,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                       child: ListTile(
                         title: Text(a.title),
                         subtitle: Text(a.category),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
                         onTap: () => context.push('/kb/${a.slug}'),
                       ),
                     ),

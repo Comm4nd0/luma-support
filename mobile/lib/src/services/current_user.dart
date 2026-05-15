@@ -14,6 +14,7 @@ class CurrentUser extends ChangeNotifier {
   bool get loading => _loading;
   bool get isStaff => _user?.canViewAll ?? false;
   bool get isClient => _user?.isClient ?? false;
+  bool get isAdmin => _user?.isAdmin ?? false;
 
   Future<void> fetch(ApiClient api) async {
     _loading = true;

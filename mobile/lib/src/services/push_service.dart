@@ -26,10 +26,15 @@ class PushService {
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _firebaseReady = false;
   String? _token;
   MessageOpenedHandler? _onMessageOpened;
 
   String? get token => _token;
+
+  /// True only when `Firebase.initializeApp()` succeeded, i.e. a Firebase
+  /// config file is present. Other code should guard FCM calls on this.
+  bool get isFirebaseReady => _firebaseReady;
 
   /// Boot Firebase + flutter_local_notifications. Safe to call multiple
   /// times. On a desktop / web / test platform it short-circuits.
@@ -41,6 +46,7 @@ class PushService {
     }
     try {
       await Firebase.initializeApp();
+      _firebaseReady = true;
     } catch (e) {
       // Most likely cause: flutterfire configure hasn't been run. Don't
       // crash the app — push just won't work until configured.
@@ -69,6 +75,7 @@ class PushService {
     String appVersion = '',
   }) async {
     if (!_initialized) await initialize();
+    if (!_firebaseReady) return;
     try {
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission();

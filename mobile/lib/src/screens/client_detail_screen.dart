@@ -8,6 +8,8 @@ import '../repositories/clients_repository.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import 'widgets/ticket_tile.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class ClientDetailScreen extends StatefulWidget {
   const ClientDetailScreen({super.key, required this.clientId});
@@ -120,7 +122,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
           Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              leading: const Icon(Icons.memory),
+              leading: const LumaIcon(PhosphorIconsDuotone.cpu),
               title: Text(s.name),
               subtitle: Text('${s.type} · ${s.description}',
                   maxLines: 2, overflow: TextOverflow.ellipsis),

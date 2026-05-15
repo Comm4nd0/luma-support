@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../../src/widgets/luma_icon.dart';
 
 /// Bottom-nav scaffold shown to admin/engineer roles. The four tabs map
 /// to top-level routes; we don't use [StatefulShellRoute] so each tap is
@@ -11,12 +13,12 @@ class EngineerShell extends StatelessWidget {
   final Widget child;
 
   static const _destinations = <_NavDest>[
-    _NavDest('/', Icons.dashboard_outlined, Icons.dashboard, 'Home'),
-    _NavDest('/tickets', Icons.confirmation_number_outlined,
-        Icons.confirmation_number, 'Tickets'),
-    _NavDest('/notifications', Icons.notifications_outlined,
-        Icons.notifications, 'Alerts'),
-    _NavDest('/profile', Icons.person_outline, Icons.person, 'Profile'),
+    _NavDest('/', PhosphorIconsDuotone.gauge, PhosphorIconsDuotone.gauge, 'Home'),
+    _NavDest('/tickets', PhosphorIconsDuotone.ticket,
+        PhosphorIconsDuotone.ticket, 'Tickets'),
+    _NavDest('/notifications', PhosphorIconsDuotone.bell,
+        PhosphorIconsDuotone.bell, 'Alerts'),
+    _NavDest('/profile', PhosphorIconsDuotone.user, PhosphorIconsDuotone.user, 'Profile'),
   ];
 
   @override
@@ -31,8 +33,8 @@ class EngineerShell extends StatelessWidget {
         destinations: [
           for (final d in _destinations)
             NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon),
+              icon: LumaIcon(d.icon),
+              selectedIcon: LumaIcon(d.selectedIcon),
               label: d.label,
             ),
         ],

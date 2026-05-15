@@ -28,6 +28,8 @@ class _StubCurrentUser extends ChangeNotifier implements CurrentUser {
   @override
   bool get isClient => _user?.isClient ?? false;
   @override
+  bool get isAdmin => _user?.isAdmin ?? false;
+  @override
   Future<void> fetch(ApiClient api) async {}
   @override
   void clear() {}

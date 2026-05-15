@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../../src/widgets/luma_icon.dart';
 
 /// Bottom-nav scaffold shown to client-role users. Same pattern as
 /// [EngineerShell] but with the tabs a customer needs: their tickets,
@@ -10,13 +12,13 @@ class ClientShell extends StatelessWidget {
   final Widget child;
 
   static const _destinations = <_NavDest>[
-    _NavDest('/', Icons.home_outlined, Icons.home, 'Home'),
-    _NavDest('/tickets', Icons.support_agent_outlined, Icons.support_agent,
+    _NavDest('/', PhosphorIconsDuotone.house, PhosphorIconsDuotone.house, 'Home'),
+    _NavDest('/tickets', PhosphorIconsDuotone.headset, PhosphorIconsDuotone.headset,
         'My tickets'),
-    _NavDest('/kb', Icons.menu_book_outlined, Icons.menu_book, 'Knowledge'),
-    _NavDest('/notifications', Icons.notifications_outlined,
-        Icons.notifications, 'Alerts'),
-    _NavDest('/profile', Icons.person_outline, Icons.person, 'Profile'),
+    _NavDest('/kb', PhosphorIconsDuotone.bookOpen, PhosphorIconsDuotone.bookOpen, 'Knowledge'),
+    _NavDest('/notifications', PhosphorIconsDuotone.bell,
+        PhosphorIconsDuotone.bell, 'Alerts'),
+    _NavDest('/profile', PhosphorIconsDuotone.user, PhosphorIconsDuotone.user, 'Profile'),
   ];
 
   @override
@@ -31,8 +33,8 @@ class ClientShell extends StatelessWidget {
         destinations: [
           for (final d in _destinations)
             NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon),
+              icon: LumaIcon(d.icon),
+              selectedIcon: LumaIcon(d.selectedIcon),
               label: d.label,
             ),
         ],

@@ -35,6 +35,16 @@ class ApiPaths {
   static String article(String slug) => '/knowledge/articles/$slug/';
   static const String articleSearch = '/knowledge/articles/search/';
 
+  // Billing (admin-only on the server)
+  static const String invoices = '/billing/invoices/';
+  static String invoice(int id) => '/billing/invoices/$id/';
+  static String invoiceSend(int id) => '/billing/invoices/$id/send/';
+  static String invoiceStatus(int id) => '/billing/invoices/$id/status/';
+  static const String invoicesGenerateFromTime =
+      '/billing/invoices/generate-from-time/';
+  static const String payments = '/billing/payments/';
+  static String payment(int id) => '/billing/payments/$id/';
+
   // Notifications + devices
   static const String notifications = '/notifications/notifications/';
   static String notification(int id) => '/notifications/notifications/$id/';

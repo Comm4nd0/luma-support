@@ -39,6 +39,7 @@ class AppUser {
 
   bool get isClient => role == UserRole.client;
   bool get isEngineer => role == UserRole.engineer || role == UserRole.admin;
+  bool get isAdmin => role == UserRole.admin;
   bool get canViewAll => isStaff || isEngineer;
   String get displayName =>
       ('$firstName $lastName').trim().isEmpty ? email : '$firstName $lastName'.trim();

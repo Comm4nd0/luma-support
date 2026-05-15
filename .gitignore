@@ -35,6 +35,9 @@ staticfiles/
 .DS_Store
 Thumbs.db
 
+# Claude Code session state
+.claude/
+
 # Testing
 .pytest_cache/
 .coverage

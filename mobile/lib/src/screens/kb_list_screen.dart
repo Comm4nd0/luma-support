@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../models/article.dart';
 import '../repositories/knowledge_repository.dart';
 import '../services/api_client.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class KbListScreen extends StatefulWidget {
   const KbListScreen({super.key});
@@ -41,9 +43,9 @@ class _KbListScreenState extends State<KbListScreen> {
               controller: _query,
               decoration: InputDecoration(
                 hintText: 'Search articles',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const LumaIcon(PhosphorIconsDuotone.magnifyingGlass),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: const LumaIcon(PhosphorIconsDuotone.paperPlaneTilt),
                   onPressed: _search,
                 ),
               ),
@@ -75,7 +77,7 @@ class _KbListScreenState extends State<KbListScreen> {
                         onTap: () => context.push('/kb/${a.slug}'),
                         title: Text(a.title),
                         subtitle: Text(a.category),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
                       ),
                     );
                   },

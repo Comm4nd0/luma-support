@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../models/app_notification.dart';
 import '../repositories/notifications_repository.dart';
 import '../services/api_client.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class NotificationsInboxScreen extends StatefulWidget {
   const NotificationsInboxScreen({super.key});
@@ -55,7 +57,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
         actions: [
           IconButton(
             tooltip: 'Mark all read',
-            icon: const Icon(Icons.done_all),
+            icon: const LumaIcon(PhosphorIconsDuotone.checks),
             onPressed: _markAllRead,
           ),
         ],
@@ -125,13 +127,13 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
   IconData _iconFor(String type) {
     switch (type) {
       case 'sla_warning':
-        return Icons.warning_amber_rounded;
+        return PhosphorIconsDuotone.warning;
       case 'new_ticket':
-        return Icons.fiber_new;
+        return PhosphorIconsDuotone.sparkle;
       case 'system_alert':
-        return Icons.error_outline;
+        return PhosphorIconsDuotone.warningCircle;
       default:
-        return Icons.notifications;
+        return PhosphorIconsDuotone.bell;
     }
   }
 }

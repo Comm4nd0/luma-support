@@ -7,6 +7,8 @@ import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
 import 'widgets/ticket_tile.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class EngineerDashboardScreen extends StatefulWidget {
   const EngineerDashboardScreen({super.key});
@@ -50,13 +52,14 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<CurrentUser>().user;
+    final currentUser = context.watch<CurrentUser>();
+    final user = currentUser.user;
     return Scaffold(
       appBar: AppBar(
         title: Text(user == null ? 'Dashboard' : 'Hi ${user.firstName.isEmpty ? user.email : user.firstName}'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const LumaIcon(PhosphorIconsDuotone.plus),
             onPressed: () => context.push('/tickets/new'),
           ),
         ],
@@ -76,6 +79,18 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
+                if (currentUser.isAdmin)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const LumaIcon(PhosphorIconsDuotone.receipt),
+                      title: const Text('Billing'),
+                      subtitle: const Text(
+                          'Manage invoices and sync to Xero'),
+                      trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                      onTap: () => context.push('/billing/invoices'),
+                    ),
+                  ),
                 _SectionHeader(
                   'SLA warnings',
                   count: data.slaWarnings.length,

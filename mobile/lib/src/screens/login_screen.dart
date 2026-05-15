@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
-                    Icon(Icons.support_agent, color: kPrimary, size: 32),
+                    LumaIcon(PhosphorIconsDuotone.headset, color: kPrimary, size: 32),
                     SizedBox(width: 10),
                     Text('Luma Support',
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),

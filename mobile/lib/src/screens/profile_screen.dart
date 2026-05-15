@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/current_user.dart';
 import '../services/push_service.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -46,8 +49,16 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 24),
           ] else
             const Center(child: CircularProgressIndicator()),
+          if (user?.isAdmin ?? false)
+            ListTile(
+              leading: const LumaIcon(PhosphorIconsDuotone.receipt),
+              title: const Text('Billing'),
+              subtitle: const Text('Invoices and Xero sync'),
+              trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+              onTap: () => context.push('/billing/invoices'),
+            ),
           ListTile(
-            leading: const Icon(Icons.notifications_active),
+            leading: const LumaIcon(PhosphorIconsDuotone.bellRinging),
             title: const Text('Push notifications'),
             subtitle: Text(
               pushToken == null
@@ -56,13 +67,13 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.info_outline),
+            leading: const LumaIcon(PhosphorIconsDuotone.info),
             title: const Text('App version'),
             subtitle: const Text(_version),
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
+            leading: const LumaIcon(PhosphorIconsDuotone.signOut, color: Colors.redAccent),
             title: const Text('Sign out',
                 style: TextStyle(color: Colors.redAccent)),
             onTap: () async {

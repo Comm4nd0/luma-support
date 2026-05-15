@@ -5,6 +5,8 @@ import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   const TicketDetailScreen({super.key, required this.ticketId});
@@ -111,7 +113,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _logTime,
-                        icon: const Icon(Icons.timer),
+                        icon: const LumaIcon(PhosphorIconsDuotone.timer),
                         label: const Text('Log time'),
                       ),
                     ),
@@ -120,7 +122,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _addNote,
-                      icon: const Icon(Icons.note_add),
+                      icon: const LumaIcon(PhosphorIconsDuotone.notePencil),
                       label: const Text('Add note'),
                     ),
                   ),

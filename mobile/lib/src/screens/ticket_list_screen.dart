@@ -6,6 +6,8 @@ import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import 'widgets/ticket_tile.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../src/widgets/luma_icon.dart';
 
 class TicketListScreen extends StatefulWidget {
   const TicketListScreen({super.key});
@@ -39,7 +41,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
         title: const Text('Tickets'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const LumaIcon(PhosphorIconsDuotone.arrowsClockwise),
             onPressed: _refresh,
           ),
         ],
@@ -49,7 +51,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
           await context.push('/tickets/new');
           if (mounted) _refresh();
         },
-        icon: const Icon(Icons.add),
+        icon: const LumaIcon(PhosphorIconsDuotone.plus),
         label: const Text('New ticket'),
       ),
       body: RefreshIndicator(

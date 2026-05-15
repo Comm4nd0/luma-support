@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 
 class TicketCreateScreen extends StatefulWidget {
@@ -30,18 +31,23 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
   Future<void> _submit() async {
     setState(() => _busy = true);
     try {
-      final api = context.read<ApiClient>();
-      final created = await api.createTicket({
+      final repo = TicketsRepository(context.read<ApiClient>());
+      final created = await repo.create({
         'client': int.tryParse(_clientId.text) ?? 0,
         'subject': _subject.text.trim(),
         'description': _description.text.trim(),
         'priority': _priority,
       });
-      final id = created['id'] as int?;
-      if (id != null && _photo != null) {
-        await api.uploadAttachment(id, _photo!);
+      if (_photo != null) {
+        await repo.uploadAttachment(created.id, _photo!);
       }
       if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not create ticket: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

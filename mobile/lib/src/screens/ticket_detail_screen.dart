@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/ticket.dart';
+import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 
 class TicketDetailScreen extends StatefulWidget {
@@ -13,22 +15,24 @@ class TicketDetailScreen extends StatefulWidget {
 }
 
 class _TicketDetailScreenState extends State<TicketDetailScreen> {
-  late Future<Map<String, dynamic>> _future;
+  late Future<Ticket> _future;
+
+  TicketsRepository get _repo => TicketsRepository(context.read<ApiClient>());
 
   @override
   void initState() {
     super.initState();
-    _future = context.read<ApiClient>().getTicket(widget.ticketId);
+    _future = _repo.get(widget.ticketId);
   }
 
   void _refresh() {
     setState(() {
-      _future = context.read<ApiClient>().getTicket(widget.ticketId);
+      _future = _repo.get(widget.ticketId);
     });
   }
 
-  Future<void> _setStatus(String status) async {
-    await context.read<ApiClient>().updateStatus(widget.ticketId, status);
+  Future<void> _setStatus(TicketStatus status) async {
+    await _repo.setStatus(widget.ticketId, status);
     _refresh();
   }
 
@@ -38,10 +42,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       builder: (_) => const _LogTimeDialog(),
     );
     if (result == null) return;
-    await context.read<ApiClient>().logTime(
+    await _repo.logTime(
       widget.ticketId,
-      result['minutes'] as int,
-      result['description'] as String,
+      minutes: result['minutes'] as int,
+      description: result['description'] as String,
     );
     _refresh();
   }
@@ -52,7 +56,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       builder: (_) => const _NoteDialog(),
     );
     if (body == null || body.trim().isEmpty) return;
-    await context.read<ApiClient>().addNote(widget.ticketId, body.trim());
+    await _repo.addNote(widget.ticketId, body.trim());
     _refresh();
   }
 
@@ -60,30 +64,39 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Ticket #${widget.ticketId}')),
-      body: FutureBuilder<Map<String, dynamic>>(
+      body: FutureBuilder<Ticket>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final t = snap.data ?? {};
+          if (snap.hasError) {
+            return Center(child: Text('Error: ${snap.error}'));
+          }
+          final t = snap.data!;
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(t['subject'] ?? '',
+              Text(t.subject,
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
-              Text('${t['client_name']} · ${t['priority']} · ${t['status']}'),
+              Text('${t.clientName} · ${t.priority.name} · ${t.status.name}'),
               const SizedBox(height: 12),
-              Text(t['description'] ?? '', style: const TextStyle(height: 1.5)),
+              Text(t.description, style: const TextStyle(height: 1.5)),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 8,
                 children: [
-                  for (final s in const ['assigned', 'in_progress', 'waiting', 'resolved', 'closed'])
+                  for (final s in const [
+                    TicketStatus.assigned,
+                    TicketStatus.inProgress,
+                    TicketStatus.waiting,
+                    TicketStatus.resolved,
+                    TicketStatus.closed,
+                  ])
                     OutlinedButton(
                       onPressed: () => _setStatus(s),
-                      child: Text(s.replaceAll('_', ' ')),
+                      child: Text(statusToWire(s).replaceAll('_', ' ')),
                     ),
                 ],
               ),

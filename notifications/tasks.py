@@ -1,4 +1,5 @@
-"""Celery tasks: ticket-update emails and SLA-warning sweep."""
+"""Celery tasks: ticket-update emails, SLA-warning sweep, push fan-out."""
+import logging
 from datetime import timedelta
 
 from celery import shared_task
@@ -7,7 +8,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from .models import Notification
+from .models import DeviceToken, Notification
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -133,3 +136,98 @@ def check_sla_warnings():
             notified += 1
 
     return f"sla-warnings: {notified} notifications created"
+
+
+# Errors from firebase_admin.messaging that mean a device token is gone for good.
+_DEAD_TOKEN_ERRORS = frozenset(
+    {"UNREGISTERED", "INVALID_ARGUMENT", "NOT_FOUND", "InvalidRegistration"}
+)
+
+
+class _PushMessage:
+    """Platform-neutral push payload. Translated into firebase_admin.messaging.Message
+    inside ``_fcm_send`` so the rest of the module (and tests) doesn't need the SDK."""
+
+    __slots__ = ("token", "title", "body", "data")
+
+    def __init__(self, token, title, body, data):
+        self.token = token
+        self.title = title
+        self.body = body
+        self.data = data
+
+
+def _fcm_send(messages):
+    """Send a batch via firebase_admin.messaging. Patched out in tests."""
+    from firebase_admin import messaging
+
+    fcm_messages = [
+        messaging.Message(
+            token=m.token,
+            notification=messaging.Notification(title=m.title, body=m.body),
+            data=m.data,
+        )
+        for m in messages
+    ]
+    return messaging.send_each(fcm_messages)
+
+
+@shared_task
+def send_push(notification_id: int):
+    """Fan out a Notification to the recipient's active push devices.
+
+    No-op when FCM_ENABLED is false so dev and CI don't try to reach
+    Firebase. Tokens that come back with a permanent error are deactivated
+    so the next run skips them.
+    """
+    if not getattr(settings, "FCM_ENABLED", False):
+        return "fcm disabled"
+
+    try:
+        notif = Notification.objects.select_related("user", "related_ticket").get(
+            pk=notification_id
+        )
+    except Notification.DoesNotExist:
+        return "notification missing"
+
+    tokens = list(
+        DeviceToken.objects.filter(user=notif.user, is_active=True).order_by("pk")
+    )
+    if not tokens:
+        return "no devices"
+
+    data = {
+        "type": notif.type,
+        "notification_id": str(notif.pk),
+    }
+    if notif.related_ticket_id:
+        data["ticket_id"] = str(notif.related_ticket_id)
+        data["route"] = f"/tickets/{notif.related_ticket_id}"
+
+    messages = [
+        _PushMessage(
+            token=t.token, title=notif.title, body=notif.body or "", data=data
+        )
+        for t in tokens
+    ]
+    response = _fcm_send(messages)
+
+    dead_tokens = []
+    for token_obj, resp in zip(tokens, response.responses):
+        if resp.success:
+            continue
+        code = getattr(resp.exception, "code", None) or getattr(
+            resp.exception, "__class__", type("", (), {})
+        ).__name__
+        if code in _DEAD_TOKEN_ERRORS:
+            dead_tokens.append(token_obj.pk)
+        else:
+            logger.warning(
+                "push failed for token %s: %s", token_obj.pk, resp.exception
+            )
+    if dead_tokens:
+        DeviceToken.objects.filter(pk__in=dead_tokens).update(is_active=False)
+
+    notif.push_sent = True
+    notif.save(update_fields=["push_sent"])
+    return f"push sent: {response.success_count}/{len(messages)}"

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
+import '../services/current_user.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   const TicketDetailScreen({super.key, required this.ticketId});
@@ -74,6 +75,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             return Center(child: Text('Error: ${snap.error}'));
           }
           final t = snap.data!;
+          final isStaff = context.watch<CurrentUser>().isStaff;
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -84,33 +86,37 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               const SizedBox(height: 12),
               Text(t.description, style: const TextStyle(height: 1.5)),
               const SizedBox(height: 24),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final s in const [
-                    TicketStatus.assigned,
-                    TicketStatus.inProgress,
-                    TicketStatus.waiting,
-                    TicketStatus.resolved,
-                    TicketStatus.closed,
-                  ])
-                    OutlinedButton(
-                      onPressed: () => _setStatus(s),
-                      child: Text(statusToWire(s).replaceAll('_', ' ')),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              if (isStaff) ...[
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final s in const [
+                      TicketStatus.assigned,
+                      TicketStatus.inProgress,
+                      TicketStatus.waiting,
+                      TicketStatus.resolved,
+                      TicketStatus.closed,
+                    ])
+                      OutlinedButton(
+                        onPressed: () => _setStatus(s),
+                        child: Text(statusToWire(s).replaceAll('_', ' ')),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               Row(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _logTime,
-                      icon: const Icon(Icons.timer),
-                      label: const Text('Log time'),
+                  if (isStaff) ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _logTime,
+                        icon: const Icon(Icons.timer),
+                        label: const Text('Log time'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _addNote,

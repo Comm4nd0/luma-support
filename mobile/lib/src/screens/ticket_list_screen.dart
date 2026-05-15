@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
-import '../services/auth_service.dart';
-import '../theme.dart';
-import 'ticket_detail_screen.dart';
-import 'ticket_create_screen.dart';
+import 'widgets/ticket_tile.dart';
 
 class TicketListScreen extends StatefulWidget {
   const TicketListScreen({super.key});
@@ -34,19 +32,6 @@ class _TicketListScreenState extends State<TicketListScreen> {
     });
   }
 
-  Color _priorityColor(TicketPriority p) {
-    switch (p) {
-      case TicketPriority.critical:
-        return const Color(0xFFF43F5E);
-      case TicketPriority.high:
-        return const Color(0xFFF97316);
-      case TicketPriority.medium:
-        return const Color(0xFFEAB308);
-      case TicketPriority.low:
-        return kMuted;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,19 +42,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _refresh,
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthService>().logout(),
-          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const TicketCreateScreen()),
-          );
-          _refresh();
+          await context.push('/tickets/new');
+          if (mounted) _refresh();
         },
         icon: const Icon(Icons.add),
         label: const Text('New ticket'),
@@ -94,40 +72,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
               itemCount: items.length,
               itemBuilder: (_, i) {
                 final t = items[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TicketDetailScreen(ticketId: t.id),
-                        ),
-                      );
-                      _refresh();
-                    },
-                    title:
-                        Text(t.subject, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${t.clientName} · #${t.id}'),
-                    leading: CircleAvatar(
-                      backgroundColor: _priorityColor(t.priority).withOpacity(0.18),
-                      child: Text(
-                        t.priority.name.substring(0, 1).toUpperCase(),
-                        style: TextStyle(color: _priorityColor(t.priority)),
-                      ),
-                    ),
-                    trailing: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(t.status.name, style: const TextStyle(fontSize: 12)),
-                        if (t.isBreached)
-                          const Text('BREACHED',
-                              style:
-                                  TextStyle(color: Colors.redAccent, fontSize: 11)),
-                      ],
-                    ),
-                  ),
+                return TicketTile(
+                  ticket: t,
+                  onTap: () async {
+                    await context.push('/tickets/${t.id}');
+                    if (mounted) _refresh();
+                  },
                 );
               },
             );

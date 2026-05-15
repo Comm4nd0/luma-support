@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'src/repositories/devices_repository.dart';
-import 'src/repositories/me_repository.dart';
+import 'src/router.dart';
 import 'src/services/api_client.dart';
 import 'src/services/auth_service.dart';
+import 'src/services/current_user.dart';
+import 'src/services/push_router.dart';
 import 'src/services/push_service.dart';
-import 'src/screens/login_screen.dart';
-import 'src/screens/ticket_list_screen.dart';
 import 'src/theme.dart';
 
 Future<void> main() async {
@@ -24,58 +25,78 @@ class LumaSupportApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => CurrentUser()),
         Provider(create: (ctx) => ApiClient(ctx.read<AuthService>())),
       ],
-      child: MaterialApp(
-        title: 'Luma Support',
-        theme: lumaTheme,
-        home: const _Bootstrap(),
-        debugShowCheckedModeBanner: false,
-      ),
+      child: const _RouterRoot(),
     );
   }
 }
 
-class _Bootstrap extends StatefulWidget {
-  const _Bootstrap();
+/// Owns the [GoRouter] and reacts to auth state changes. The router is built
+/// once and mutated via `refreshListenable`; rebuilding it would lose the
+/// navigation stack.
+class _RouterRoot extends StatefulWidget {
+  const _RouterRoot();
 
   @override
-  State<_Bootstrap> createState() => _BootstrapState();
+  State<_RouterRoot> createState() => _RouterRootState();
 }
 
-class _BootstrapState extends State<_Bootstrap> {
-  bool _devicesRegistered = false;
+class _RouterRootState extends State<_RouterRoot> {
+  late final AuthService _auth;
+  late final CurrentUser _currentUser;
+  late final ApiClient _api;
+  late final GoRouter _router;
+  bool _sessionInitDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth = context.read<AuthService>();
+    _currentUser = context.read<CurrentUser>();
+    _api = context.read<ApiClient>();
+    _router = buildAppRouter(auth: _auth, currentUser: _currentUser);
+    PushRouter.instance.attach(_router);
+    _auth.addListener(_onAuthChanged);
+    // First-load case: if a token was restored from secure storage we still
+    // need to fetch /me to populate role + register the device.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAuthChanged());
+  }
+
+  @override
+  void dispose() {
+    _auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  Future<void> _onAuthChanged() async {
+    if (!_auth.isAuthenticated) {
+      _sessionInitDone = false;
+      _currentUser.clear();
+      return;
+    }
+    if (_sessionInitDone) return;
+    _sessionInitDone = true;
+    try {
+      await _currentUser.fetch(_api);
+    } catch (e) {
+      debugPrint('me fetch failed: $e');
+    }
+    try {
+      await PushService.instance.registerWithBackend(DevicesRepository(_api));
+    } catch (e) {
+      debugPrint('push register failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
-    if (auth.loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (auth.isAuthenticated) {
-      // Register the device for push exactly once per authenticated session.
-      // Pushed onto a post-frame callback so we don't kick off network work
-      // mid-build, and fire-and-forget so the UI never blocks on it.
-      if (!_devicesRegistered) {
-        _devicesRegistered = true;
-        final api = context.read<ApiClient>();
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          try {
-            await PushService.instance
-                .registerWithBackend(DevicesRepository(api));
-          } catch (e) {
-            debugPrint('push register failed: $e');
-          }
-          try {
-            await MeRepository(api).fetch();
-          } catch (e) {
-            debugPrint('me fetch failed: $e');
-          }
-        });
-      }
-      return const TicketListScreen();
-    }
-    _devicesRegistered = false;
-    return const LoginScreen();
+    return MaterialApp.router(
+      title: 'Luma Support',
+      theme: lumaTheme,
+      debugShowCheckedModeBanner: false,
+      routerConfig: _router,
+    );
   }
 }

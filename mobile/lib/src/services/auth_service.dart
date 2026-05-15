@@ -22,16 +22,17 @@ class AuthService extends ChangeNotifier {
 
   String? _accessToken;
   String? _refreshToken;
-  bool loading = true;
+  bool _loading = true;
 
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   bool get isAuthenticated => _accessToken != null;
+  bool get loading => _loading;
 
   Future<void> _restore() async {
     _accessToken = await _storage.read(key: 'access');
     _refreshToken = await _storage.read(key: 'refresh');
-    loading = false;
+    _loading = false;
     notifyListeners();
   }
 

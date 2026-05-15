@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,9 +16,27 @@ import 'src/services/push_service.dart';
 import 'src/theme.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await PushService.instance.initialize();
-  runApp(const LumaSupportApp());
+  // runZonedGuarded + FlutterError.onError catch every error path
+  // — sync framework errors, async unhandled futures, and platform
+  // exceptions — and forward them to Crashlytics. Skipped in debug.
+  await runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await PushService.instance.initialize();
+    if (!kDebugMode) {
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
+    runApp(const LumaSupportApp());
+  }, (error, stack) {
+    if (!kDebugMode) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    } else {
+      debugPrint('Uncaught: $error\n$stack');
+    }
+  });
 }
 
 class LumaSupportApp extends StatelessWidget {

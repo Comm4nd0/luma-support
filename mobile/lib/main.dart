@@ -119,7 +119,7 @@ class _RouterRootState extends State<_RouterRoot> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Luma Support',
+      title: 'Luma Tech Solutions',
       theme: lumaTheme,
       debugShowCheckedModeBanner: false,
       routerConfig: _router,

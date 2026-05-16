@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: const [
                     LumaIcon(PhosphorIconsDuotone.headset, color: kPrimary, size: 32),
                     SizedBox(width: 10),
-                    Text('Luma Support',
+                    Text('Luma Tech Solutions',
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
                   ],
                 ),

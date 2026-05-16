@@ -1,4 +1,4 @@
-# Luma Support Mobile
+# Luma Tech Solutions Mobile
 
 Flutter app for Luma Tech engineers and clients — one codebase, role-adaptive UI.
 

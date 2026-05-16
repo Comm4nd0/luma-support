@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if contact %}Edit{% else %}New{% endif %} contact · {{ client.name }} · Luma Support{% endblock %}
+{% block title %}{% if contact %}Edit{% else %}New{% endif %} contact · {{ client.name }} · Luma Tech Solutions{% endblock %}
 {% block content %}
 <h1>{% if contact %}Edit contact{% else %}New contact{% endif %}</h1>
 <p class="muted">for <a href="{% url 'portal:client_detail' client.pk %}">{{ client.name }}</a></p>

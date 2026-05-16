@@ -40,7 +40,7 @@ def send_ticket_update_email(self, ticket_id: int, event: str = "updated"):
             if u.email:
                 recipients.add(u.email)
 
-    subject = f"[Luma Support #{ticket.pk}] {ticket.subject} — {event}"
+    subject = f"[Luma Tech Solutions #{ticket.pk}] {ticket.subject} — {event}"
     body = (
         f"Ticket #{ticket.pk} for {ticket.client.name}\n"
         f"Status: {ticket.get_status_display()}\n"

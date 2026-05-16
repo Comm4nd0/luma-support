@@ -5,7 +5,7 @@ def brand(request):
     """Brand colors / metadata exposed to every template."""
     return {
         "BRAND": {
-            "name": "Luma Support",
+            "name": "Luma Tech Solutions",
             "company": "Luma Tech Solutions",
             "url": "https://lumatechsolutions.co.uk",
             "primary": "#14b8a6",

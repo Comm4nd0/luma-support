@@ -1,4 +1,4 @@
-# Luma Support
+# Luma Tech Solutions
 
 Ticketing and client management system for **Luma Tech Solutions**.
 

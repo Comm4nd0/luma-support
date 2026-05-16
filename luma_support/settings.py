@@ -187,6 +187,13 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv(),
 )
 
+# Hosts permitted to POST cross-origin (Django ≥ 4 requires scheme+host).
+# In production set this to the public URL the portal is served on, e.g.
+#   CSRF_TRUSTED_ORIGINS=https://support.lumatechsolutions.co.uk
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
+)
+
 # --- Channels / Redis ---------------------------------------------------
 REDIS_URL = config("REDIS_URL", default="redis://redis:6379/0")
 CHANNEL_LAYERS = {

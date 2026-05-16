@@ -233,6 +233,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "system.tasks.refresh_unifi_devices",
         "schedule": timedelta(minutes=30),
     },
+    "send-monthly-reports": {
+        "task": "tickets.tasks.send_monthly_reports",
+        "schedule": crontab(hour=7, minute=0, day_of_month=1),
+    },
 }
 
 # --- Email --------------------------------------------------------------

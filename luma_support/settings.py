@@ -220,6 +220,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.sync_xero_payments",
         "schedule": timedelta(minutes=15),
     },
+    "poll-inbound-mail": {
+        "task": "tickets.tasks.poll_inbound_mail",
+        "schedule": timedelta(seconds=60),
+    },
 }
 
 # --- Email --------------------------------------------------------------
@@ -234,6 +238,17 @@ EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+
+# --- Inbound mail (email-to-ticket) -------------------------------------
+# When INBOUND_IMAP_HOST is empty, the tickets.tasks.poll_inbound_mail
+# task no-ops, so dev and CI don't try to reach an IMAP server.
+# Replies are matched via plus-addressing on the outbound Reply-To
+# (e.g. support+42@lumatechsolutions.co.uk).
+INBOUND_IMAP_HOST = config("INBOUND_IMAP_HOST", default="")
+INBOUND_IMAP_PORT = config("INBOUND_IMAP_PORT", default=993, cast=int)
+INBOUND_IMAP_USER = config("INBOUND_IMAP_USER", default="")
+INBOUND_IMAP_PASSWORD = config("INBOUND_IMAP_PASSWORD", default="")
+INBOUND_IMAP_MAILBOX = config("INBOUND_IMAP_MAILBOX", default="INBOX")
 
 # --- Encryption ---------------------------------------------------------
 # Used by clients.System.credentials_encrypted. Generate with:

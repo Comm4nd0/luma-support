@@ -60,6 +60,27 @@ urlpatterns = [
     # Knowledge
     path("kb/", views.ArticleListView.as_view(), name="kb_list"),
     path("kb/<slug:slug>/", views.ArticleDetailView.as_view(), name="kb_detail"),
+    # Maintenance schedules (staff only)
+    path(
+        "schedules/",
+        views.MaintenanceScheduleListView.as_view(),
+        name="schedule_list",
+    ),
+    path(
+        "schedules/new/",
+        views.MaintenanceScheduleCreateView.as_view(),
+        name="schedule_create",
+    ),
+    path(
+        "schedules/<int:pk>/edit/",
+        views.MaintenanceScheduleUpdateView.as_view(),
+        name="schedule_edit",
+    ),
+    path(
+        "schedules/<int:pk>/delete/",
+        views.MaintenanceScheduleDeleteView.as_view(),
+        name="schedule_delete",
+    ),
     # CSAT (public, tokenized — no auth)
     path("csat/<str:token>/", views.CsatSubmitView.as_view(), name="csat_submit"),
     # Billing (admin only — gating enforced inside the views)

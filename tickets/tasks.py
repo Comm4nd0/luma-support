@@ -5,8 +5,46 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task
+def generate_scheduled_tickets() -> str:
+    """Daily sweep — open a Ticket for every MaintenanceSchedule that's due.
+
+    A schedule is "due" when `active=True` and `next_run_at <= today`.
+    After creating the ticket the schedule advances by one cadence
+    interval; if it's still overdue we keep advancing until it lands
+    in the future so a long-neglected schedule doesn't spam tickets
+    on subsequent daily runs.
+    """
+    from .models import MaintenanceSchedule, Ticket
+
+    today = timezone.localdate()
+    qs = MaintenanceSchedule.objects.filter(
+        active=True, next_run_at__lte=today
+    ).select_related("client", "system", "default_assignee")
+
+    created = 0
+    for sched in qs:
+        Ticket.objects.create(
+            client=sched.client,
+            system=sched.system,
+            subject=sched.template_subject,
+            description=sched.template_description,
+            priority=sched.priority or "",
+            assigned_to=sched.default_assignee,
+        )
+        new_next = sched.compute_next_run_at()
+        while new_next <= today:
+            new_next = sched.compute_next_run_at(from_date=new_next)
+        sched.last_run_at = today
+        sched.next_run_at = new_next
+        sched.save(update_fields=["last_run_at", "next_run_at", "updated_at"])
+        created += 1
+    return f"generate_scheduled_tickets: {created} created"
 
 
 @shared_task

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Maintenance · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1 style="margin: 0;">Maintenance schedules</h1>
+  <a class="btn" href="{% url 'portal:schedule_create' %}">+ New schedule</a>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>System</th>
+        <th>Cadence</th>
+        <th>Next run</th>
+        <th>Last run</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+        <tr>
+          <td><a href="{% url 'portal:client_detail' s.client.pk %}">{{ s.client.name }}</a></td>
+          <td>{{ s.system.name|default:"—" }}</td>
+          <td>{{ s.get_cadence_display }}</td>
+          <td>{{ s.next_run_at }}</td>
+          <td>{{ s.last_run_at|default:"—" }}</td>
+          <td>{% if s.active %}✓{% else %}—{% endif %}</td>
+          <td style="text-align: right;">
+            <a class="btn btn-ghost btn-sm" href="{% url 'portal:schedule_edit' s.pk %}">Edit</a>
+            <form method="post" action="{% url 'portal:schedule_delete' s.pk %}" style="display: inline;">
+              {% csrf_token %}
+              <button class="btn btn-ghost btn-sm" type="submit"
+                      onclick="return confirm('Delete this schedule?');">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="muted">No maintenance schedules yet. <a href="{% url 'portal:schedule_create' %}">Create one</a>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

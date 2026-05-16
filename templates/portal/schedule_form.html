@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} maintenance schedule · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>{% if object %}Edit maintenance schedule{% else %}New maintenance schedule{% endif %}</h1>
+
+<div class="card" style="max-width: 720px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Client</label>{{ form.client }}{{ form.client.errors }}
+      </div>
+      <div class="form-row">
+        <label>System <span class="muted">(optional)</span></label>{{ form.system }}{{ form.system.errors }}
+      </div>
+      <div class="form-row">
+        <label>Cadence</label>{{ form.cadence }}{{ form.cadence.errors }}
+      </div>
+      <div class="form-row">
+        <label>Next run</label>{{ form.next_run_at }}{{ form.next_run_at.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Subject (becomes the ticket subject)</label>{{ form.template_subject }}{{ form.template_subject.errors }}
+    </div>
+    <div class="form-row">
+      <label>Description (becomes the ticket body)</label>{{ form.template_description }}{{ form.template_description.errors }}
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Priority <span class="muted">(blank = auto from care plan)</span></label>{{ form.priority }}{{ form.priority.errors }}
+      </div>
+      <div class="form-row">
+        <label>Default assignee</label>{{ form.default_assignee }}{{ form.default_assignee.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label style="display: flex; gap: 8px; align-items: center;">
+        {{ form.active }} Active
+      </label>
+      {{ form.active.errors }}
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save schedule</button>
+      <a class="btn btn-ghost" href="{% url 'portal:schedule_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -224,6 +224,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "tickets.tasks.poll_inbound_mail",
         "schedule": timedelta(seconds=60),
     },
+    "generate-scheduled-tickets": {
+        "task": "tickets.tasks.generate_scheduled_tickets",
+        "schedule": crontab(hour=6, minute=0),
+    },
 }
 
 # --- Email --------------------------------------------------------------

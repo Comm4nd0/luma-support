@@ -24,7 +24,7 @@ from django.views.generic import (
 
 from clients.models import Client, Contact, System
 from knowledge.models import Article
-from tickets.models import CsatResponse, Ticket, TicketNote, TimeEntry
+from tickets.models import CsatResponse, MaintenanceSchedule, Ticket, TicketNote, TimeEntry
 
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -693,3 +693,82 @@ class ArticleDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "kb"
         return ctx
+
+
+# ---------------------------------------------------------------------
+# Maintenance schedules (staff only)
+# ---------------------------------------------------------------------
+
+
+class MaintenanceScheduleForm(forms.ModelForm):
+    class Meta:
+        model = MaintenanceSchedule
+        fields = [
+            "client",
+            "system",
+            "cadence",
+            "next_run_at",
+            "template_subject",
+            "template_description",
+            "priority",
+            "default_assignee",
+            "active",
+        ]
+        widgets = {
+            "next_run_at": forms.DateInput(
+                attrs={"class": "form-input", "type": "date"}
+            ),
+            "template_subject": forms.TextInput(attrs={"class": "form-input"}),
+            "template_description": forms.Textarea(
+                attrs={"class": "form-input", "rows": 4}
+            ),
+        }
+
+
+class MaintenanceScheduleListView(StaffRequiredMixin, ListView):
+    model = MaintenanceSchedule
+    template_name = "portal/schedule_list.html"
+    paginate_by = 50
+    context_object_name = "schedules"
+
+    def get_queryset(self):
+        return MaintenanceSchedule.objects.select_related(
+            "client", "system", "default_assignee"
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["active"] = "schedules"
+        return ctx
+
+
+class MaintenanceScheduleCreateView(StaffRequiredMixin, CreateView):
+    model = MaintenanceSchedule
+    form_class = MaintenanceScheduleForm
+    template_name = "portal/schedule_form.html"
+    success_url = reverse_lazy("portal:schedule_list")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["active"] = "schedules"
+        return ctx
+
+
+class MaintenanceScheduleUpdateView(StaffRequiredMixin, UpdateView):
+    model = MaintenanceSchedule
+    form_class = MaintenanceScheduleForm
+    template_name = "portal/schedule_form.html"
+    success_url = reverse_lazy("portal:schedule_list")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["active"] = "schedules"
+        return ctx
+
+
+class MaintenanceScheduleDeleteView(StaffRequiredMixin, View):
+    def post(self, request, pk):
+        sched = get_object_or_404(MaintenanceSchedule, pk=pk)
+        sched.delete()
+        messages.success(request, "Maintenance schedule removed.")
+        return redirect("portal:schedule_list")

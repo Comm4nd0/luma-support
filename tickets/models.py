@@ -3,8 +3,9 @@
 The Ticket model owns the SLA deadline computation and the
 status-transition timestamps (resolved_at / closed_at).
 """
+import calendar
 import secrets
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -17,6 +18,15 @@ from .sla import deadline_for
 def _csat_token() -> str:
     """URL-safe random token for one-shot CSAT links."""
     return secrets.token_urlsafe(32)
+
+
+def _add_months(d: date, months: int) -> date:
+    """Add `months` calendar months to `d`, clamping the day for short months."""
+    total = d.month - 1 + months
+    year = d.year + total // 12
+    month = total % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 
 class TicketQuerySet(models.QuerySet):
@@ -239,6 +249,79 @@ class TicketNote(models.Model):
 
     def __str__(self):
         return f"Note on #{self.ticket_id} by {self.author_id}"
+
+
+class MaintenanceSchedule(models.Model):
+    """Recurring maintenance work for a care-plan client.
+
+    The `generate_scheduled_tickets` Celery beat task creates a Ticket
+    from this template whenever `next_run_at <= today`, then advances
+    `next_run_at` by one cadence interval. Overdue schedules catch up
+    in a loop so a never-handled row doesn't fire a new ticket per day
+    indefinitely.
+    """
+
+    class Cadence(models.TextChoices):
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+        QUARTERLY = "quarterly", "Quarterly"
+        BIANNUAL = "biannual", "Every 6 months"
+        ANNUAL = "annual", "Annual"
+
+    client = models.ForeignKey(
+        "clients.Client",
+        on_delete=models.CASCADE,
+        related_name="maintenance_schedules",
+    )
+    system = models.ForeignKey(
+        "clients.System",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="maintenance_schedules",
+    )
+    cadence = models.CharField(max_length=16, choices=Cadence.choices)
+    next_run_at = models.DateField()
+    template_subject = models.CharField(max_length=300)
+    template_description = models.TextField(blank=True)
+    # Blank = let Ticket._auto_priority pick from the client's care-plan tier.
+    priority = models.CharField(
+        max_length=16, choices=Ticket.Priority.choices, blank=True
+    )
+    default_assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    active = models.BooleanField(default=True)
+    last_run_at = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["next_run_at", "id"]
+        indexes = [models.Index(fields=["active", "next_run_at"])]
+
+    def __str__(self):
+        return f"{self.client.name} — {self.template_subject} ({self.cadence})"
+
+    def compute_next_run_at(self, from_date: date | None = None) -> date:
+        base = from_date or self.next_run_at
+        c = self.cadence
+        if c == self.Cadence.WEEKLY:
+            return base + timedelta(days=7)
+        if c == self.Cadence.MONTHLY:
+            return _add_months(base, 1)
+        if c == self.Cadence.QUARTERLY:
+            return _add_months(base, 3)
+        if c == self.Cadence.BIANNUAL:
+            return _add_months(base, 6)
+        if c == self.Cadence.ANNUAL:
+            return _add_months(base, 12)
+        # Unknown cadence — fall back to weekly so we don't hang the task.
+        return base + timedelta(days=7)
 
 
 class CsatResponse(models.Model):

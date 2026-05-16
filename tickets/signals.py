@@ -39,3 +39,10 @@ def _notify_on_change(sender, instance, created, **kwargs):
     old = getattr(instance, "_old_status", None)
     if old is not None and old != instance.status:
         _enqueue(f"status:{instance.status}")
+        if instance.status == Ticket.Status.CLOSED:
+            try:
+                from notifications.tasks import send_csat_email
+
+                send_csat_email.delay(instance.pk)
+            except Exception:
+                pass

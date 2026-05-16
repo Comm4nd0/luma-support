@@ -156,6 +156,17 @@
       </ul>
     </div>
     {% endif %}
+
+    {% if ticket.csat.rating %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>CSAT</h3>
+      <div style="font-size: 22px; font-weight: 600;">{{ ticket.csat.rating }} / 5</div>
+      {% if ticket.csat.comment %}
+        <p style="margin-top: 8px; white-space: pre-wrap;">{{ ticket.csat.comment }}</p>
+      {% endif %}
+      <div class="muted" style="font-size: 12px;">Submitted {{ ticket.csat.responded_at|naturaltime }}</div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

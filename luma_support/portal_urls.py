@@ -60,6 +60,8 @@ urlpatterns = [
     # Knowledge
     path("kb/", views.ArticleListView.as_view(), name="kb_list"),
     path("kb/<slug:slug>/", views.ArticleDetailView.as_view(), name="kb_detail"),
+    # CSAT (public, tokenized — no auth)
+    path("csat/<str:token>/", views.CsatSubmitView.as_view(), name="csat_submit"),
     # Billing (admin only — gating enforced inside the views)
     *billing_portal_urls.urlpatterns,
 ]

@@ -24,7 +24,7 @@ from django.views.generic import (
 
 from clients.models import Client, Contact, System
 from knowledge.models import Article
-from tickets.models import Ticket, TicketNote, TimeEntry
+from tickets.models import CsatResponse, Ticket, TicketNote, TimeEntry
 
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -99,6 +99,9 @@ class DashboardView(LoginRequiredMixin, View):
     template_name = "portal/dashboard.html"
 
     def get(self, request):
+        from datetime import timedelta
+
+        from django.db.models import Avg
         from django.template.response import TemplateResponse
 
         open_q = ~Q(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
@@ -114,15 +117,81 @@ class DashboardView(LoginRequiredMixin, View):
         recent = tickets.select_related("client", "assigned_to").order_by(
             "-created_at"
         )[:10]
+
+        # 30-day CSAT roll-up. Scoped to the user's tickets so client
+        # users only see their own response history.
+        csat_since = timezone.now() - timedelta(days=30)
+        csat_qs = CsatResponse.objects.filter(
+            ticket__in=tickets, rating__isnull=False, responded_at__gte=csat_since
+        )
+        csat = csat_qs.aggregate(avg=Avg("rating"))["avg"]
+        csat_count = csat_qs.count()
+
         context = {
             "by_priority": list(by_priority),
             "sla_warnings": sla_warnings,
             "recent": recent,
             "open_count": tickets.filter(open_q).count(),
             "client_count": clients.count(),
+            "csat_avg": csat,
+            "csat_count": csat_count,
             "active": "dashboard",
         }
         return TemplateResponse(request, self.template_name, context)
+
+
+# ---------------------------------------------------------------------
+# CSAT (public — tokenized, no auth required)
+# ---------------------------------------------------------------------
+
+
+class CsatSubmitView(View):
+    """Public, single-use CSAT submission keyed by token from the email."""
+
+    form_template = "portal/csat_form.html"
+    thanks_template = "portal/csat_thanks.html"
+
+    def get(self, request, token):
+        csat = get_object_or_404(CsatResponse, token=token)
+        if csat.rating is not None:
+            return self._thanks(request, csat, already=True)
+        return self._form(request, csat)
+
+    def post(self, request, token):
+        csat = get_object_or_404(CsatResponse, token=token)
+        if csat.rating is not None:
+            return self._thanks(request, csat, already=True)
+        try:
+            rating = int(request.POST.get("rating") or 0)
+        except (TypeError, ValueError):
+            rating = 0
+        if not 1 <= rating <= 5:
+            return self._form(request, csat, error="Please pick a rating from 1 to 5.")
+        csat.rating = rating
+        csat.comment = (request.POST.get("comment") or "").strip()
+        csat.responded_at = timezone.now()
+        csat.save(update_fields=["rating", "comment", "responded_at"])
+        return self._thanks(request, csat, already=False)
+
+    @staticmethod
+    def _form(request, csat, error=None):
+        from django.template.response import TemplateResponse
+
+        return TemplateResponse(
+            request,
+            CsatSubmitView.form_template,
+            {"csat": csat, "error": error},
+        )
+
+    @staticmethod
+    def _thanks(request, csat, already=False):
+        from django.template.response import TemplateResponse
+
+        return TemplateResponse(
+            request,
+            CsatSubmitView.thanks_template,
+            {"csat": csat, "already": already},
+        )
 
 
 # ---------------------------------------------------------------------

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Rate ticket #{{ csat.ticket.pk }} · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 560px;">
+    <h1 style="margin-top: 0;">How did we do?</h1>
+    <p class="muted">Ticket #{{ csat.ticket.pk }} — {{ csat.ticket.subject }}</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-row">
+        <label>Anything to add? <span class="muted">(optional)</span></label>
+        <textarea name="comment" rows="4" placeholder="What went well, what we could do better…"></textarea>
+      </div>
+      <p class="muted" style="margin-bottom: 8px;">Tap a score from 1 (poor) to 5 (excellent):</p>
+      <div style="display: flex; gap: 8px;">
+        {% for r in "12345" %}
+          <button class="btn" type="submit" name="rating" value="{{ r }}" style="flex: 1; font-size: 22px;">{{ r }}</button>
+        {% endfor %}
+      </div>
+      {% if error %}
+        <p class="muted" style="margin-top: 12px;">{{ error }}</p>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}

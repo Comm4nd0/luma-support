@@ -85,6 +85,53 @@ def send_ticket_update_email(self, ticket_id: int, event: str = "updated"):
 
 
 @shared_task
+def send_csat_email(ticket_id: int):
+    """Email a single-use CSAT survey link to the client who opened the ticket.
+
+    Idempotent: a Ticket has at most one CsatResponse (OneToOne), so a
+    repeat call returns "already-sent" without emailing twice.
+    """
+    from tickets.models import CsatResponse, Ticket
+
+    try:
+        ticket = Ticket.objects.select_related("client", "created_by").get(
+            pk=ticket_id
+        )
+    except Ticket.DoesNotExist:
+        return "missing"
+
+    csat, was_new = CsatResponse.objects.get_or_create(ticket=ticket)
+    if not was_new:
+        return "already-sent"
+
+    recipient = None
+    if ticket.created_by and ticket.created_by.email:
+        recipient = ticket.created_by.email
+    elif ticket.client.email:
+        recipient = ticket.client.email
+    if not recipient:
+        return "no-recipient"
+
+    subject = f"How did we do? — Ticket #{ticket.pk}"
+    link = f"{settings.SITE_URL.rstrip('/')}/csat/{csat.token}/"
+    body = (
+        f"Hi,\n\n"
+        f"We've closed ticket #{ticket.pk} — {ticket.subject}.\n\n"
+        f"Could you take 10 seconds to rate how we did?\n\n"
+        f"{link}\n\n"
+        f"Thanks,\nLuma Tech Solutions\n"
+    )
+    send_mail(
+        subject,
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [recipient],
+        fail_silently=False,
+    )
+    return "sent"
+
+
+@shared_task
 def check_sla_warnings():
     """Run every 5 minutes (Celery beat) — alert on tickets close to / past SLA."""
     from tickets.models import Ticket

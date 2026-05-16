@@ -1,8 +1,9 @@
-"""Ticket, TimeEntry, Attachment, TicketNote.
+"""Ticket, TimeEntry, Attachment, TicketNote, CsatResponse.
 
 The Ticket model owns the SLA deadline computation and the
 status-transition timestamps (resolved_at / closed_at).
 """
+import secrets
 from datetime import timedelta
 from decimal import Decimal
 
@@ -11,6 +12,11 @@ from django.db import models
 from django.utils import timezone
 
 from .sla import deadline_for
+
+
+def _csat_token() -> str:
+    """URL-safe random token for one-shot CSAT links."""
+    return secrets.token_urlsafe(32)
 
 
 class TicketQuerySet(models.QuerySet):
@@ -233,3 +239,28 @@ class TicketNote(models.Model):
 
     def __str__(self):
         return f"Note on #{self.ticket_id} by {self.author_id}"
+
+
+class CsatResponse(models.Model):
+    """One-shot CSAT survey attached to a ticket.
+
+    Created (pending, no rating) when the ticket transitions to CLOSED
+    and the client gets emailed a tokenized link to /csat/<token>/.
+    The link is single-use: once `rating` is set, the form rejects
+    further submissions for the same token.
+    """
+
+    ticket = models.OneToOneField(
+        Ticket, on_delete=models.CASCADE, related_name="csat"
+    )
+    token = models.CharField(max_length=64, unique=True, default=_csat_token)
+    rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    comment = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-requested_at"]
+
+    def __str__(self):
+        return f"CSAT #{self.ticket_id} ({self.rating or 'pending'})"

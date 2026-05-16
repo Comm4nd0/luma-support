@@ -19,6 +19,15 @@
     <div class="card-title">Clients</div>
     <div class="card-value">{{ client_count }}</div>
   </div>
+  <div class="card">
+    <div class="card-title">CSAT (30d)</div>
+    <div class="card-value">
+      {% if csat_avg %}{{ csat_avg|floatformat:1 }}<span class="muted" style="font-size: 12px;"> / 5</span>{% else %}—{% endif %}
+    </div>
+    {% if csat_count %}
+      <div class="muted" style="font-size: 12px;">{{ csat_count }} response{{ csat_count|pluralize }}</div>
+    {% endif %}
+  </div>
 </div>
 
 <div class="grid grid-2" style="margin-top: 24px;">

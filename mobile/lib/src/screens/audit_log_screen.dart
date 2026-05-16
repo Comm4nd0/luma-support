@@ -6,7 +6,8 @@ import '../models/audit_log.dart';
 import '../repositories/audit_repository.dart';
 import '../services/api_client.dart';
 
-/// Admin-only audit feed. Parity with the portal's /audit/ page.
+/// Admin-only audit feed. Parity with the portal's /audit/ page,
+/// including filter-by-actor and filter-by-action.
 class AuditLogScreen extends StatefulWidget {
   const AuditLogScreen({super.key});
 
@@ -16,7 +17,8 @@ class AuditLogScreen extends StatefulWidget {
 
 class _AuditLogScreenState extends State<AuditLogScreen> {
   late Future<List<AuditLogEntry>> _future;
-  final _filter = TextEditingController();
+  final _actionFilter = TextEditingController();
+  final _actorFilter = TextEditingController();
 
   AuditRepository get _repo => AuditRepository(context.read<ApiClient>());
 
@@ -26,12 +28,25 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     _future = _repo.list();
   }
 
+  @override
+  void dispose() {
+    _actionFilter.dispose();
+    _actorFilter.dispose();
+    super.dispose();
+  }
+
   void _applyFilter() {
-    setState(() => _future = _repo.list(action: _filter.text.trim()));
+    setState(() => _future = _repo.list(
+          action: _actionFilter.text.trim(),
+          actor: _actorFilter.text.trim(),
+        ));
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _repo.list(action: _filter.text.trim()));
+    setState(() => _future = _repo.list(
+          action: _actionFilter.text.trim(),
+          actor: _actorFilter.text.trim(),
+        ));
   }
 
   @override
@@ -41,12 +56,23 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: TextField(
-              controller: _filter,
-              decoration: InputDecoration(
+              controller: _actionFilter,
+              decoration: const InputDecoration(
                 hintText: 'Filter by action (e.g. xero)',
-                prefixIcon: const Icon(Icons.filter_alt_outlined),
+                prefixIcon: Icon(Icons.filter_alt_outlined),
+              ),
+              onSubmitted: (_) => _applyFilter(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            child: TextField(
+              controller: _actorFilter,
+              decoration: InputDecoration(
+                hintText: 'Filter by actor email',
+                prefixIcon: const Icon(Icons.person_outline),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: _applyFilter,

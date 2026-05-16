@@ -68,6 +68,40 @@ class MaintenanceRepository {
     }
   }
 
+  Future<MaintenanceSchedule> update(
+    int id, {
+    required int clientId,
+    int? systemId,
+    required String cadence,
+    required DateTime nextRunAt,
+    required String templateSubject,
+    String templateDescription = '',
+    String priority = '',
+    int? defaultAssigneeId,
+    bool active = true,
+  }) async {
+    try {
+      final res = await _api.dio.put<dynamic>(
+        ApiPaths.maintenanceSchedule(id),
+        data: {
+          'client': clientId,
+          if (systemId != null) 'system': systemId,
+          'cadence': cadence,
+          'next_run_at':
+              '${nextRunAt.year.toString().padLeft(4, "0")}-${nextRunAt.month.toString().padLeft(2, "0")}-${nextRunAt.day.toString().padLeft(2, "0")}',
+          'template_subject': templateSubject,
+          'template_description': templateDescription,
+          'priority': priority,
+          if (defaultAssigneeId != null) 'default_assignee': defaultAssigneeId,
+          'active': active,
+        },
+      );
+      return MaintenanceSchedule.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   Future<void> delete(int id) async {
     try {
       await _api.dio.delete<dynamic>(ApiPaths.maintenanceSchedule(id));

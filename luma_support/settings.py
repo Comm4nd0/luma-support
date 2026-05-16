@@ -69,6 +69,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "luma_support.context.brand",
+                "luma_support.context.unread_notifications",
             ],
         },
     },

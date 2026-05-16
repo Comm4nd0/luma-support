@@ -12,6 +12,11 @@ class Client {
     required this.systems,
     required this.contacts,
     required this.openTicketCount,
+    this.customerType = 'home',
+    this.address = '',
+    this.billingAddress = '',
+    this.vatNumber = '',
+    this.notes = '',
   });
 
   final int id;
@@ -23,6 +28,11 @@ class Client {
   final List<ClientSystem> systems;
   final List<Contact> contacts;
   final int openTicketCount;
+  final String customerType;
+  final String address;
+  final String billingAddress;
+  final String vatNumber;
+  final String notes;
 
   factory Client.fromJson(Map<String, dynamic> json) => Client(
         id: json['id'] as int,
@@ -38,5 +48,10 @@ class Client {
             .map((j) => Contact.fromJson(j as Map<String, dynamic>))
             .toList(),
         openTicketCount: json['open_ticket_count'] as int? ?? 0,
+        customerType: json['customer_type'] as String? ?? 'home',
+        address: json['address'] as String? ?? '',
+        billingAddress: json['billing_address'] as String? ?? '',
+        vatNumber: json['vat_number'] as String? ?? '',
+        notes: json['notes'] as String? ?? '',
       );
 }

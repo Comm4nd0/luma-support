@@ -94,6 +94,22 @@ urlpatterns = [
     path("csat/<str:token>/", views.CsatSubmitView.as_view(), name="csat_submit"),
     # Client-facing: your systems with health status
     path("my-services/", views.MyServicesView.as_view(), name="my_services"),
+    # Notifications inbox (in-app feed, parity with mobile)
+    path(
+        "notifications/",
+        views.NotificationInboxView.as_view(),
+        name="notifications",
+    ),
+    path(
+        "notifications/<int:pk>/read/",
+        views.NotificationMarkReadView.as_view(),
+        name="notification_mark_read",
+    ),
+    path(
+        "notifications/mark-all-read/",
+        views.NotificationMarkAllReadView.as_view(),
+        name="notifications_mark_all_read",
+    ),
     # Audit log (admin only)
     path("audit/", views.AuditLogListView.as_view(), name="audit_log"),
     # Billing (admin only — gating enforced inside the views)

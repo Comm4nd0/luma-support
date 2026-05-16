@@ -94,6 +94,17 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                 Card(
                   margin: const EdgeInsets.only(bottom: 4),
                   child: ListTile(
+                    leading: const LumaIcon(PhosphorIconsDuotone.users),
+                    title: const Text('Clients'),
+                    subtitle: const Text(
+                        'Browse and manage client records'),
+                    trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                    onTap: () => context.push('/clients'),
+                  ),
+                ),
+                Card(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  child: ListTile(
                     leading: const LumaIcon(PhosphorIconsDuotone.calendar),
                     title: const Text('Maintenance schedules'),
                     subtitle: const Text(

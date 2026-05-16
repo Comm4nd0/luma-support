@@ -59,12 +59,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   Future<void> _addNote() async {
-    final body = await showDialog<String>(
+    final isStaff = context.read<CurrentUser>().isStaff;
+    final result = await showDialog<_NoteDialogResult>(
       context: context,
-      builder: (_) => const _NoteDialog(),
+      builder: (_) => _NoteDialog(allowInternal: isStaff),
     );
-    if (body == null || body.trim().isEmpty) return;
-    await _repo.addNote(widget.ticketId, body.trim());
+    if (result == null || result.body.trim().isEmpty) return;
+    await _repo.addNote(widget.ticketId, result.body.trim(),
+        internal: result.internal);
     _refresh();
   }
 
@@ -80,12 +82,17 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         );
         return;
       }
-      final body = await showDialog<String>(
+      final result = await showDialog<_NoteDialogResult>(
         context: context,
-        builder: (_) => _NoteDialog(initial: draft, title: 'AI draft (editable)'),
+        builder: (_) => _NoteDialog(
+          initial: draft,
+          title: 'AI draft (editable)',
+          allowInternal: true,
+        ),
       );
-      if (body == null || body.trim().isEmpty) return;
-      await _repo.addNote(widget.ticketId, body.trim());
+      if (result == null || result.body.trim().isEmpty) return;
+      await _repo.addNote(widget.ticketId, result.body.trim(),
+          internal: result.internal);
       _refresh();
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Draft failed: $e')));
@@ -314,11 +321,18 @@ class _LogTimeDialogState extends State<_LogTimeDialog> {
   }
 }
 
+class _NoteDialogResult {
+  const _NoteDialogResult({required this.body, required this.internal});
+  final String body;
+  final bool internal;
+}
+
 class _NoteDialog extends StatefulWidget {
-  const _NoteDialog({this.initial, this.title});
+  const _NoteDialog({this.initial, this.title, this.allowInternal = false});
 
   final String? initial;
   final String? title;
+  final bool allowInternal;
 
   @override
   State<_NoteDialog> createState() => _NoteDialogState();
@@ -327,20 +341,41 @@ class _NoteDialog extends StatefulWidget {
 class _NoteDialogState extends State<_NoteDialog> {
   late final TextEditingController _body =
       TextEditingController(text: widget.initial ?? '');
+  bool _internal = false;
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title ?? 'Add note'),
-      content: TextField(
-        controller: _body,
-        maxLines: 6,
-        decoration: const InputDecoration(labelText: 'Note'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _body,
+            maxLines: 6,
+            decoration: const InputDecoration(labelText: 'Note'),
+          ),
+          if (widget.allowInternal)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _internal,
+              onChanged: (v) => setState(() => _internal = v ?? false),
+              title: const Text('Internal (staff only)'),
+              subtitle: const Text(
+                'Clients will not see this note on the ticket.',
+              ),
+            ),
+        ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, _body.text),
+          onPressed: () => Navigator.pop(
+            context,
+            _NoteDialogResult(body: _body.text, internal: _internal),
+          ),
           child: const Text('Save'),
         ),
       ],

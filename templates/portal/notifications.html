@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Notifications · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1 style="margin: 0;">
+    Notifications
+    {% if unread_count %}<span class="pill pill-high" style="margin-left: 8px;">{{ unread_count }} new</span>{% endif %}
+  </h1>
+  <div class="toolbar">
+    {% if unread_only %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'portal:notifications' %}">Show all</a>
+    {% else %}
+      <a class="btn btn-ghost btn-sm" href="?unread=1">Unread only</a>
+    {% endif %}
+    {% if unread_count %}
+      <form method="post" action="{% url 'portal:notifications_mark_all_read' %}" class="inline-form">
+        {% csrf_token %}
+        <button class="btn btn-sm" type="submit">Mark all read</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Notification</th>
+        <th>Type</th>
+        <th>When</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in notifications %}
+        <tr>
+          <td>{% if not n.read %}<span class="pill pill-high">New</span>{% endif %}</td>
+          <td>
+            <strong>{{ n.title }}</strong>
+            {% if n.body %}<div class="muted" style="font-size: 12px; margin-top: 2px;">{{ n.body|truncatechars:140 }}</div>{% endif %}
+          </td>
+          <td><code>{{ n.get_type_display }}</code></td>
+          <td title="{{ n.created_at }}">{{ n.created_at|naturaltime }}</td>
+          <td style="text-align: right;">
+            {% if n.related_ticket_id %}
+              <form method="post" action="{% url 'portal:notification_mark_read' n.pk %}" style="display: inline;">
+                {% csrf_token %}
+                <button class="btn btn-ghost btn-sm" type="submit">Open ticket</button>
+              </form>
+            {% elif not n.read %}
+              <form method="post" action="{% url 'portal:notification_mark_read' n.pk %}" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'portal:notifications' %}{% if unread_only %}?unread=1{% endif %}" />
+                <button class="btn btn-ghost btn-sm" type="submit">Mark read</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">
+          {% if unread_only %}Nothing unread.{% else %}No notifications yet.{% endif %}
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="toolbar" style="margin-top: 16px; justify-content: center;">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-sm btn-ghost" href="?page={{ page_obj.previous_page_number }}{% if unread_only %}&unread=1{% endif %}">← Prev</a>
+  {% endif %}
+  <span class="muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a class="btn btn-sm btn-ghost" href="?page={{ page_obj.next_page_number }}{% if unread_only %}&unread=1{% endif %}">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -32,4 +32,25 @@ class ClientsRepository {
       throw ApiException.fromDio(e);
     }
   }
+
+  Future<Client> create(Map<String, dynamic> body) async {
+    try {
+      final res = await _api.dio.post<dynamic>(ApiPaths.clients, data: body);
+      return Client.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<Client> update(int id, Map<String, dynamic> body) async {
+    try {
+      final res = await _api.dio.patch<dynamic>(
+        ApiPaths.client(id),
+        data: body,
+      );
+      return Client.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
 }

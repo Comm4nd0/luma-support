@@ -24,6 +24,7 @@ from django.views.generic import (
 
 from clients.models import Client, Contact, System
 from knowledge.models import Article
+from notifications.models import Notification
 from tickets.models import CsatResponse, MaintenanceSchedule, Ticket, TicketNote, TimeEntry
 
 
@@ -1026,6 +1027,63 @@ class MyServicesView(LoginRequiredMixin, View):
                 "active": "my_services",
             },
         )
+
+
+# ---------------------------------------------------------------------
+# Notifications (in-app feed — parity with the mobile inbox)
+# ---------------------------------------------------------------------
+
+
+class NotificationInboxView(LoginRequiredMixin, ListView):
+    """In-app notification feed scoped to the current user.
+
+    Mirrors the mobile app's NotificationsInboxScreen. Supports an unread-only
+    toggle via `?unread=1` and a Mark-all-read POST action.
+    """
+
+    model = Notification
+    template_name = "portal/notifications.html"
+    paginate_by = 50
+    context_object_name = "notifications"
+
+    def get_queryset(self):
+        qs = Notification.objects.filter(user=self.request.user).select_related(
+            "related_ticket"
+        )
+        if self.request.GET.get("unread") == "1":
+            qs = qs.filter(read=False)
+        return qs.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["active"] = "notifications"
+        ctx["unread_count"] = Notification.objects.filter(
+            user=self.request.user, read=False
+        ).count()
+        ctx["unread_only"] = self.request.GET.get("unread") == "1"
+        return ctx
+
+
+class NotificationMarkReadView(LoginRequiredMixin, View):
+    """POST: mark a single notification read, then redirect."""
+
+    def post(self, request, pk):
+        notif = get_object_or_404(Notification, pk=pk, user=request.user)
+        notif.read = True
+        notif.save(update_fields=["read"])
+        next_url = request.POST.get("next") or ""
+        if notif.related_ticket_id:
+            return redirect("portal:ticket_detail", pk=notif.related_ticket_id)
+        return redirect(next_url or "portal:notifications")
+
+
+class NotificationMarkAllReadView(LoginRequiredMixin, View):
+    """POST: mark every unread notification for this user as read."""
+
+    def post(self, request):
+        Notification.objects.filter(user=request.user, read=False).update(read=True)
+        messages.success(request, "Marked all notifications read.")
+        return redirect("portal:notifications")
 
 
 # ---------------------------------------------------------------------

@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'screens/client_dashboard_screen.dart';
 import 'screens/client_detail_screen.dart';
+import 'screens/client_form_screen.dart';
+import 'screens/client_list_screen.dart';
 import 'screens/engineer_dashboard_screen.dart';
 import 'screens/invoice_create_screen.dart';
 import 'screens/invoice_detail_screen.dart';
@@ -12,7 +14,10 @@ import 'screens/kb_detail_screen.dart';
 import 'screens/kb_list_screen.dart';
 import 'screens/audit_log_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/maintenance_form_screen.dart';
 import 'screens/maintenance_list_screen.dart';
+import 'models/client.dart';
+import 'models/maintenance_schedule.dart';
 import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
 import 'screens/payments_screen.dart';
@@ -104,10 +109,35 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/clients',
+        builder: (context, state) {
+          final user = context.read<CurrentUser>();
+          return user.isClient
+              ? const ClientShell(child: ClientListScreen())
+              : const EngineerShell(child: ClientListScreen());
+        },
+      ),
+      GoRoute(
+        path: '/clients/new',
+        builder: (_, __) => const ClientFormScreen(),
+      ),
+      GoRoute(
         path: '/clients/:id',
         builder: (_, state) => ClientDetailScreen(
           clientId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      GoRoute(
+        path: '/clients/:id/edit',
+        builder: (_, state) {
+          final extra = state.extra;
+          if (extra is Client) {
+            return ClientFormScreen(client: extra);
+          }
+          return ClientEditLoader(
+            clientId: int.parse(state.pathParameters['id']!),
+          );
+        },
       ),
       GoRoute(
         path: '/kb',
@@ -176,6 +206,16 @@ GoRouter buildAppRouter({
         path: '/maintenance',
         builder: (_, __) =>
             const EngineerShell(child: MaintenanceListScreen()),
+      ),
+      GoRoute(
+        path: '/maintenance/new',
+        builder: (_, __) => const MaintenanceFormScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance/:id/edit',
+        builder: (_, state) => MaintenanceFormScreen(
+          schedule: state.extra as MaintenanceSchedule?,
+        ),
       ),
       GoRoute(
         path: '/audit',

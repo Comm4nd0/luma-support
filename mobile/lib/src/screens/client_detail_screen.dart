@@ -3,10 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/client.dart';
+import '../models/contact.dart';
 import '../models/ticket.dart';
 import '../repositories/clients_repository.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
+import '../services/current_user.dart';
+import 'contact_form_screen.dart';
 import 'widgets/ticket_tile.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
@@ -41,10 +44,36 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     );
   }
 
+  Future<void> _openContactForm({Contact? contact}) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ContactFormScreen(
+          clientId: widget.clientId,
+          contact: contact,
+        ),
+      ),
+    );
+    if (saved == true) {
+      setState(() => _future = _load());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isStaff = context.watch<CurrentUser>().isStaff;
     return Scaffold(
-      appBar: AppBar(title: const Text('Client')),
+      appBar: AppBar(
+        title: const Text('Client'),
+        actions: [
+          if (isStaff)
+            IconButton(
+              tooltip: 'Edit',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () =>
+                  context.push('/clients/${widget.clientId}/edit'),
+            ),
+        ],
+      ),
       body: FutureBuilder<_ClientDetailData>(
         future: _future,
         builder: (context, snap) {
@@ -133,27 +162,51 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
   }
 
   Widget _contactsTab(Client c) {
-    if (c.contacts.isEmpty) {
-      return const _EmptyState('No contacts on file.');
-    }
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
+    final isStaff = context.read<CurrentUser>().isStaff;
+    final children = <Widget>[
+      if (isStaff)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: OutlinedButton.icon(
+            onPressed: () => _openContactForm(),
+            icon: const Icon(Icons.add),
+            label: const Text('Add contact'),
+          ),
+        ),
+      if (c.contacts.isEmpty)
+        const _EmptyState('No contacts on file.')
+      else
         for (final ct in c.contacts)
           Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              leading: CircleAvatar(child: Text(ct.name.isNotEmpty ? ct.name[0] : '?')),
+              leading: CircleAvatar(
+                  child: Text(ct.name.isNotEmpty ? ct.name[0] : '?')),
               title: Text(ct.name),
               subtitle: Text([
                 if (ct.title.isNotEmpty) ct.title,
                 if (ct.email.isNotEmpty) ct.email,
                 if (ct.phone.isNotEmpty) ct.phone,
               ].join(' · ')),
-              trailing: ct.isPrimary ? const Chip(label: Text('Primary')) : null,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (ct.isPrimary) const Chip(label: Text('Primary')),
+                  if (isStaff)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _openContactForm(contact: ct),
+                    ),
+                ],
+              ),
+              onTap:
+                  isStaff ? () => _openContactForm(contact: ct) : null,
             ),
           ),
-      ],
+    ];
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: children,
     );
   }
 

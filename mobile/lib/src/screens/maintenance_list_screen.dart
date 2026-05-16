@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -31,10 +32,49 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
     setState(() => _future = _repo.list());
   }
 
+  Future<void> _delete(MaintenanceSchedule s) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete schedule?'),
+        content: Text('Remove "${s.templateSubject}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _repo.delete(s.id);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Schedule removed.')),
+      );
+      await _refresh();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Maintenance schedules')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await context.push('/maintenance/new');
+          _refresh();
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('New'),
+      ),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<List<MaintenanceSchedule>>(
@@ -52,9 +92,8 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'No maintenance schedules yet. Create one from the web '
-                    'portal to start auto-generating tickets for recurring '
-                    'work.',
+                    'No maintenance schedules yet. Tap "New" to start '
+                    'auto-generating tickets for recurring work.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -78,9 +117,26 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
                       '${cadenceLabel(s.cadence)} · next ${s.nextRunAt == null ? "—" : DateFormat.yMMMd().format(s.nextRunAt!)}',
                     ),
                     isThreeLine: true,
-                    trailing: !s.active
-                        ? const Chip(label: Text('Paused'))
-                        : null,
+                    onTap: () async {
+                      await context.push('/maintenance/${s.id}/edit',
+                          extra: s);
+                      _refresh();
+                    },
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (v) {
+                        if (v == 'edit') {
+                          context
+                              .push('/maintenance/${s.id}/edit', extra: s)
+                              .then((_) => _refresh());
+                        } else if (v == 'delete') {
+                          _delete(s);
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                    ),
                   ),
                 );
               },

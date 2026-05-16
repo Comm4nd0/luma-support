@@ -229,6 +229,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "tickets.tasks.generate_scheduled_tickets",
         "schedule": crontab(hour=6, minute=0),
     },
+    "refresh-unifi-devices": {
+        "task": "system.tasks.refresh_unifi_devices",
+        "schedule": timedelta(minutes=30),
+    },
 }
 
 # --- Email --------------------------------------------------------------

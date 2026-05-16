@@ -103,6 +103,13 @@ class SystemType(models.TextChoices):
     SECURITY = "security", "Security / CCTV"
 
 
+class HealthStatus(models.TextChoices):
+    UNKNOWN = "", "Unknown"
+    OK = "ok", "OK"
+    DEGRADED = "degraded", "Degraded"
+    DOWN = "down", "Down"
+
+
 class System(models.Model):
     """A piece of infrastructure / software belonging to a client."""
 
@@ -121,6 +128,12 @@ class System(models.Model):
 
     monitoring_url = models.URLField(blank=True)
     installed_date = models.DateField(null=True, blank=True)
+
+    # Populated by the periodic monitoring task (e.g. UniFi pull).
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    health_status = models.CharField(
+        max_length=16, choices=HealthStatus.choices, blank=True
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

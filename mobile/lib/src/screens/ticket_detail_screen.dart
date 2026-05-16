@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ticket.dart';
@@ -7,6 +10,8 @@ import '../services/api_client.dart';
 import '../services/current_user.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
+import 'signature_screen.dart';
+import 'ticket_timer_screen.dart';
 
 class TicketDetailScreen extends StatefulWidget {
   const TicketDetailScreen({super.key, required this.ticketId});
@@ -61,6 +66,68 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (body == null || body.trim().isEmpty) return;
     await _repo.addNote(widget.ticketId, body.trim());
     _refresh();
+  }
+
+  Future<void> _runTimer() async {
+    final logged = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => TicketTimerScreen(ticketId: widget.ticketId),
+      ),
+    );
+    if (logged == true) _refresh();
+  }
+
+  Future<void> _attachPhoto({required ImageSource source}) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    if (picked == null) return;
+    try {
+      await _repo.uploadAttachment(widget.ticketId, File(picked.path));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo uploaded.')),
+        );
+        _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _photoSheet() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pick from gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source != null) await _attachPhoto(source: source);
+  }
+
+  Future<void> _captureSignature() async {
+    final uploaded = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SignatureScreen(ticketId: widget.ticketId),
+      ),
+    );
+    if (uploaded == true) _refresh();
   }
 
   @override
@@ -128,6 +195,36 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (isStaff) ...[
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _runTimer,
+                        icon: const Icon(Icons.timer_outlined),
+                        label: const Text('Start timer'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _photoSheet,
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Photo'),
+                    ),
+                  ),
+                ],
+              ),
+              if (isStaff) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _captureSignature,
+                  icon: const Icon(Icons.gesture),
+                  label: const Text('Capture signature'),
+                ),
+              ],
             ],
           );
         },

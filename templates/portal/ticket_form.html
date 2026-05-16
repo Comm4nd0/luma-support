@@ -35,9 +35,29 @@
       </div>
     </div>
     <div class="form-actions">
-      <button class="btn" type="submit">Create ticket</button>
+      <button class="btn" type="submit" name="_action" value="submit">Create ticket</button>
+      <button class="btn btn-ghost" type="submit" name="_action" value="suggest">
+        Suggest articles
+      </button>
       <a class="btn btn-ghost" href="{% url 'portal:ticket_list' %}">Cancel</a>
     </div>
   </form>
 </div>
+
+{% if kb_suggestions %}
+<div class="card" style="max-width: 720px; margin-top: 16px;">
+  <h3 style="margin-top: 0;">Articles that might help</h3>
+  <ul style="list-style: none; padding: 0; margin: 0;">
+    {% for s in kb_suggestions %}
+      <li style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+        <a href="{% url 'portal:kb_detail' s.article.slug %}" target="_blank" rel="noopener">
+          <strong>{{ s.article.title }}</strong>
+        </a>
+        <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ s.reason }}</div>
+        <div style="margin-top: 4px;">{{ s.snippet }}</div>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
 {% endblock %}

@@ -309,6 +309,13 @@ XERO_SCOPES = config(
 STRIPE_API_KEY = config("STRIPE_API_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 
+# --- Anthropic (Claude) --------------------------------------------------
+# Powers KB article suggestions on ticket-create and AI-drafted replies on
+# ticket-detail. When ANTHROPIC_API_KEY is empty, the suggestion path
+# falls back to a keyword-overlap search so dev/CI never reach the API.
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
+ANTHROPIC_MODEL = config("ANTHROPIC_MODEL", default="claude-sonnet-4-6")
+
 # --- Logging ------------------------------------------------------------
 LOGGING = {
     "version": 1,

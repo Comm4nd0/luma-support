@@ -337,6 +337,27 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse("portal:ticket_detail", args=[self.object.pk])
 
+    def post(self, request, *args, **kwargs):
+        # "Suggest articles" doesn't save — it asks the KB AI helper for
+        # similar published articles and re-renders the form.
+        if request.POST.get("_action") == "suggest":
+            from knowledge.ai import suggest_articles
+
+            subject = request.POST.get("subject", "")
+            description = request.POST.get("description", "")
+            self.object = None
+            form = self.get_form()
+            form.is_valid()  # populate errors but don't save
+            suggestions = suggest_articles(
+                subject,
+                description,
+                client_visible_only=not request.user.can_view_all,
+            )
+            return self.render_to_response(
+                self.get_context_data(form=form, kb_suggestions=suggestions)
+            )
+        return super().post(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "tickets"

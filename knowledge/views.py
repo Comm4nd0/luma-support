@@ -27,3 +27,33 @@ class ArticleViewSet(viewsets.ModelViewSet):
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
         return Response(ArticleSerializer(qs[:50], many=True).data)
+
+    @action(detail=False, methods=["post"])
+    def suggest(self, request):
+        """Return up to 3 KB articles likely to help with the supplied
+        ticket draft. Body: `{"subject": "...", "description": "..."}`.
+        Falls back to keyword search when ANTHROPIC_API_KEY is empty.
+        """
+        from .ai import suggest_articles
+
+        subject = (request.data.get("subject") or "").strip()
+        description = (request.data.get("description") or "").strip()
+        client_visible_only = not getattr(
+            request.user, "can_view_all", False
+        )
+        suggestions = suggest_articles(
+            subject, description, client_visible_only=client_visible_only
+        )
+        return Response(
+            {
+                "suggestions": [
+                    {
+                        "slug": s.article.slug,
+                        "title": s.article.title,
+                        "snippet": s.snippet,
+                        "reason": s.reason,
+                    }
+                    for s in suggestions
+                ]
+            }
+        )

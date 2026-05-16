@@ -4,9 +4,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Attachment, Ticket, TicketNote, TimeEntry
+from .models import Attachment, MaintenanceSchedule, Ticket, TicketNote, TimeEntry
 from .serializers import (
     AttachmentSerializer,
+    MaintenanceScheduleSerializer,
     TicketListSerializer,
     TicketNoteSerializer,
     TicketSerializer,
@@ -128,6 +129,38 @@ class TicketViewSet(viewsets.ModelViewSet):
         if not user.can_view_all:
             qs = qs.filter(client_id=user.client_id) if user.client_id else qs.none()
         return Response(TicketListSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=["post"], url_path="draft-reply")
+    def draft_reply(self, request, pk=None):
+        """Staff-only: ask Claude for an engineer-side draft reply.
+
+        Returns `{"draft": "..."}` — empty when ANTHROPIC_API_KEY is
+        unset or the call fails, so mobile / portal can decide whether
+        to surface the button.
+        """
+        from .ai import draft_reply as _draft
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+        ticket = self.get_object()
+        return Response({"draft": _draft(ticket)})
+
+
+class MaintenanceScheduleViewSet(viewsets.ModelViewSet):
+    """Staff-only CRUD for the recurring-ticket templates."""
+
+    queryset = MaintenanceSchedule.objects.select_related(
+        "client", "system", "default_assignee"
+    )
+    serializer_class = MaintenanceScheduleSerializer
+    filterset_fields = ["client", "cadence", "active"]
+    ordering_fields = ["next_run_at", "created_at"]
+    ordering = ["next_run_at", "id"]
+
+    def get_queryset(self):
+        if not self.request.user.can_view_all:
+            return self.queryset.none()
+        return super().get_queryset()
 
 
 class TimeEntryViewSet(viewsets.ModelViewSet):

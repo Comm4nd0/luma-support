@@ -38,10 +38,18 @@ class SystemSerializer(serializers.ModelSerializer):
             "credentials",
             "monitoring_url",
             "installed_date",
+            "last_checked_at",
+            "health_status",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("created_at", "updated_at")
+        read_only_fields = (
+            "last_checked_at",
+            "health_status",
+            "devices_json",
+            "created_at",
+            "updated_at",
+        )
 
     def create(self, validated_data):
         creds = validated_data.pop("credentials", "")

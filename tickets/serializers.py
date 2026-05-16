@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Attachment, Ticket, TicketNote, TimeEntry
+from .models import (
+    Attachment,
+    CsatResponse,
+    MaintenanceSchedule,
+    Ticket,
+    TicketNote,
+    TimeEntry,
+)
 
 
 class TimeEntrySerializer(serializers.ModelSerializer):
@@ -52,6 +59,15 @@ class TicketNoteSerializer(serializers.ModelSerializer):
         read_only_fields = ("author", "created_at")
 
 
+class CsatResponseSerializer(serializers.ModelSerializer):
+    """Public view of a CSAT — exclude the token so it can never leak."""
+
+    class Meta:
+        model = CsatResponse
+        fields = ("id", "rating", "comment", "requested_at", "responded_at")
+        read_only_fields = fields
+
+
 class TicketSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source="client.name", read_only=True)
     assigned_to_email = serializers.CharField(
@@ -61,6 +77,7 @@ class TicketSerializer(serializers.ModelSerializer):
     total_minutes_logged = serializers.IntegerField(read_only=True)
     time_entries = TimeEntrySerializer(many=True, read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
+    csat = CsatResponseSerializer(read_only=True)
 
     class Meta:
         model = Ticket
@@ -83,6 +100,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "total_minutes_logged",
             "time_entries",
             "attachments",
+            "csat",
             "created_at",
             "updated_at",
         )
@@ -120,3 +138,29 @@ class TicketListSerializer(serializers.ModelSerializer):
             "assigned_to_email",
             "created_at",
         )
+
+
+class MaintenanceScheduleSerializer(serializers.ModelSerializer):
+    client_name = serializers.CharField(source="client.name", read_only=True)
+    system_name = serializers.CharField(source="system.name", read_only=True)
+
+    class Meta:
+        model = MaintenanceSchedule
+        fields = (
+            "id",
+            "client",
+            "client_name",
+            "system",
+            "system_name",
+            "cadence",
+            "next_run_at",
+            "template_subject",
+            "template_description",
+            "priority",
+            "default_assignee",
+            "active",
+            "last_run_at",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("last_run_at", "created_at", "updated_at")

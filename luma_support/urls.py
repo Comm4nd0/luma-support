@@ -4,10 +4,16 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from accounts.jwt import TotpAwareTokenObtainPairView
+
 api_v1 = [
+    # TOTP-aware token endpoint must come BEFORE djoser.urls.jwt so it
+    # shadows djoser's plain TokenObtainPairView at the same path.
+    path("auth/jwt/create/", TotpAwareTokenObtainPairView.as_view()),
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),
     path("accounts/", include("accounts.urls")),
+    path("audit/", include("audit.urls")),
     path("billing/", include("billing.urls")),
     path("clients/", include("clients.urls")),
     path("tickets/", include("tickets.urls")),

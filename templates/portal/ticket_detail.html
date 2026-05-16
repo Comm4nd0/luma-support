@@ -40,20 +40,58 @@
         <p class="muted">No notes yet.</p>
       {% endfor %}
 
-      <form method="post" action="{% url 'portal:ticket_note' ticket.pk %}" style="margin-top: 12px;">
+      <form method="post" action="{% url 'portal:ticket_note' ticket.pk %}" style="margin-top: 12px;" id="ticket-note-form">
         {% csrf_token %}
         <div class="form-row">
           <label>Add a note</label>
-          <textarea name="body" required></textarea>
+          <textarea name="body" id="ticket-note-body" required></textarea>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <label class="muted" style="display: flex; gap: 6px; align-items: center;">
             <input type="checkbox" name="internal" checked />
             Internal only
           </label>
-          <button class="btn" type="submit">Post note</button>
+          <div style="display: flex; gap: 8px;">
+            {% if user.can_view_all %}
+              <button class="btn btn-ghost" type="button" id="ticket-note-draft-btn">Draft with AI</button>
+            {% endif %}
+            <button class="btn" type="submit">Post note</button>
+          </div>
         </div>
       </form>
+      {% if user.can_view_all %}
+      <script>
+        (function () {
+          var btn = document.getElementById("ticket-note-draft-btn");
+          if (!btn) return;
+          btn.addEventListener("click", async function () {
+            btn.disabled = true;
+            var original = btn.textContent;
+            btn.textContent = "Drafting…";
+            try {
+              var csrf = document.querySelector('#ticket-note-form [name=csrfmiddlewaretoken]').value;
+              var resp = await fetch("{% url 'portal:ticket_draft_reply' ticket.pk %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": csrf, "Accept": "application/json" },
+              });
+              var data = await resp.json();
+              var ta = document.getElementById("ticket-note-body");
+              if (data.draft) {
+                ta.value = data.draft;
+                document.querySelector('#ticket-note-form [name=internal]').checked = false;
+              } else {
+                alert("AI drafting is unavailable. Set ANTHROPIC_API_KEY to enable.");
+              }
+            } catch (e) {
+              alert("Draft failed: " + e);
+            } finally {
+              btn.disabled = false;
+              btn.textContent = original;
+            }
+          });
+        })();
+      </script>
+      {% endif %}
     </div>
 
     <div class="card" style="margin-top: 20px;">

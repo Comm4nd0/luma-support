@@ -32,6 +32,11 @@ urlpatterns = [
         views.TicketNoteCreateView.as_view(),
         name="ticket_note",
     ),
+    path(
+        "tickets/<int:pk>/draft-reply/",
+        views.TicketDraftReplyView.as_view(),
+        name="ticket_draft_reply",
+    ),
     # Clients
     path("clients/", views.ClientListView.as_view(), name="client_list"),
     path("clients/new/", views.ClientCreateView.as_view(), name="client_create"),

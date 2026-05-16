@@ -452,6 +452,25 @@ class TicketNoteCreateView(LoginRequiredMixin, View):
         return redirect("portal:ticket_detail", pk=pk)
 
 
+class TicketDraftReplyView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """JSON: POST → {"draft": "..."}. Staff-only — clients don't draft replies."""
+
+    raise_exception = True
+
+    def test_func(self) -> bool:
+        u = self.request.user
+        return bool(u.is_authenticated and getattr(u, "can_view_all", False))
+
+    def post(self, request, pk):
+        from django.http import JsonResponse
+
+        from tickets.ai import draft_reply
+
+        ticket = get_object_or_404(Ticket, pk=pk)
+        draft = draft_reply(ticket)
+        return JsonResponse({"draft": draft})
+
+
 # ---------------------------------------------------------------------
 # Clients
 # ---------------------------------------------------------------------

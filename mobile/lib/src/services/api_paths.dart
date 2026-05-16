@@ -21,8 +21,15 @@ class ApiPaths {
   static String ticketNotes(int id) => '/tickets/tickets/$id/notes/';
   static String ticketAttachments(int id) =>
       '/tickets/tickets/$id/attachments/';
+  static String ticketDraftReply(int id) =>
+      '/tickets/tickets/$id/draft-reply/';
   static const String slaWarnings = '/tickets/tickets/sla-warnings/';
+  static const String dashboardStats = '/tickets/tickets/dashboard-stats/';
   static const String timeEntries = '/tickets/time-entries/';
+  static const String maintenanceSchedules =
+      '/tickets/maintenance-schedules/';
+  static String maintenanceSchedule(int id) =>
+      '/tickets/maintenance-schedules/$id/';
 
   // Clients / Systems / Contacts
   static const String clients = '/clients/clients/';
@@ -34,6 +41,10 @@ class ApiPaths {
   static const String articles = '/knowledge/articles/';
   static String article(String slug) => '/knowledge/articles/$slug/';
   static const String articleSearch = '/knowledge/articles/search/';
+  static const String articleSuggest = '/knowledge/articles/suggest/';
+
+  // Audit (admin-only)
+  static const String auditLogs = '/audit/logs/';
 
   // Billing (admin-only on the server)
   static const String invoices = '/billing/invoices/';

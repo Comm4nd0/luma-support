@@ -7,6 +7,15 @@ import 'package:http/http.dart' as http;
 import 'api_paths.dart';
 import 'config.dart';
 
+/// Outcome of a single login attempt — covers the 2FA-aware backend.
+enum LoginResult {
+  success,
+  badCredentials,
+  totpRequired,
+  invalidTotp,
+  networkError,
+}
+
 /// Holds the JWT access + refresh tokens and exposes the operations the rest
 /// of the app cares about: login, refresh, logout.
 ///
@@ -36,19 +45,55 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String email, String password) async {
-    final res = await http.post(
-      Uri.parse('$kApiBase${ApiPaths.login}'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    if (res.statusCode != 200) return false;
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    await _storeTokens(
-      access: data['access'] as String?,
-      refresh: data['refresh'] as String?,
-    );
-    return _accessToken != null;
+  /// Attempt a login, optionally with a TOTP code. The backend may return
+  /// 401 with {"detail":"totp_required"|"invalid_totp"} to signal the
+  /// second-factor step — callers should re-prompt and call this again
+  /// with [totpCode] populated.
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    String? totpCode,
+  }) async {
+    final body = <String, String>{
+      'email': email,
+      'password': password,
+    };
+    if (totpCode != null && totpCode.isNotEmpty) {
+      body['totp_code'] = totpCode;
+    }
+    http.Response res;
+    try {
+      res = await http.post(
+        Uri.parse('$kApiBase${ApiPaths.login}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+    } catch (_) {
+      return LoginResult.networkError;
+    }
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      await _storeTokens(
+        access: data['access'] as String?,
+        refresh: data['refresh'] as String?,
+      );
+      return _accessToken != null
+          ? LoginResult.success
+          : LoginResult.badCredentials;
+    }
+    if (res.statusCode == 401) {
+      try {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['detail'] == 'totp_required') {
+          return LoginResult.totpRequired;
+        }
+        if (data is Map && data['detail'] == 'invalid_totp') {
+          return LoginResult.invalidTotp;
+        }
+      } catch (_) {}
+      return LoginResult.badCredentials;
+    }
+    return LoginResult.networkError;
   }
 
   /// Exchange the stored refresh token for a new access token. Returns false

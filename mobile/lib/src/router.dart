@@ -10,7 +10,10 @@ import 'screens/invoice_detail_screen.dart';
 import 'screens/invoice_list_screen.dart';
 import 'screens/kb_detail_screen.dart';
 import 'screens/kb_list_screen.dart';
+import 'screens/audit_log_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/maintenance_list_screen.dart';
+import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
 import 'screens/payments_screen.dart';
 import 'screens/profile_screen.dart';
@@ -49,6 +52,15 @@ GoRouter buildAppRouter({
       // else away rather than letting the screen 401.
       if (state.matchedLocation.startsWith('/billing') &&
           !currentUser.isAdmin) {
+        return '/';
+      }
+      // Audit feed is admin-only, maintenance is staff-only.
+      if (state.matchedLocation.startsWith('/audit') &&
+          !currentUser.isAdmin) {
+        return '/';
+      }
+      if (state.matchedLocation.startsWith('/maintenance') &&
+          currentUser.isClient) {
         return '/';
       }
       return null;
@@ -150,6 +162,25 @@ GoRouter buildAppRouter({
               ? const ClientShell(child: ProfileScreen())
               : const EngineerShell(child: ProfileScreen());
         },
+      ),
+      GoRoute(
+        path: '/my-services',
+        builder: (context, state) {
+          final user = context.read<CurrentUser>();
+          return user.isClient
+              ? const ClientShell(child: MyServicesScreen())
+              : const EngineerShell(child: MyServicesScreen());
+        },
+      ),
+      GoRoute(
+        path: '/maintenance',
+        builder: (_, __) =>
+            const EngineerShell(child: MaintenanceListScreen()),
+      ),
+      GoRoute(
+        path: '/audit',
+        builder: (_, __) =>
+            const EngineerShell(child: AuditLogScreen()),
       ),
     ],
   );

@@ -77,6 +77,19 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
+                Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading:
+                        const LumaIcon(PhosphorIconsDuotone.network),
+                    title: const Text('Your services'),
+                    subtitle:
+                        const Text('Status of the systems we manage for you'),
+                    trailing:
+                        const LumaIcon(PhosphorIconsDuotone.caretRight),
+                    onTap: () => context.push('/my-services'),
+                  ),
+                ),
                 _Section('Your open tickets', count: data.open.length),
                 if (data.open.isEmpty)
                   const Padding(

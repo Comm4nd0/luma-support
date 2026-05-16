@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/invoice.dart';
 import '../repositories/invoices_repository.dart';
@@ -447,19 +448,37 @@ class _StatusActions extends StatelessWidget {
   final VoidCallback onMarkSent;
   final VoidCallback onMarkVoided;
 
+  Future<void> _openPaymentLink(BuildContext context) async {
+    final uri = Uri.tryParse(invoice.stripePaymentLinkUrl);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the payment link.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final canMarkSent = invoice.status == InvoiceStatus.draft;
     final canVoid = invoice.status == InvoiceStatus.draft ||
         invoice.status == InvoiceStatus.sent;
     final canSendToXero = !invoice.isSyncedToXero;
-    if (!canMarkSent && !canVoid && !canSendToXero) {
+    final canPay = invoice.hasStripeLink;
+    if (!canMarkSent && !canVoid && !canSendToXero && !canPay) {
       return const SizedBox.shrink();
     }
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
+        if (canPay)
+          ElevatedButton.icon(
+            onPressed: busy ? null : () => _openPaymentLink(context),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Pay online'),
+          ),
         if (canSendToXero)
           ElevatedButton.icon(
             onPressed: busy ? null : onSendToXero,

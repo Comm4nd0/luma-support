@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../repositories/knowledge_repository.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -28,6 +30,74 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
     final picker = ImagePicker();
     final f = await picker.pickImage(source: ImageSource.camera);
     if (f != null) setState(() => _photo = File(f.path));
+  }
+
+  Future<void> _suggestArticles() async {
+    final subject = _subject.text.trim();
+    final description = _description.text.trim();
+    if (subject.isEmpty && description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Type a subject or description first.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final repo = KnowledgeRepository(context.read<ApiClient>());
+      final suggestions = await repo.suggest(
+        subject: subject,
+        description: description,
+      );
+      if (!mounted) return;
+      if (suggestions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No matching articles — go ahead and file the ticket.'),
+          ),
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Articles that might help',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              for (final s in suggestions)
+                Card(
+                  child: ListTile(
+                    title: Text(s.title),
+                    subtitle: Text(s.snippet),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/kb/${s.slug}');
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Suggestion lookup failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -95,6 +165,12 @@ class _TicketCreateScreenState extends State<TicketCreateScreen> {
             onPressed: _pickPhoto,
             icon: const LumaIcon(PhosphorIconsDuotone.camera),
             label: Text(_photo == null ? 'Add photo' : 'Photo selected'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _suggestArticles,
+            icon: const Icon(Icons.lightbulb_outline),
+            label: const Text('Suggest articles'),
           ),
           const SizedBox(height: 16),
           ElevatedButton(

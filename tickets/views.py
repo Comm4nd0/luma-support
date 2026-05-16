@@ -145,6 +145,69 @@ class TicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         return Response({"draft": _draft(ticket)})
 
+    @action(detail=False, methods=["get"], url_path="dashboard-stats")
+    def dashboard_stats(self, request):
+        """Staff-only KPI bundle for the mobile engineer dashboard.
+
+        Mirrors the cards on the portal dashboard so both front-ends
+        render identical numbers from a single round-trip.
+        """
+        from datetime import timedelta
+        from decimal import Decimal
+
+        from django.conf import settings as dj_settings
+        from django.db.models import Sum
+        from django.utils import timezone
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+        from billing.models import Invoice, Payment
+
+        from .models import MaintenanceSchedule
+
+        now = timezone.now()
+        month_start = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+
+        unbilled_minutes = (
+            TimeEntry.objects.filter(billable=True, invoice_line__isnull=True)
+            .aggregate(total=Sum("minutes"))["total"]
+            or 0
+        )
+        mtd_invoiced = (
+            Invoice.objects.filter(created_at__gte=month_start)
+            .aggregate(total=Sum("total"))["total"]
+            or Decimal("0")
+        )
+        mtd_paid = (
+            Payment.objects.filter(paid_at__gte=month_start)
+            .aggregate(total=Sum("amount"))["total"]
+            or Decimal("0")
+        )
+        overdue = Invoice.objects.filter(
+            status__in=[Invoice.Status.SENT, Invoice.Status.AUTHORISED],
+            due_date__lt=timezone.localdate(),
+        ).count()
+        maintenance_due = MaintenanceSchedule.objects.filter(
+            active=True,
+            next_run_at__lte=timezone.localdate() + timedelta(days=7),
+        ).count()
+
+        return Response(
+            {
+                "unbilled_hours": float(
+                    Decimal(unbilled_minutes) / Decimal(60)
+                ),
+                "mtd_invoiced": str(mtd_invoiced),
+                "mtd_paid": str(mtd_paid),
+                "overdue_invoices": overdue,
+                "maintenance_due_7d": maintenance_due,
+                "currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
+            }
+        )
+
 
 class MaintenanceScheduleViewSet(viewsets.ModelViewSet):
     """Staff-only CRUD for the recurring-ticket templates."""

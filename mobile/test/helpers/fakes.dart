@@ -7,12 +7,22 @@ import 'package:luma_support_mobile/src/services/auth_service.dart';
 /// In-memory AuthService for widget tests — never touches
 /// flutter_secure_storage so it works without a platform channel.
 class FakeAuthService extends ChangeNotifier implements AuthService {
-  FakeAuthService({String? access, String? refresh})
-      : _access = access,
+  FakeAuthService({
+    String? access,
+    String? refresh,
+    this.totpRequired = false,
+    this.expectedTotpCode,
+  })  : _access = access,
         _refresh = refresh;
 
   String? _access;
   String? _refresh;
+
+  /// Toggle on to make [login] return [LoginResult.totpRequired] until
+  /// [expectedTotpCode] is supplied. Lets the widget test exercise the
+  /// 2FA flow without a real backend.
+  bool totpRequired;
+  String? expectedTotpCode;
 
   @override
   String? get accessToken => _access;
@@ -27,11 +37,23 @@ class FakeAuthService extends ChangeNotifier implements AuthService {
   bool get loading => false;
 
   @override
-  Future<bool> login(String email, String password) async {
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    String? totpCode,
+  }) async {
+    if (totpRequired) {
+      if (totpCode == null || totpCode.isEmpty) {
+        return LoginResult.totpRequired;
+      }
+      if (expectedTotpCode != null && totpCode != expectedTotpCode) {
+        return LoginResult.invalidTotp;
+      }
+    }
     _access = 'fake-access';
     _refresh = 'fake-refresh';
     notifyListeners();
-    return true;
+    return LoginResult.success;
   }
 
   @override

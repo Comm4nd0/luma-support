@@ -34,4 +34,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(auth.isAuthenticated, true);
   });
+
+  testWidgets('shows TOTP step when backend asks for it', (tester) async {
+    final auth = FakeAuthService(totpRequired: true, expectedTotpCode: '123456');
+    await tester.pumpWidget(_wrap(const LoginScreen(), auth));
+    await tester.enterText(find.byType(TextField).first, 'eng@luma.test');
+    await tester.enterText(find.byType(TextField).last, 'goodpass');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Two-factor verification'), findsOneWidget);
+    expect(auth.isAuthenticated, false);
+
+    await tester.enterText(find.byType(TextField).last, '123456');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Verify'));
+    await tester.pumpAndSettle();
+    expect(auth.isAuthenticated, true);
+  });
+
+  testWidgets('rejects wrong TOTP and keeps user on the verify step',
+      (tester) async {
+    final auth = FakeAuthService(totpRequired: true, expectedTotpCode: '123456');
+    await tester.pumpWidget(_wrap(const LoginScreen(), auth));
+    await tester.enterText(find.byType(TextField).first, 'eng@luma.test');
+    await tester.enterText(find.byType(TextField).last, 'goodpass');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign in'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, '000000');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Verify'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invalid two-factor code.'), findsOneWidget);
+    expect(auth.isAuthenticated, false);
+  });
 }

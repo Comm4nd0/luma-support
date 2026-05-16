@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ticket.dart';
@@ -30,6 +31,12 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
 
   Future<_DashboardData> _load() async {
     final all = await _tickets.list();
+    DashboardStats? stats;
+    try {
+      stats = await _tickets.dashboardStats();
+    } catch (_) {
+      // KPIs are nice-to-have on dashboard load; never block on them.
+    }
     return _DashboardData(
       slaWarnings: all.where((t) => t.isBreached || _withinWindow(t)).toList(),
       open: all
@@ -37,6 +44,7 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
               t.status != TicketStatus.resolved &&
               t.status != TicketStatus.closed)
           .toList(),
+      stats: stats,
     );
   }
 
@@ -79,9 +87,24 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
+                if (data.stats != null) ...[
+                  _KpiGrid(stats: data.stats!),
+                  const SizedBox(height: 8),
+                ],
+                Card(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  child: ListTile(
+                    leading: const LumaIcon(PhosphorIconsDuotone.calendar),
+                    title: const Text('Maintenance schedules'),
+                    subtitle: const Text(
+                        'Recurring work that auto-generates tickets'),
+                    trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                    onTap: () => context.push('/maintenance'),
+                  ),
+                ),
                 if (currentUser.isAdmin)
                   Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: 4),
                     child: ListTile(
                       leading: const LumaIcon(PhosphorIconsDuotone.receipt),
                       title: const Text('Billing'),
@@ -89,6 +112,18 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                           'Manage invoices and sync to Xero'),
                       trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
                       onTap: () => context.push('/billing/invoices'),
+                    ),
+                  ),
+                if (currentUser.isAdmin)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const LumaIcon(PhosphorIconsDuotone.shieldCheck),
+                      title: const Text('Audit log'),
+                      subtitle: const Text(
+                          'Who did what — credential + billing actions'),
+                      trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                      onTap: () => context.push('/audit'),
                     ),
                   ),
                 _SectionHeader(
@@ -118,9 +153,76 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
 }
 
 class _DashboardData {
-  _DashboardData({required this.slaWarnings, required this.open});
+  _DashboardData({
+    required this.slaWarnings,
+    required this.open,
+    required this.stats,
+  });
   final List<Ticket> slaWarnings;
   final List<Ticket> open;
+  final DashboardStats? stats;
+}
+
+class _KpiGrid extends StatelessWidget {
+  const _KpiGrid({required this.stats});
+  final DashboardStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final money = NumberFormat.simpleCurrency(name: stats.currency);
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 2.5,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      children: [
+        _KpiCard(label: 'Unbilled hours', value: stats.unbilledHours.toStringAsFixed(1)),
+        _KpiCard(label: 'MTD invoiced', value: money.format(stats.mtdInvoiced)),
+        _KpiCard(label: 'MTD paid', value: money.format(stats.mtdPaid)),
+        _KpiCard(label: 'Overdue', value: '${stats.overdueInvoices}'),
+        _KpiCard(
+          label: 'Maintenance (7d)',
+          value: '${stats.maintenanceDue7d}',
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {

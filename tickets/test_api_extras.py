@@ -100,3 +100,35 @@ def test_maintenance_create_and_list_for_engineer(engineer_user, client_record):
     resp = c.get("/api/v1/tickets/maintenance-schedules/")
     assert resp.status_code == 200
     assert resp.json()["count"] == 1
+
+
+# ----- /tickets/dashboard-stats/ ---------------------------------------
+
+
+def test_dashboard_stats_requires_staff(client_record):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        email="c@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    c = APIClient()
+    c.force_authenticate(user)
+    resp = c.get("/api/v1/tickets/tickets/dashboard-stats/")
+    assert resp.status_code == 403
+
+
+def test_dashboard_stats_returns_expected_keys(engineer_user, client_record):
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.get("/api/v1/tickets/tickets/dashboard-stats/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert {
+        "unbilled_hours",
+        "mtd_invoiced",
+        "mtd_paid",
+        "overdue_invoices",
+        "maintenance_due_7d",
+        "currency",
+    } <= set(body.keys())

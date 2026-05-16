@@ -111,6 +111,7 @@ class Invoice {
     required this.xeroInvoiceId,
     required this.xeroStatus,
     required this.xeroSyncedAt,
+    required this.stripePaymentLinkUrl,
     required this.sentAt,
     required this.paidAt,
     required this.lines,
@@ -133,6 +134,7 @@ class Invoice {
   final String xeroInvoiceId;
   final String xeroStatus;
   final DateTime? xeroSyncedAt;
+  final String stripePaymentLinkUrl;
   final DateTime? sentAt;
   final DateTime? paidAt;
   final List<InvoiceLine> lines;
@@ -140,6 +142,7 @@ class Invoice {
   final DateTime? updatedAt;
 
   bool get isSyncedToXero => xeroInvoiceId.isNotEmpty;
+  bool get hasStripeLink => stripePaymentLinkUrl.isNotEmpty;
 
   factory Invoice.fromJson(Map<String, dynamic> json) => Invoice(
         id: json['id'] as int,
@@ -157,6 +160,8 @@ class Invoice {
         xeroInvoiceId: json['xero_invoice_id'] as String? ?? '',
         xeroStatus: json['xero_status'] as String? ?? '',
         xeroSyncedAt: _parseDate(json['xero_synced_at']),
+        stripePaymentLinkUrl:
+            json['stripe_payment_link_url'] as String? ?? '',
         sentAt: _parseDate(json['sent_at']),
         paidAt: _parseDate(json['paid_at']),
         lines: ((json['lines'] as List?) ?? const [])

@@ -108,4 +108,56 @@ class TicketsRepository {
       throw ApiException.fromDio(e);
     }
   }
+
+  /// Staff-only: ask Claude for a draft reply. Returns the empty string
+  /// when ANTHROPIC_API_KEY isn't configured on the backend.
+  Future<String> draftReply(int id) async {
+    try {
+      final res = await _api.dio.post<dynamic>(ApiPaths.ticketDraftReply(id));
+      final data = res.data as Map<String, dynamic>;
+      return data['draft'] as String? ?? '';
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  /// Staff-only KPI bundle for the engineer dashboard (parity with the
+  /// portal dashboard cards).
+  Future<DashboardStats> dashboardStats() async {
+    try {
+      final res = await _api.dio.get<dynamic>(ApiPaths.dashboardStats);
+      return DashboardStats.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+}
+
+class DashboardStats {
+  DashboardStats({
+    required this.unbilledHours,
+    required this.mtdInvoiced,
+    required this.mtdPaid,
+    required this.overdueInvoices,
+    required this.maintenanceDue7d,
+    required this.currency,
+  });
+
+  final double unbilledHours;
+  final double mtdInvoiced;
+  final double mtdPaid;
+  final int overdueInvoices;
+  final int maintenanceDue7d;
+  final String currency;
+
+  factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
+        unbilledHours: (json['unbilled_hours'] as num?)?.toDouble() ?? 0,
+        mtdInvoiced:
+            double.tryParse((json['mtd_invoiced'] ?? '0').toString()) ?? 0,
+        mtdPaid: double.tryParse((json['mtd_paid'] ?? '0').toString()) ?? 0,
+        overdueInvoices: (json['overdue_invoices'] as num?)?.toInt() ?? 0,
+        maintenanceDue7d:
+            (json['maintenance_due_7d'] as num?)?.toInt() ?? 0,
+        currency: json['currency'] as String? ?? 'GBP',
+      );
 }

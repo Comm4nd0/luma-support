@@ -46,7 +46,12 @@ class FakeAuth extends ChangeNotifier implements AuthService {
   }
 
   @override
-  Future<bool> login(String email, String password) async => false;
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    String? totpCode,
+  }) async =>
+      LoginResult.badCredentials;
 
   @override
   Future<void> logout() async {

@@ -54,6 +54,29 @@ String statusToWire(TicketStatus s) {
   }
 }
 
+class CsatResponse {
+  CsatResponse({
+    required this.id,
+    required this.rating,
+    required this.comment,
+    required this.respondedAt,
+  });
+
+  final int id;
+  final int? rating; // 1..5; null when the survey is pending
+  final String comment;
+  final DateTime? respondedAt;
+
+  bool get hasRating => rating != null;
+
+  factory CsatResponse.fromJson(Map<String, dynamic> json) => CsatResponse(
+        id: json['id'] as int? ?? 0,
+        rating: json['rating'] as int?,
+        comment: json['comment'] as String? ?? '',
+        respondedAt: _parseDate(json['responded_at']),
+      );
+}
+
 class Ticket {
   Ticket({
     required this.id,
@@ -66,6 +89,7 @@ class Ticket {
     required this.slaDeadline,
     required this.isBreached,
     required this.assignedToEmail,
+    required this.csat,
     required this.createdAt,
   });
 
@@ -79,6 +103,7 @@ class Ticket {
   final DateTime? slaDeadline;
   final bool isBreached;
   final String? assignedToEmail;
+  final CsatResponse? csat;
   final DateTime createdAt;
 
   factory Ticket.fromJson(Map<String, dynamic> json) => Ticket(
@@ -92,6 +117,9 @@ class Ticket {
         slaDeadline: _parseDate(json['sla_deadline']),
         isBreached: json['is_breached'] as bool? ?? false,
         assignedToEmail: json['assigned_to_email'] as String?,
+        csat: json['csat'] is Map
+            ? CsatResponse.fromJson(json['csat'] as Map<String, dynamic>)
+            : null,
         createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
       );
 }

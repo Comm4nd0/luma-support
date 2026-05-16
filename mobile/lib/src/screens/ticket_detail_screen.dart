@@ -68,6 +68,30 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     _refresh();
   }
 
+  Future<void> _draftReply() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {});
+    try {
+      final draft = await _repo.draftReply(widget.ticketId);
+      if (!mounted) return;
+      if (draft.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('AI drafting is disabled on this server.')),
+        );
+        return;
+      }
+      final body = await showDialog<String>(
+        context: context,
+        builder: (_) => _NoteDialog(initial: draft, title: 'AI draft (editable)'),
+      );
+      if (body == null || body.trim().isEmpty) return;
+      await _repo.addNote(widget.ticketId, body.trim());
+      _refresh();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Draft failed: $e')));
+    }
+  }
+
   Future<void> _runTimer() async {
     final logged = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -154,6 +178,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
               Text('${t.clientName} · ${t.priority.name} · ${t.status.name}'),
               const SizedBox(height: 12),
               Text(t.description, style: const TextStyle(height: 1.5)),
+              if (t.csat != null && t.csat!.hasRating) ...[
+                const SizedBox(height: 16),
+                _CsatCard(csat: t.csat!),
+              ],
               const SizedBox(height: 24),
               if (isStaff) ...[
                 Wrap(
@@ -224,6 +252,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   icon: const Icon(Icons.gesture),
                   label: const Text('Capture signature'),
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _draftReply,
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  label: const Text('Draft reply with AI'),
+                ),
               ],
             ],
           );
@@ -281,22 +315,26 @@ class _LogTimeDialogState extends State<_LogTimeDialog> {
 }
 
 class _NoteDialog extends StatefulWidget {
-  const _NoteDialog();
+  const _NoteDialog({this.initial, this.title});
+
+  final String? initial;
+  final String? title;
 
   @override
   State<_NoteDialog> createState() => _NoteDialogState();
 }
 
 class _NoteDialogState extends State<_NoteDialog> {
-  final _body = TextEditingController();
+  late final TextEditingController _body =
+      TextEditingController(text: widget.initial ?? '');
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add note'),
+      title: Text(widget.title ?? 'Add note'),
       content: TextField(
         controller: _body,
-        maxLines: 4,
+        maxLines: 6,
         decoration: const InputDecoration(labelText: 'Note'),
       ),
       actions: [
@@ -306,6 +344,39 @@ class _NoteDialogState extends State<_NoteDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+}
+
+class _CsatCard extends StatelessWidget {
+  const _CsatCard({required this.csat});
+
+  final CsatResponse csat;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Customer rating',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${csat.rating} / 5',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            if (csat.comment.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(csat.comment),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -256,8 +256,16 @@ INBOUND_IMAP_PASSWORD = config("INBOUND_IMAP_PASSWORD", default="")
 INBOUND_IMAP_MAILBOX = config("INBOUND_IMAP_MAILBOX", default="INBOX")
 
 # --- Encryption ---------------------------------------------------------
-# Used by clients.System.credentials_encrypted. Generate with:
+# Used by clients.System.credentials_encrypted and
+# billing.XeroConnection.refresh_token_encrypted. Generate with:
 #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
+# FERNET_KEYS (comma-separated, primary first) is the recommended form
+# and supports rotation: prepend a new key, run
+# `python manage.py rotate_fernet_keys` to re-encrypt all stored
+# ciphertexts, then drop the old key. FERNET_KEY is the legacy single-
+# key alias and is honoured when FERNET_KEYS is empty.
+FERNET_KEYS = config("FERNET_KEYS", default="")
 FERNET_KEY = config(
     "FERNET_KEY", default="aXzDcRGfQa8H_wK3UZ4xG4LnkZbNz7q6uhZWqXoJZ5o="
 )

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Audit log · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>Audit log</h1>
+
+<form class="filterbar" method="get">
+  <input type="text" name="actor" value="{{ filters.actor }}" placeholder="Actor email contains…" />
+  <input type="text" name="action" value="{{ filters.action }}" placeholder="Action contains… (e.g. xero)" />
+  <button class="btn" type="submit">Filter</button>
+  <a class="btn btn-ghost" href="{% url 'portal:audit_log' %}">Reset</a>
+</form>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Target</th>
+        <th>IP</th>
+        <th>Metadata</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+        <tr>
+          <td>{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ e.actor.email|default:"system" }}</td>
+          <td><code>{{ e.action }}</code></td>
+          <td>{{ e.target_repr|default:"—" }}</td>
+          <td class="muted">{{ e.ip|default:"—" }}</td>
+          <td class="muted">
+            {% if e.metadata %}<code style="font-size: 11px;">{{ e.metadata }}</code>{% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="muted">No audit entries match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<div class="toolbar" style="margin-top: 16px; justify-content: center;">
+  {% if page_obj.has_previous %}
+    <a class="btn btn-sm btn-ghost" href="?page={{ page_obj.previous_page_number }}&actor={{ filters.actor }}&action={{ filters.action }}">← Prev</a>
+  {% endif %}
+  <span class="muted">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a class="btn btn-sm btn-ghost" href="?page={{ page_obj.next_page_number }}&actor={{ filters.actor }}&action={{ filters.action }}">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

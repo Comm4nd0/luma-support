@@ -772,3 +772,46 @@ class MaintenanceScheduleDeleteView(StaffRequiredMixin, View):
         sched.delete()
         messages.success(request, "Maintenance schedule removed.")
         return redirect("portal:schedule_list")
+
+
+# ---------------------------------------------------------------------
+# Audit log (admin only)
+# ---------------------------------------------------------------------
+
+
+class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    template_name = "portal/audit_log.html"
+    paginate_by = 100
+    context_object_name = "entries"
+
+    def test_func(self) -> bool:
+        u = self.request.user
+        return bool(
+            u.is_authenticated and (u.is_superuser or getattr(u, "is_admin_role", False))
+        )
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return super().handle_no_permission()
+        raise PermissionDenied
+
+    def get_queryset(self):
+        from audit.models import AuditLog
+
+        qs = AuditLog.objects.select_related("actor", "target_ct")
+        actor = self.request.GET.get("actor")
+        action = self.request.GET.get("action")
+        if actor:
+            qs = qs.filter(actor__email__icontains=actor)
+        if action:
+            qs = qs.filter(action__icontains=action)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["active"] = "audit"
+        ctx["filters"] = {
+            "actor": self.request.GET.get("actor", ""),
+            "action": self.request.GET.get("action", ""),
+        }
+        return ctx

@@ -217,10 +217,12 @@ class XeroConnectView(AdminPortalMixin, View):
     """Kick off the OAuth flow — stash state in session and redirect to Xero."""
 
     def get(self, request):
+        from audit import log as audit_log
         from .xero import oauth
 
         state = secrets.token_urlsafe(32)
         request.session["xero_oauth_state"] = state
+        audit_log("xero.connect_start", request=request)
         return redirect(oauth.authorize_url(state))
 
 
@@ -261,12 +263,30 @@ class XeroOAuthCallbackView(AdminPortalMixin, View):
         conn.connected_by = request.user
         conn.set_refresh_token(tokens["refresh_token"])
         conn.save()
+        from audit import log as audit_log
+
+        audit_log(
+            "xero.connect",
+            request=request,
+            target=conn,
+            tenant_id=tenant_id,
+        )
         messages.success(request, "Xero connected.")
         return redirect("portal:xero_settings")
 
 
 class XeroDisconnectView(AdminPortalMixin, View):
     def post(self, request):
+        from audit import log as audit_log
+
+        existing = XeroConnection.objects.first()
+        if existing is not None:
+            audit_log(
+                "xero.disconnect",
+                request=request,
+                target=existing,
+                tenant_id=existing.tenant_id,
+            )
         XeroConnection.objects.all().delete()
         messages.success(request, "Xero disconnected.")
         return redirect("portal:xero_settings")
@@ -276,6 +296,7 @@ class InvoiceSendView(AdminPortalMixin, View):
     """Enqueue a push of the invoice to Xero."""
 
     def post(self, request, pk):
+        from audit import log as audit_log
         from .tasks import push_invoice_to_xero
 
         invoice = get_object_or_404(Invoice, pk=pk)
@@ -286,5 +307,12 @@ class InvoiceSendView(AdminPortalMixin, View):
             messages.error(request, "Connect Xero first.")
             return redirect("portal:xero_settings")
         push_invoice_to_xero.delay(invoice.pk, "AUTHORISED")
+        audit_log(
+            "invoice.send_to_xero",
+            request=request,
+            target=invoice,
+            total=str(invoice.total),
+            currency=invoice.currency,
+        )
         messages.success(request, "Push to Xero queued.")
         return redirect("portal:invoice_detail", pk=pk)

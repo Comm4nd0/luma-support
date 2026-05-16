@@ -34,6 +34,7 @@
       {% endif %}
       {% if user.is_admin_role %}
         <a href="{% url 'portal:invoice_list' %}" class="{% if active == 'billing' %}active{% endif %}">Billing</a>
+        <a href="{% url 'portal:audit_log' %}" class="{% if active == 'audit' %}active{% endif %}">Audit</a>
       {% endif %}
     </nav>
     <div class="user-actions">

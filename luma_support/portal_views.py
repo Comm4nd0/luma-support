@@ -100,8 +100,10 @@ class DashboardView(LoginRequiredMixin, View):
 
     def get(self, request):
         from datetime import timedelta
+        from decimal import Decimal
 
-        from django.db.models import Avg
+        from django.conf import settings as dj_settings
+        from django.db.models import Avg, Sum
         from django.template.response import TemplateResponse
 
         open_q = ~Q(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
@@ -137,6 +139,54 @@ class DashboardView(LoginRequiredMixin, View):
             "csat_count": csat_count,
             "active": "dashboard",
         }
+
+        # Staff-only operational metrics: revenue, unbilled hours,
+        # overdue invoices, upcoming maintenance.
+        if request.user.can_view_all:
+            from billing.models import Invoice, Payment
+            from tickets.models import MaintenanceSchedule, TimeEntry
+
+            now = timezone.now()
+            month_start = now.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+
+            unbilled_minutes = (
+                TimeEntry.objects.filter(billable=True, invoice_line__isnull=True)
+                .aggregate(total=Sum("minutes"))["total"]
+                or 0
+            )
+            mtd_invoiced = (
+                Invoice.objects.filter(created_at__gte=month_start)
+                .aggregate(total=Sum("total"))["total"]
+                or Decimal("0")
+            )
+            mtd_paid = (
+                Payment.objects.filter(paid_at__gte=month_start)
+                .aggregate(total=Sum("amount"))["total"]
+                or Decimal("0")
+            )
+            overdue_count = Invoice.objects.filter(
+                status__in=[Invoice.Status.SENT, Invoice.Status.AUTHORISED],
+                due_date__lt=timezone.localdate(),
+            ).count()
+            schedules_due = MaintenanceSchedule.objects.filter(
+                active=True,
+                next_run_at__lte=timezone.localdate() + timedelta(days=7),
+            ).count()
+
+            context.update(
+                {
+                    "unbilled_hours": (Decimal(unbilled_minutes) / Decimal(60)).quantize(
+                        Decimal("0.1")
+                    ),
+                    "mtd_invoiced": mtd_invoiced,
+                    "mtd_paid": mtd_paid,
+                    "overdue_count": overdue_count,
+                    "schedules_due": schedules_due,
+                    "default_currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
+                }
+            )
         return TemplateResponse(request, self.template_name, context)
 
 

@@ -30,6 +30,31 @@
   </div>
 </div>
 
+{% if user.can_view_all %}
+<div class="grid grid-4" style="margin-top: 16px;">
+  <div class="card">
+    <div class="card-title">Unbilled hours</div>
+    <div class="card-value">{{ unbilled_hours }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">MTD invoiced</div>
+    <div class="card-value">{{ default_currency }} {{ mtd_invoiced|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">MTD paid</div>
+    <div class="card-value">{{ default_currency }} {{ mtd_paid|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Overdue invoices</div>
+    <div class="card-value">{{ overdue_count }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Maintenance due (7d)</div>
+    <div class="card-value">{{ schedules_due }}</div>
+  </div>
+</div>
+{% endif %}
+
 <div class="grid grid-2" style="margin-top: 24px;">
   <div class="card">
     <div class="card-header">

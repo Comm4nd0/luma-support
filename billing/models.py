@@ -77,6 +77,9 @@ class Invoice(models.Model):
     xero_status = models.CharField(max_length=24, blank=True)
     xero_synced_at = models.DateTimeField(null=True, blank=True)
 
+    # Set by billing.tasks.create_stripe_payment_link after Xero authorisation.
+    stripe_payment_link_url = models.URLField(max_length=512, blank=True)
+
     sent_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -141,12 +144,18 @@ class InvoiceLine(models.Model):
 
 
 class Payment(models.Model):
-    """Read-only mirror of payments seen on Xero invoices."""
+    """Read-only mirror of payments, sourced from either Xero or Stripe.
+
+    Exactly one of `xero_payment_id` / `stripe_payment_intent_id` is set
+    per row — uniqueness is enforced by partial constraints in `Meta`
+    so multiple empty-string rows don't collide.
+    """
 
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, related_name="payments"
     )
-    xero_payment_id = models.CharField(max_length=64, unique=True)
+    xero_payment_id = models.CharField(max_length=64, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=64, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     paid_at = models.DateTimeField()
     reference = models.CharField(max_length=255, blank=True)
@@ -154,6 +163,19 @@ class Payment(models.Model):
 
     class Meta:
         ordering = ["-paid_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["xero_payment_id"],
+                condition=~Q(xero_payment_id=""),
+                name="uniq_payment_xero_id_set",
+            ),
+            models.UniqueConstraint(
+                fields=["stripe_payment_intent_id"],
+                condition=~Q(stripe_payment_intent_id=""),
+                name="uniq_payment_stripe_pi_set",
+            ),
+        ]
 
     def __str__(self) -> str:
-        return f"Payment {self.xero_payment_id} ({self.amount})"
+        ref = self.stripe_payment_intent_id or self.xero_payment_id or f"#{self.pk}"
+        return f"Payment {ref} ({self.amount})"

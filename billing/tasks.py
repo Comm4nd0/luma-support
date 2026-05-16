@@ -29,7 +29,11 @@ def generate_contract_invoices():
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def push_invoice_to_xero(self, invoice_id: int, status: str = "AUTHORISED"):
-    """Push a draft invoice to Xero. Idempotent if it already has xero_invoice_id."""
+    """Push a draft invoice to Xero. Idempotent if it already has xero_invoice_id.
+
+    Once on Xero as AUTHORISED, the matching Stripe Payment Link is
+    enqueued so clients can pay online from the invoice email.
+    """
     from .models import Invoice, XeroConnection
     from .xero.client import XeroClient
 
@@ -49,7 +53,41 @@ def push_invoice_to_xero(self, invoice_id: int, status: str = "AUTHORISED"):
         api.create_invoice(invoice, status=status)
     except Exception as exc:  # network/auth failures only — let Celery retry.
         raise self.retry(exc=exc)
+
+    if status == "AUTHORISED":
+        create_stripe_payment_link.delay(invoice.pk)
     return f"pushed:{invoice.xero_invoice_id}"
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def create_stripe_payment_link(self, invoice_id: int):
+    """Create a Stripe Payment Link for `invoice_id` and persist the URL.
+
+    No-op when STRIPE_API_KEY is empty or the invoice already has a link.
+    """
+    from .models import Invoice
+    from . import stripe_client
+
+    if not stripe_client.is_configured():
+        return "stripe-disabled"
+
+    try:
+        invoice = Invoice.objects.select_related("client").get(pk=invoice_id)
+    except Invoice.DoesNotExist:
+        return "missing"
+    if invoice.stripe_payment_link_url:
+        return "already-linked"
+
+    try:
+        url = stripe_client.create_payment_link(invoice)
+    except Exception as exc:
+        raise self.retry(exc=exc)
+    if not url:
+        return "skipped"
+
+    invoice.stripe_payment_link_url = url
+    invoice.save(update_fields=["stripe_payment_link_url", "updated_at"])
+    return f"linked:{url}"
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

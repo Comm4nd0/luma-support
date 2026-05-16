@@ -284,6 +284,14 @@ XERO_SCOPES = config(
     default="offline_access accounting.contacts accounting.transactions",
 )
 
+# --- Stripe -------------------------------------------------------------
+# Leave STRIPE_API_KEY empty to disable the payment-link flow; the
+# create_stripe_payment_link task no-ops in that case. STRIPE_WEBHOOK_SECRET
+# is the signing secret from https://dashboard.stripe.com/webhooks for
+# the endpoint POST /api/v1/billing/webhooks/stripe/.
+STRIPE_API_KEY = config("STRIPE_API_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
 # --- Logging ------------------------------------------------------------
 LOGGING = {
     "version": 1,

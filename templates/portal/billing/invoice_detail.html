@@ -21,6 +21,9 @@
         <button class="btn" type="submit">Send to Xero</button>
       </form>
     {% endif %}
+    {% if invoice.stripe_payment_link_url %}
+      <a class="btn" href="{{ invoice.stripe_payment_link_url }}" target="_blank" rel="noopener">Pay online ↗</a>
+    {% endif %}
   </div>
 </div>
 

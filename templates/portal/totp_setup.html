@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Set up 2FA · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 560px;">
+    <h1 style="margin-top: 0;">Set up two-factor auth</h1>
+    <p class="muted">Signed in as {{ user_email }}. Scan the QR with your authenticator app, then enter the 6-digit code below.</p>
+
+    <div style="background: #fff; padding: 16px; border-radius: 8px; margin: 16px 0; display: flex; justify-content: center;">
+      <img src="{{ qr_svg_url }}" alt="TOTP QR code" style="max-width: 220px;" />
+    </div>
+
+    <p class="muted" style="font-size: 12px;">
+      Can't scan? Enter this secret manually:
+      <code style="display: block; padding: 8px; background: var(--surface-2); margin-top: 4px; word-break: break-all;">{{ secret }}</code>
+    </p>
+
+    <form method="post" style="margin-top: 16px;">
+      {% csrf_token %}
+      <div class="form-row">
+        <label>Code from your app</label>
+        <input class="form-input" type="text" name="code" inputmode="numeric"
+               pattern="[0-9 ]*" autocomplete="one-time-code" required autofocus />
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit" style="width: 100%; justify-content: center;">
+          Confirm and enable
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

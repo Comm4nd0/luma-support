@@ -58,6 +58,11 @@ class User(AbstractUser):
         related_name="users",
     )
 
+    # 2FA / TOTP: secret is Fernet-encrypted via clients.encryption so a
+    # DB dump doesn't leak codes. totp_enabled gates the verify step.
+    totp_secret_encrypted = models.TextField(blank=True)
+    totp_enabled = models.BooleanField(default=False)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -68,6 +73,17 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    # --- TOTP helpers --------------------------------------------------
+    def set_totp_secret(self, plaintext: str) -> None:
+        from clients.encryption import encrypt
+
+        self.totp_secret_encrypted = encrypt(plaintext)
+
+    def get_totp_secret(self) -> str:
+        from clients.encryption import decrypt
+
+        return decrypt(self.totp_secret_encrypted)
 
     # --- convenience predicates ---------------------------------------
     @property

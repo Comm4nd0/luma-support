@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Verify 2FA · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 480px;">
+    <h1 style="margin-top: 0;">Two-factor verification</h1>
+    <p class="muted">Enter the 6-digit code from your authenticator app.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-row">
+        <label for="id_code">Code</label>
+        <input class="form-input" type="text" name="code" id="id_code"
+               inputmode="numeric" pattern="[0-9 ]*"
+               autocomplete="one-time-code" required autofocus />
+      </div>
+      <div class="form-actions">
+        <button class="btn" type="submit" style="width: 100%; justify-content: center;">
+          Verify
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

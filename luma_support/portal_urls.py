@@ -12,6 +12,10 @@ urlpatterns = [
     path("", RedirectView.as_view(pattern_name="portal:dashboard", permanent=False)),
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(next_page="portal:login"), name="logout"),
+    # 2FA mid-login (after password, before session is granted)
+    path("2fa/setup/", views.TotpSetupView.as_view(), name="totp_setup"),
+    path("2fa/verify/", views.TotpVerifyView.as_view(), name="totp_verify"),
+    path("2fa/qr.svg", views.TotpQrView.as_view(), name="totp_qr"),
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     # Tickets
     path("tickets/", views.TicketListView.as_view(), name="ticket_list"),

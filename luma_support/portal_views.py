@@ -86,8 +86,130 @@ class LoginView(FormView):
         if user is None:
             messages.error(self.request, "Invalid email or password.")
             return self.form_invalid(form)
+
+        # Staff (admin / engineer) must have 2FA — either verify it now
+        # or enrol before we grant them a session. Client users are
+        # exempt for v1 (most are casual portal visitors).
+        if user.totp_enabled:
+            self.request.session["pending_totp_user_id"] = user.pk
+            return redirect("portal:totp_verify")
+        if user.is_engineer:  # covers admin + engineer
+            self.request.session["pending_totp_user_id"] = user.pk
+            return redirect("portal:totp_setup")
+
         login(self.request, user)
         return super().form_valid(form)
+
+
+class _PendingUserMixin:
+    """Resolve the user mid-login (after password, before TOTP)."""
+
+    def _pending_user(self, request):
+        user_id = request.session.get("pending_totp_user_id")
+        if not user_id:
+            return None
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        return User.objects.filter(pk=user_id).first()
+
+
+class TotpSetupView(_PendingUserMixin, View):
+    template_name = "portal/totp_setup.html"
+
+    def get(self, request):
+        import pyotp
+        from django.template.response import TemplateResponse
+
+        user = self._pending_user(request)
+        if user is None:
+            return redirect("portal:login")
+        secret = request.session.get("pending_totp_secret") or pyotp.random_base32()
+        request.session["pending_totp_secret"] = secret
+        uri = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=user.email, issuer_name="Luma Tech Solutions"
+        )
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "secret": secret,
+                "provisioning_uri": uri,
+                "qr_svg_url": reverse("portal:totp_qr"),
+                "user_email": user.email,
+            },
+        )
+
+    def post(self, request):
+        import pyotp
+
+        user = self._pending_user(request)
+        secret = request.session.get("pending_totp_secret")
+        if user is None or not secret:
+            return redirect("portal:login")
+        code = (request.POST.get("code") or "").strip().replace(" ", "")
+        if not pyotp.TOTP(secret).verify(code, valid_window=1):
+            messages.error(request, "Code didn't match. Try again.")
+            return self.get(request)
+        user.set_totp_secret(secret)
+        user.totp_enabled = True
+        user.save(update_fields=["totp_secret_encrypted", "totp_enabled"])
+        request.session.pop("pending_totp_user_id", None)
+        request.session.pop("pending_totp_secret", None)
+        login(request, user)
+        messages.success(request, "Two-factor auth enabled.")
+        return redirect("portal:dashboard")
+
+
+class TotpVerifyView(_PendingUserMixin, View):
+    template_name = "portal/totp_verify.html"
+
+    def get(self, request):
+        from django.template.response import TemplateResponse
+
+        if self._pending_user(request) is None:
+            return redirect("portal:login")
+        return TemplateResponse(request, self.template_name, {})
+
+    def post(self, request):
+        import pyotp
+
+        user = self._pending_user(request)
+        if user is None:
+            return redirect("portal:login")
+        secret = user.get_totp_secret()
+        code = (request.POST.get("code") or "").strip().replace(" ", "")
+        if not secret or not pyotp.TOTP(secret).verify(code, valid_window=1):
+            messages.error(request, "Invalid code.")
+            return self.get(request)
+        request.session.pop("pending_totp_user_id", None)
+        login(request, user)
+        return redirect("portal:dashboard")
+
+
+class TotpQrView(_PendingUserMixin, View):
+    """Inline SVG QR for the pending enrolment secret. Same-origin only."""
+
+    def get(self, request):
+        from django.http import HttpResponse, HttpResponseNotFound
+
+        import pyotp
+        import qrcode
+        import qrcode.image.svg as qrsvg
+
+        user = self._pending_user(request)
+        secret = request.session.get("pending_totp_secret")
+        if user is None or not secret:
+            return HttpResponseNotFound()
+        uri = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=user.email, issuer_name="Luma Tech Solutions"
+        )
+        img = qrcode.make(uri, image_factory=qrsvg.SvgPathImage, box_size=10)
+        from io import BytesIO
+
+        buf = BytesIO()
+        img.save(buf)
+        return HttpResponse(buf.getvalue(), content_type="image/svg+xml")
 
 
 # ---------------------------------------------------------------------

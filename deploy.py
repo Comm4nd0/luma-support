@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Deploy luma-support on the Hetzner host.
 
-Pulls the latest master, rebuilds the Docker images, and recreates the
-container stack. Idempotent — safe to re-run.
+Pulls the latest master, rebuilds the Docker images, runs migrations
+against the new image, and recreates the container stack. Idempotent —
+safe to re-run.
 
 Run as the user that owns the repo checkout. Requires `docker` and
 `git` on PATH; the user must be in the `docker` group so it can talk
-to the daemon without sudo. The web container runs `migrate` and
-`collectstatic` as part of its start command, so this script doesn't
-need to.
+to the daemon without sudo.
 
-    ./deploy.py                # pull, build, recreate
+Order of operations matters: migrations run in a one-off container
+using the *new* image **before** the old long-running web container
+is replaced. If a migration fails, the old code keeps serving traffic
+and the deploy aborts cleanly.
+
+    ./deploy.py                # pull, build, migrate, recreate
     ./deploy.py --no-pull      # rebuild current checkout
     ./deploy.py --no-build     # restart with existing images
+    ./deploy.py --no-migrate   # skip the explicit migrate step
     ./deploy.py --prune        # also clean dangling images
 """
 from __future__ import annotations
@@ -81,6 +86,11 @@ def parse_args() -> argparse.Namespace:
         "--no-build", action="store_true", help="Skip the docker image rebuild."
     )
     p.add_argument(
+        "--no-migrate",
+        action="store_true",
+        help="Skip the explicit migrate step (the web container still migrates on start).",
+    )
+    p.add_argument(
         "--prune",
         action="store_true",
         help="Run `docker image prune -f` after the restart.",
@@ -119,6 +129,18 @@ def main() -> int:
 
         step("Rebuilding the application image")
         run(compose + ["build", "--pull"], cwd=REPO_ROOT)
+
+    if not args.no_migrate:
+        step("Running migrations with the new image")
+        # One-off container, auto-removed. depends_on=postgres healthcheck in
+        # compose.yml means this waits for the DB before running. If this
+        # exits non-zero the deploy aborts and the old web container keeps
+        # serving — we never replace it with broken code.
+        run(
+            compose
+            + ["run", "--rm", "web", "python", "manage.py", "migrate", "--noinput"],
+            cwd=REPO_ROOT,
+        )
 
     step("Recreating containers")
     # `up -d` recreates only services whose image or config changed; --remove-orphans

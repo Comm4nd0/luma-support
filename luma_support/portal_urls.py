@@ -83,6 +83,8 @@ urlpatterns = [
     ),
     # CSAT (public, tokenized — no auth)
     path("csat/<str:token>/", views.CsatSubmitView.as_view(), name="csat_submit"),
+    # Client-facing: your systems with health status
+    path("my-services/", views.MyServicesView.as_view(), name="my_services"),
     # Audit log (admin only)
     path("audit/", views.AuditLogListView.as_view(), name="audit_log"),
     # Billing (admin only — gating enforced inside the views)

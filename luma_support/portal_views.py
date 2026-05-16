@@ -825,6 +825,48 @@ class MaintenanceScheduleDeleteView(StaffRequiredMixin, View):
 
 
 # ---------------------------------------------------------------------
+# My services (client-facing — current user's systems with health)
+# ---------------------------------------------------------------------
+
+
+class MyServicesView(LoginRequiredMixin, View):
+    template_name = "portal/my_services.html"
+
+    def get(self, request):
+        from django.template.response import TemplateResponse
+
+        if request.user.client_id is None:
+            messages.info(request, "Your account isn't linked to a client.")
+            return redirect("portal:dashboard")
+
+        systems = (
+            System.objects.filter(client_id=request.user.client_id)
+            .order_by("name")
+        )
+
+        # Recent open tickets touching each system, so clients can see
+        # what's already being worked on.
+        recent_tickets = (
+            Ticket.objects.filter(
+                client_id=request.user.client_id,
+                system__isnull=False,
+            )
+            .exclude(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
+            .select_related("system")
+            .order_by("-created_at")[:10]
+        )
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "systems": systems,
+                "recent_tickets": recent_tickets,
+                "active": "my_services",
+            },
+        )
+
+
+# ---------------------------------------------------------------------
 # Audit log (admin only)
 # ---------------------------------------------------------------------
 

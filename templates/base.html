@@ -27,7 +27,11 @@
     <nav class="nav">
       <a href="{% url 'portal:dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
       <a href="{% url 'portal:ticket_list' %}" class="{% if active == 'tickets' %}active{% endif %}">Tickets</a>
-      <a href="{% url 'portal:client_list' %}" class="{% if active == 'clients' %}active{% endif %}">Clients</a>
+      {% if user.is_client and user.client_id %}
+        <a href="{% url 'portal:my_services' %}" class="{% if active == 'my_services' %}active{% endif %}">My services</a>
+      {% else %}
+        <a href="{% url 'portal:client_list' %}" class="{% if active == 'clients' %}active{% endif %}">Clients</a>
+      {% endif %}
       <a href="{% url 'portal:kb_list' %}" class="{% if active == 'kb' %}active{% endif %}">Knowledge</a>
       {% if user.can_view_all %}
         <a href="{% url 'portal:schedule_list' %}" class="{% if active == 'schedules' %}active{% endif %}">Maintenance</a>

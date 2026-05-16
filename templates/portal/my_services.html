@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}My services · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>Your services</h1>
+<p class="muted">Status of the systems we manage for you.</p>
+
+<div class="grid grid-2" style="margin-top: 16px;">
+  {% for s in systems %}
+    <div class="card">
+      <div class="card-header" style="margin-bottom: 8px;">
+        <div>
+          <h3 style="margin: 0;">{{ s.name }}</h3>
+          <div class="muted" style="font-size: 12px;">{{ s.get_type_display }}</div>
+        </div>
+        <span class="pill pill-{{ s.health_status|default:'unknown' }}">
+          {{ s.get_health_status_display|default:"Unknown" }}
+        </span>
+      </div>
+      {% if s.description %}<p>{{ s.description }}</p>{% endif %}
+      <dl class="kv">
+        {% if s.devices_json.total is not None %}
+          <dt>Devices</dt>
+          <dd>{{ s.devices_json.online }} online · {{ s.devices_json.offline }} offline</dd>
+        {% endif %}
+        <dt>Last checked</dt>
+        <dd>{{ s.last_checked_at|naturaltime|default:"—" }}</dd>
+        {% if s.installed_date %}
+          <dt>Installed</dt>
+          <dd>{{ s.installed_date }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  {% empty %}
+    <div class="card muted">
+      No systems registered yet. <a href="{% url 'portal:ticket_create' %}">Open a ticket</a> if something's missing.
+    </div>
+  {% endfor %}
+</div>
+
+{% if recent_tickets %}
+<div class="card" style="margin-top: 20px;">
+  <h2>Open tickets touching these systems</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>System</th><th>Subject</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for t in recent_tickets %}
+        <tr>
+          <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
+          <td>{{ t.system.name|default:"—" }}</td>
+          <td>{{ t.subject|truncatechars:60 }}</td>
+          <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

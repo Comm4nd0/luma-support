@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/current_user.dart';
 import '../services/push_service.dart';
+import 'widgets/luma_drawer.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
 
@@ -16,10 +17,12 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<CurrentUser>().user;
+    final isStaff = context.watch<CurrentUser>().isStaff;
     final auth = context.read<AuthService>();
     final pushToken = PushService.instance.token;
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
+      drawer: isStaff ? const LumaDrawer() : null,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

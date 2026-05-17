@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/maintenance_schedule.dart';
 import '../repositories/maintenance_repository.dart';
 import '../services/api_client.dart';
+import 'widgets/luma_drawer.dart';
 
 /// Staff-only list of recurring maintenance schedules.
 /// Parity with the portal's /schedules/ page.
@@ -67,6 +68,7 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Maintenance schedules')),
+      drawer: const LumaDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/maintenance/new');

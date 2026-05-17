@@ -7,6 +7,7 @@ import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
+import 'widgets/luma_drawer.dart';
 import 'widgets/ticket_tile.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
@@ -72,6 +73,7 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
           ),
         ],
       ),
+      drawer: const LumaDrawer(),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<_DashboardData>(
@@ -92,7 +94,7 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                   const SizedBox(height: 8),
                 ],
                 Card(
-                  margin: const EdgeInsets.only(bottom: 4),
+                  margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: const LumaIcon(PhosphorIconsDuotone.users),
                     title: const Text('Clients'),
@@ -102,41 +104,6 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                     onTap: () => context.push('/clients'),
                   ),
                 ),
-                Card(
-                  margin: const EdgeInsets.only(bottom: 4),
-                  child: ListTile(
-                    leading: const LumaIcon(PhosphorIconsDuotone.calendar),
-                    title: const Text('Maintenance schedules'),
-                    subtitle: const Text(
-                        'Recurring work that auto-generates tickets'),
-                    trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-                    onTap: () => context.push('/maintenance'),
-                  ),
-                ),
-                if (currentUser.isAdmin)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    child: ListTile(
-                      leading: const LumaIcon(PhosphorIconsDuotone.receipt),
-                      title: const Text('Billing'),
-                      subtitle: const Text(
-                          'Manage invoices and sync to Xero'),
-                      trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-                      onTap: () => context.push('/billing/invoices'),
-                    ),
-                  ),
-                if (currentUser.isAdmin)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const LumaIcon(PhosphorIconsDuotone.shieldCheck),
-                      title: const Text('Audit log'),
-                      subtitle: const Text(
-                          'Who did what — credential + billing actions'),
-                      trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-                      onTap: () => context.push('/audit'),
-                    ),
-                  ),
                 _SectionHeader(
                   'SLA warnings',
                   count: data.slaWarnings.length,

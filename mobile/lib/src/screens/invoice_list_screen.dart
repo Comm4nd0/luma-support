@@ -7,6 +7,7 @@ import '../repositories/invoices_repository.dart';
 import '../services/api_client.dart';
 import 'widgets/client_picker.dart';
 import 'widgets/invoice_tile.dart';
+import 'widgets/luma_drawer.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
 
@@ -114,6 +115,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
           ),
         ],
       ),
+      drawer: const LumaDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateMenu,
         icon: const LumaIcon(PhosphorIconsDuotone.plus),

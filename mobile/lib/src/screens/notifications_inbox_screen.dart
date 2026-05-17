@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../models/app_notification.dart';
 import '../repositories/notifications_repository.dart';
 import '../services/api_client.dart';
+import '../services/current_user.dart';
+import 'widgets/luma_drawer.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
 
@@ -51,6 +53,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isStaff = context.watch<CurrentUser>().isStaff;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Alerts'),
@@ -62,6 +65,7 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
           ),
         ],
       ),
+      drawer: isStaff ? const LumaDrawer() : null,
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<List<AppNotification>>(

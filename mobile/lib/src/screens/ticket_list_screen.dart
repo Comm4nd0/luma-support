@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
+import '../services/current_user.dart';
+import 'widgets/luma_drawer.dart';
 import 'widgets/ticket_tile.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
@@ -36,6 +38,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isStaff = context.watch<CurrentUser>().isStaff;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tickets'),
@@ -46,6 +49,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
           ),
         ],
       ),
+      drawer: isStaff ? const LumaDrawer() : null,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/tickets/new');

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/audit_log.dart';
 import '../repositories/audit_repository.dart';
 import '../services/api_client.dart';
+import 'widgets/luma_drawer.dart';
 
 /// Admin-only audit feed. Parity with the portal's /audit/ page,
 /// including filter-by-actor and filter-by-action.
@@ -53,6 +54,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Audit log')),
+      drawer: const LumaDrawer(),
       body: Column(
         children: [
           Padding(

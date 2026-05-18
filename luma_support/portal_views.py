@@ -267,6 +267,7 @@ class DashboardView(LoginRequiredMixin, View):
         # overdue invoices, upcoming maintenance.
         if request.user.can_view_all:
             from billing.models import Invoice, Payment
+            from social.models import InboxStatus, SocialAccount, SocialInboxItem
             from tickets.models import MaintenanceSchedule, TimeEntry
 
             now = timezone.now()
@@ -310,6 +311,26 @@ class DashboardView(LoginRequiredMixin, View):
                     "default_currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
                 }
             )
+
+            # Social section is hidden until Marco connects his first
+            # account — keeps the dashboard unchanged for users with no
+            # platforms wired up yet.
+            social_accounts = list(SocialAccount.objects.all())
+            if social_accounts:
+                social_inbox = (
+                    SocialInboxItem.objects.filter(status=InboxStatus.OPEN)
+                    .select_related("account")
+                    .order_by("received_at")[:10]
+                )
+                context.update(
+                    {
+                        "social_accounts": social_accounts,
+                        "social_inbox": social_inbox,
+                        "social_health_warnings": [
+                            a for a in social_accounts if a.health_status not in ("", "ok")
+                        ],
+                    }
+                )
         return TemplateResponse(request, self.template_name, context)
 
 

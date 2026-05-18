@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../models/social_account.dart';
 import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
@@ -91,6 +92,11 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
               children: [
                 if (data.stats != null) ...[
                   _KpiGrid(stats: data.stats!),
+                  const SizedBox(height: 8),
+                ],
+                if (data.stats != null &&
+                    data.stats!.socialAccounts.isNotEmpty) ...[
+                  _SocialStrip(stats: data.stats!),
                   const SizedBox(height: 8),
                 ],
                 Card(
@@ -242,4 +248,124 @@ class _EmptyHint extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Text(message, style: const TextStyle(color: Colors.grey)),
       );
+}
+
+class _SocialStrip extends StatelessWidget {
+  const _SocialStrip({required this.stats});
+  final DashboardStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final unhealthy =
+        stats.socialAccounts.where((a) => !a.isHealthy).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionHeader('Social accounts'),
+        if (unhealthy.isNotEmpty)
+          Card(
+            color: Colors.red.withValues(alpha: 0.08),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'Attention: ${unhealthy.map((a) => '${a.platformDisplay} (${a.healthStatus.isEmpty ? "unknown" : a.healthStatus})').join(' · ')}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 2.0,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          children: [
+            for (final a in stats.socialAccounts) _SocialKpiCard(account: a),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading:
+                const LumaIcon(PhosphorIconsDuotone.chatCircleDots),
+            title: const Text('Social inbox'),
+            subtitle: Text(
+              stats.socialInboxUnread == 0
+                  ? 'Inbox zero on every connected account.'
+                  : '${stats.socialInboxUnread} unanswered — DMs, mentions, comments',
+            ),
+            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+            onTap: () => context.push('/social/inbox'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SocialKpiCard extends StatelessWidget {
+  const _SocialKpiCard({required this.account});
+  final SocialAccountSummary account;
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = account.followersDelta7d;
+    final days = account.daysSinceLastPost;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              account.platformDisplay,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Text(
+                  account.followers == null
+                      ? '—'
+                      : '${account.followers}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (delta != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '${delta >= 0 ? '+' : ''}$delta / 7d',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: delta >= 0 ? Colors.green : Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              days == null
+                  ? 'No posts seen'
+                  : (days > 14
+                      ? 'Last post ${days}d ago — stale'
+                      : 'Last post ${days}d ago'),
+              style: TextStyle(
+                fontSize: 11,
+                color: (days != null && days > 14)
+                    ? Colors.redAccent
+                    : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

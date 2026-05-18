@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../models/social_account.dart';
 import '../models/ticket.dart';
 import '../models/ticket_note.dart';
 import '../services/api_client.dart';
@@ -141,6 +142,8 @@ class DashboardStats {
     required this.overdueInvoices,
     required this.maintenanceDue7d,
     required this.currency,
+    required this.socialAccounts,
+    required this.socialInboxUnread,
   });
 
   final double unbilledHours;
@@ -149,6 +152,8 @@ class DashboardStats {
   final int overdueInvoices;
   final int maintenanceDue7d;
   final String currency;
+  final List<SocialAccountSummary> socialAccounts;
+  final int socialInboxUnread;
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
         unbilledHours: (json['unbilled_hours'] as num?)?.toDouble() ?? 0,
@@ -159,5 +164,10 @@ class DashboardStats {
         maintenanceDue7d:
             (json['maintenance_due_7d'] as num?)?.toInt() ?? 0,
         currency: json['currency'] as String? ?? 'GBP',
+        socialAccounts: ((json['social_accounts'] as List?) ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(SocialAccountSummary.fromJson)
+            .toList(),
+        socialInboxUnread: (json['social_inbox_unread'] as num?)?.toInt() ?? 0,
       );
 }

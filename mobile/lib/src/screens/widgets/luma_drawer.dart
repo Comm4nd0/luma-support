@@ -50,6 +50,13 @@ class LumaDrawer extends StatelessWidget {
                 subtitle: const Text('Recurring work schedules'),
                 onTap: () => go('/maintenance'),
               ),
+            if (isStaff)
+              ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.chatCircleDots),
+                title: const Text('Social inbox'),
+                subtitle: const Text('DMs, mentions and comments'),
+                onTap: () => go('/social/inbox'),
+              ),
             if (isAdmin)
               ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.receipt),

@@ -38,6 +38,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Flutter 3.44 auto-enables Swift Package Manager and tries to add the
+  # Firebase plugins via SPM. Xcode Cloud disables xcodebuild's automatic
+  # dependency resolution, so without a committed Package.resolved the
+  # build dies on first integration. We already ship a Podfile.lock, so
+  # stay on CocoaPods for every plugin until the Firebase SPM tooling
+  # stabilises and we can commit a Package.resolved.
+  disable-swift-package-manager: true
 
 # App icon configuration. Marco drops a 1024x1024 PNG at
 # `assets/icon/icon.png` then runs:

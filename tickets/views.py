@@ -195,6 +195,28 @@ class TicketViewSet(viewsets.ModelViewSet):
             next_run_at__lte=timezone.localdate() + timedelta(days=7),
         ).count()
 
+        # Social accounts roll-up — kept inline (rather than its own
+        # endpoint) so the mobile dashboard hydrates in one round trip.
+        from social.models import InboxStatus, SocialAccount, SocialInboxItem
+
+        social_accounts = [
+            {
+                "id": a.pk,
+                "platform": a.platform,
+                "platform_display": a.get_platform_display(),
+                "display_name": a.display_name,
+                "health_status": a.health_status,
+                "followers": a.followers,
+                "followers_delta_7d": a.followers_delta_7d,
+                "days_since_last_post": a.days_since_last_post,
+                "last_error": a.last_error,
+            }
+            for a in SocialAccount.objects.all()
+        ]
+        social_inbox_unread = SocialInboxItem.objects.filter(
+            status=InboxStatus.OPEN
+        ).count()
+
         return Response(
             {
                 "unbilled_hours": float(
@@ -205,6 +227,8 @@ class TicketViewSet(viewsets.ModelViewSet):
                 "overdue_invoices": overdue,
                 "maintenance_due_7d": maintenance_due,
                 "currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
+                "social_accounts": social_accounts,
+                "social_inbox_unread": social_inbox_unread,
             }
         )
 

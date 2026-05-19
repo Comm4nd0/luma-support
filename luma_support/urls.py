@@ -19,6 +19,7 @@ api_v1 = [
     path("tickets/", include("tickets.urls")),
     path("knowledge/", include("knowledge.urls")),
     path("notifications/", include("notifications.urls")),
+    path("social/", include("social.urls")),
 ]
 
 urlpatterns = [

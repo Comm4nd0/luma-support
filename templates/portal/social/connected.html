@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Social accounts · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>Social accounts</h1>
+
+<div class="grid grid-3" style="margin-bottom: 16px;">
+  <div class="card">
+    <div class="card-title">LinkedIn Page</div>
+    {% if configured.linkedin_page %}
+      <a class="btn" href="{% url 'portal:social_connect' 'linkedin_page' %}">Connect</a>
+    {% else %}
+      <p class="muted">Set <code>LINKEDIN_CLIENT_ID</code> / <code>_SECRET</code> first.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Facebook + Instagram</div>
+    {% if configured.facebook_page %}
+      <a class="btn" href="{% url 'portal:social_connect' 'meta' %}">Connect via Meta</a>
+      <p class="muted" style="font-size: 12px; margin-top: 8px;">
+        One Meta flow connects both your Facebook Page and the Instagram Business account linked to it.
+      </p>
+    {% else %}
+      <p class="muted">Set <code>META_APP_ID</code> / <code>_SECRET</code> first.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Refresh cadence</div>
+    <p class="muted">Inbox + KPIs poll every 20 min. Daily snapshot at 04:15.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>Connected accounts</h2></div>
+  {% if accounts %}
+    <table class="table">
+      <thead><tr>
+        <th>Platform</th><th>Account</th><th>Health</th><th>Followers</th>
+        <th>Last post</th><th>Last checked</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for a in accounts %}
+          <tr>
+            <td>{{ a.get_platform_display }}</td>
+            <td>{{ a.display_name|default:a.external_id }}</td>
+            <td>
+              <span class="pill pill-{{ a.health_status|default:'unknown' }}">
+                {{ a.get_health_status_display|default:"unknown" }}
+              </span>
+              {% if a.last_error %}<br><span class="muted" style="font-size: 11px;">{{ a.last_error|truncatechars:80 }}</span>{% endif %}
+            </td>
+            <td>{{ a.followers|default:"—"|intcomma }}</td>
+            <td>{% if a.last_post_at %}{{ a.last_post_at|naturaltime }}{% else %}—{% endif %}</td>
+            <td>{% if a.last_checked_at %}{{ a.last_checked_at|naturaltime }}{% else %}never{% endif %}</td>
+            <td>
+              <form method="post" action="{% url 'portal:social_disconnect' a.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="btn btn-ghost btn-sm" type="submit"
+                        onclick="return confirm('Disconnect {{ a.display_name|default:a.external_id|escapejs }}?')">Disconnect</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No accounts connected yet. Connect one above to see KPIs and the inbox on the dashboard.</p>
+  {% endif %}
+</div>
+{% endblock %}

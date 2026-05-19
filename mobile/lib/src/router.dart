@@ -24,6 +24,7 @@ import 'screens/payments_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
+import 'screens/social_inbox_screen.dart';
 import 'screens/ticket_create_screen.dart';
 import 'screens/ticket_detail_screen.dart';
 import 'screens/ticket_list_screen.dart';
@@ -221,6 +222,11 @@ GoRouter buildAppRouter({
         path: '/audit',
         builder: (_, __) =>
             const EngineerShell(child: AuditLogScreen()),
+      ),
+      GoRoute(
+        path: '/social/inbox',
+        builder: (_, __) =>
+            const EngineerShell(child: SocialInboxScreen()),
       ),
     ],
   );

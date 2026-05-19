@@ -56,6 +56,13 @@ class ApiPaths {
   static const String payments = '/billing/payments/';
   static String payment(int id) => '/billing/payments/$id/';
 
+  // Social (Luma's own LinkedIn / FB Page / IG Business)
+  static const String socialAccounts = '/social/accounts/';
+  static const String socialInbox = '/social/inbox/';
+  static String socialInboxDismiss(int id) => '/social/inbox/$id/dismiss/';
+  static String socialInboxConvert(int id) =>
+      '/social/inbox/$id/convert-to-ticket/';
+
   // Notifications + devices
   static const String notifications = '/notifications/notifications/';
   static String notification(int id) => '/notifications/notifications/$id/';

@@ -5,6 +5,7 @@ from django.views.generic import RedirectView
 
 from billing import portal_urls as billing_portal_urls
 from luma_support import portal_views as views
+from social import portal_urls as social_portal_urls
 
 app_name = "portal"
 
@@ -114,4 +115,6 @@ urlpatterns = [
     path("audit/", views.AuditLogListView.as_view(), name="audit_log"),
     # Billing (admin only — gating enforced inside the views)
     *billing_portal_urls.urlpatterns,
+    # Social (staff only — gating enforced inside the views)
+    *social_portal_urls.urlpatterns,
 ]

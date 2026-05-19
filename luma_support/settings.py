@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "knowledge",
     "notifications",
     "system",
+    "social",
 ]
 
 MIDDLEWARE = [
@@ -241,6 +242,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "system.tasks.refresh_unifi_devices",
         "schedule": timedelta(minutes=30),
     },
+    "refresh-social-accounts": {
+        "task": "social.tasks.refresh_social_accounts",
+        "schedule": timedelta(minutes=20),
+    },
+    "refresh-social-kpis-daily": {
+        "task": "social.tasks.refresh_social_kpis_daily",
+        "schedule": crontab(hour=4, minute=15),
+    },
     "send-monthly-reports": {
         "task": "tickets.tasks.send_monthly_reports",
         "schedule": crontab(hour=7, minute=0, day_of_month=1),
@@ -320,6 +329,37 @@ XERO_SCOPES = config(
 # the endpoint POST /api/v1/billing/webhooks/stripe/.
 STRIPE_API_KEY = config("STRIPE_API_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
+# --- Social accounts (Luma's own LinkedIn / FB / IG) --------------------
+# Each provider gates on its credentials being non-empty — the
+# refresh_social_accounts task skips accounts whose platform has no
+# configured client_id, the same way Stripe / Anthropic / IMAP gate.
+#
+# LinkedIn: requires a Marketing Developer Platform app for posts/inbox
+# beyond OIDC; without MDP, Page mentions/comments only (no DMs).
+# Meta (Facebook + Instagram): single FB app, shared client_id/secret;
+# the IG Business account is reached via its linked Page token.
+LINKEDIN_CLIENT_ID = config("LINKEDIN_CLIENT_ID", default="")
+LINKEDIN_CLIENT_SECRET = config("LINKEDIN_CLIENT_SECRET", default="")
+LINKEDIN_REDIRECT_URI = config(
+    "LINKEDIN_REDIRECT_URI",
+    default=f"{SITE_URL}/portal/social/callback/linkedin_page/",
+)
+LINKEDIN_SCOPES = config(
+    "LINKEDIN_SCOPES",
+    default="r_organization_social r_basicprofile",
+)
+
+META_APP_ID = config("META_APP_ID", default="")
+META_APP_SECRET = config("META_APP_SECRET", default="")
+META_REDIRECT_URI = config(
+    "META_REDIRECT_URI",
+    default=f"{SITE_URL}/portal/social/callback/meta/",
+)
+META_SCOPES = config(
+    "META_SCOPES",
+    default="pages_show_list,pages_read_engagement,pages_messaging,instagram_basic,instagram_manage_comments,instagram_manage_messages",
+)
 
 # --- Anthropic (Claude) --------------------------------------------------
 # Powers KB article suggestions on ticket-create and AI-drafted replies on

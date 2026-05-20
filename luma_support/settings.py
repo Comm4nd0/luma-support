@@ -268,6 +268,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "clients.tasks.check_care_plan_renewals",
         "schedule": crontab(hour=8, minute=15),
     },
+    "send-nps-survey": {
+        "task": "clients.tasks.send_nps_survey",
+        "schedule": crontab(
+            hour=9, minute=0, day_of_month=1, month_of_year="1,4,7,10"
+        ),
+    },
 }
 
 # --- Email --------------------------------------------------------------

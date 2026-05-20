@@ -73,6 +73,13 @@ class Client(models.Model):
         return Decimal(str(settings.DEFAULT_HOURLY_RATE))
 
 
+def _nps_token() -> str:
+    """URL-safe random token for one-shot NPS links."""
+    import secrets
+
+    return secrets.token_urlsafe(32)
+
+
 def _referral_code() -> str:
     """Short, human-shareable referral code. Uppercase + digits, no
     confusing letters (O/0/I/1 stripped). Uniqueness checked at save."""
@@ -131,6 +138,43 @@ class ReferralCode(models.Model):
         return cls.objects.create(
             client=client, code=f"{_referral_code()}-{client.pk}"
         )
+
+
+class NpsResponse(models.Model):
+    """Quarterly Net Promoter Score survey.
+
+    A row is created per `client` per quarter when the
+    `send_nps_survey` beat task fires. The recipient hits
+    `/nps/<token>/` to submit a single 0-10 score (and optional
+    comment) — once `score` is non-null the token is consumed.
+    """
+
+    client = models.ForeignKey(
+        "Client", on_delete=models.CASCADE, related_name="nps_responses"
+    )
+    token = models.CharField(max_length=64, unique=True, default=_nps_token)
+    score = models.PositiveSmallIntegerField(null=True, blank=True)
+    comment = models.TextField(blank=True)
+    quarter_label = models.CharField(max_length=12)  # e.g. "2026-Q2"
+    sent_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-sent_at"]
+        unique_together = ("client", "quarter_label")
+
+    def __str__(self) -> str:
+        return f"NPS {self.quarter_label} {self.client.name} ({self.score or 'pending'})"
+
+    @property
+    def category(self) -> str | None:
+        if self.score is None:
+            return None
+        if self.score >= 9:
+            return "promoter"
+        if self.score >= 7:
+            return "passive"
+        return "detractor"
 
 
 class Contact(models.Model):

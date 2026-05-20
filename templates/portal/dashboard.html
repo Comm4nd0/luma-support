@@ -152,6 +152,29 @@
     {% endif %}
   </div>
 
+  {% if at_risk_clients %}
+  <div class="card">
+    <div class="card-header">
+      <h2>Clients at risk</h2>
+      <a class="btn btn-sm btn-ghost" href="{% url 'portal:client_list' %}">All clients</a>
+    </div>
+    <table class="table">
+      <thead><tr><th>Client</th><th>Score</th><th>Why</th></tr></thead>
+      <tbody>
+        {% for row in at_risk_clients %}
+          <tr>
+            <td><a href="{% url 'portal:client_detail' row.client.pk %}">{{ row.client.name }}</a></td>
+            <td><span class="pill pill-health-{{ row.score.band }}">{{ row.score.score }}</span></td>
+            <td class="muted" style="font-size: 12px;">
+              {{ row.score.reasons|join:" · "|default:"—" }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <h2>Recent activity</h2>

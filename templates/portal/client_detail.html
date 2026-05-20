@@ -9,6 +9,7 @@
       {{ client.company }} ·
       <span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }} care plan</span> ·
       {{ client.get_customer_type_display }}
+      {% if health %} · <span class="pill pill-health-{{ health.band }}" title="{{ health.reasons|join:' · ' }}">Health {{ health.score }}</span>{% endif %}
     </div>
   </div>
   <div class="toolbar">

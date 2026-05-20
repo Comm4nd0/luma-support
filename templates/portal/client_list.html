@@ -15,6 +15,7 @@
           <th>Name</th>
           <th>Company</th>
           <th>Care plan</th>
+          {% if user.can_view_all %}<th>Health</th>{% endif %}
           <th>Renewal</th>
           <th>Open tickets</th>
           <th>Email</th>
@@ -26,12 +27,15 @@
             <td><a href="{% url 'portal:client_detail' c.pk %}">{{ c.name }}</a></td>
             <td>{{ c.company|default:"—" }}</td>
             <td><span class="pill pill-tier-{{ c.care_plan_tier }}">{{ c.get_care_plan_tier_display }}</span></td>
+            {% if user.can_view_all %}
+              <td>{% if c.health %}<span class="pill pill-health-{{ c.health.band }}">{{ c.health.score }}</span>{% else %}—{% endif %}</td>
+            {% endif %}
             <td>{{ c.care_plan_renewal|default:"—" }}</td>
             <td>{{ c.open_tickets }}</td>
             <td>{{ c.email|default:"—" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</td></tr>
+          <tr><td colspan="7" class="muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</td></tr>
         {% endfor %}
       </tbody>
     </table>

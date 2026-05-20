@@ -1,6 +1,7 @@
 """Portal routes for the lead pipeline (mounted at the project root)."""
 from django.urls import path
 
+from clients.nps_views import NpsSubmitView
 from clients.referrals_views import ReferralDashboardView, ReferralRedirectView
 
 from . import portal_views as views
@@ -14,6 +15,7 @@ urlpatterns = [
         ReferralRedirectView.as_view(),
         name="referral_redirect",
     ),
+    path("nps/<str:token>/", NpsSubmitView.as_view(), name="nps_submit"),
     # Authenticated, client-facing "Refer a friend" dashboard.
     path("refer/", ReferralDashboardView.as_view(), name="refer"),
     path("leads/", views.LeadListView.as_view(), name="lead_list"),

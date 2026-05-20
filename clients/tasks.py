@@ -96,6 +96,57 @@ def _bucket_for(days_until: int) -> str | None:
     return None
 
 
+@shared_task
+def send_nps_survey():
+    """Send a once-per-quarter NPS link to each active client's primary contact.
+
+    Quarter key is `YYYY-QN` so the unique constraint on
+    `NpsResponse(client, quarter_label)` makes the task idempotent —
+    re-running on the same day is a no-op.
+    """
+    from django.conf import settings
+    from django.core.mail import send_mail
+
+    from .models import CarePlanTier, Client, NpsResponse
+
+    today = timezone.localdate()
+    quarter = (today.month - 1) // 3 + 1
+    label = f"{today.year}-Q{quarter}"
+
+    sent = 0
+    qs = Client.objects.exclude(care_plan_tier=CarePlanTier.NONE).prefetch_related(
+        "contacts"
+    )
+    for client in qs:
+        if NpsResponse.objects.filter(client=client, quarter_label=label).exists():
+            continue
+        primary = client.contacts.filter(is_primary=True).first()
+        recipient = (primary.email if primary else "") or client.email
+        if not recipient:
+            continue
+
+        resp = NpsResponse.objects.create(client=client, quarter_label=label)
+        link = f"{settings.SITE_URL.rstrip('/')}/nps/{resp.token}/"
+        subject = "Quick favour — how are we doing?"
+        body = (
+            f"Hi {primary.name if primary else client.name},\n\n"
+            f"It's been a few months and I'd love to know how we're "
+            f"doing. Two seconds — give us a 0-10 here:\n\n{link}\n\n"
+            f"Thanks for trusting us with your tech.\n"
+            f"Marco — Luma Tech Solutions\n"
+        )
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient],
+            fail_silently=False,
+        )
+        sent += 1
+
+    return f"nps-survey: {sent} sent for {label}"
+
+
 def _already_alerted(client, bucket: str) -> bool:
     """Was the same bucket alerted in the trailing 25 hours?
 

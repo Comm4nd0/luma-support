@@ -299,6 +299,20 @@ class DashboardView(LoginRequiredMixin, View):
                 next_run_at__lte=timezone.localdate() + timedelta(days=7),
             ).count()
 
+            from clients.health import clients_at_risk
+
+            at_risk = clients_at_risk(limit=5)
+            risk_clients = {
+                c.pk: c
+                for c in Client.objects.filter(
+                    pk__in=[s.client_id for s in at_risk]
+                )
+            }
+            at_risk_rows = [
+                {"score": s, "client": risk_clients[s.client_id]}
+                for s in at_risk
+                if s.client_id in risk_clients
+            ]
             context.update(
                 {
                     "unbilled_hours": (Decimal(unbilled_minutes) / Decimal(60)).quantize(
@@ -308,6 +322,7 @@ class DashboardView(LoginRequiredMixin, View):
                     "mtd_paid": mtd_paid,
                     "overdue_count": overdue_count,
                     "schedules_due": schedules_due,
+                    "at_risk_clients": at_risk_rows,
                     "default_currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
                 }
             )
@@ -643,6 +658,15 @@ class ClientListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "clients"
+        # Staff users see a health pill alongside each client — attach the
+        # score to each row so the template can reference c.health.score.
+        if self.request.user.can_view_all:
+            from clients.health import score_clients
+
+            page = ctx.get("clients") or []
+            by_id = {h.client_id: h for h in score_clients(page)}
+            for c in page:
+                c.health = by_id.get(c.pk)
         return ctx
 
 
@@ -765,6 +789,10 @@ class ClientDetailView(LoginRequiredMixin, DetailView):
             "-created_at"
         )[:50]
         ctx["active"] = "clients"
+        if self.request.user.can_view_all:
+            from clients.health import score_client
+
+            ctx["health"] = score_client(self.object)
         return ctx
 
 

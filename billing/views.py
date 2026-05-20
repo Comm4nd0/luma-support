@@ -1,15 +1,46 @@
 from rest_framework import mixins, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from clients.models import Client
 
+from . import metrics
 from .models import Invoice, Payment, XeroConnection
 from .permissions import IsAdmin
 from .serializers import InvoiceSerializer, PaymentSerializer
 from .services import generate_time_invoice
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def revenue_metrics(request):
+    """Admin-only revenue snapshot for the mobile dashboard."""
+    history = metrics.mrr_history(months=12)
+    return Response(
+        {
+            "current_mrr": str(metrics.current_mrr()),
+            "arr": str(metrics.arr()),
+            "mrr_by_tier": {
+                k: str(v) for k, v in metrics.mrr_by_tier().items()
+            },
+            "gross_churn_90d": str(metrics.gross_churn_rate(window_days=90)),
+            "nrr_12mo": str(metrics.net_revenue_retention(months=12)),
+            "history": [
+                {
+                    "month": b.month.isoformat(),
+                    "mrr": str(b.mrr),
+                    "new": str(b.new_mrr),
+                    "expansion": str(b.expansion_mrr),
+                    "contraction": str(b.contraction_mrr),
+                    "churn": str(b.churn_mrr),
+                    "active": b.active_clients,
+                }
+                for b in history
+            ],
+        }
+    )
 
 
 # Manual transitions the API permits. Anything else (e.g. → paid) is owned

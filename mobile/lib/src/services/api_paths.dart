@@ -70,6 +70,7 @@ class ApiPaths {
       '/billing/invoices/generate-from-time/';
   static const String payments = '/billing/payments/';
   static String payment(int id) => '/billing/payments/$id/';
+  static const String revenueMetrics = '/billing/revenue/';
 
   // Social (Luma's own LinkedIn / FB Page / IG Business)
   static const String socialAccounts = '/social/accounts/';

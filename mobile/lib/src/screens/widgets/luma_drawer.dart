@@ -80,6 +80,13 @@ class LumaDrawer extends StatelessWidget {
               ),
             if (isAdmin)
               ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.chartLineUp),
+                title: const Text('Revenue'),
+                subtitle: const Text('MRR, ARR, churn'),
+                onTap: () => go('/revenue'),
+              ),
+            if (isAdmin)
+              ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.shieldCheck),
                 title: const Text('Audit log'),
                 subtitle: const Text('Credential + billing actions'),

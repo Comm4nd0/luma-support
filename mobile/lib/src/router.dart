@@ -20,6 +20,7 @@ import 'screens/login_screen.dart';
 import 'screens/quote_detail_screen.dart';
 import 'screens/quote_list_screen.dart';
 import 'screens/refer_screen.dart';
+import 'screens/revenue_dashboard_screen.dart';
 import 'screens/maintenance_form_screen.dart';
 import 'screens/maintenance_list_screen.dart';
 import 'models/client.dart';
@@ -69,6 +70,10 @@ GoRouter buildAppRouter({
       }
       // Audit feed is admin-only, maintenance is staff-only.
       if (state.matchedLocation.startsWith('/audit') &&
+          !currentUser.isAdmin) {
+        return '/';
+      }
+      if (state.matchedLocation.startsWith('/revenue') &&
           !currentUser.isAdmin) {
         return '/';
       }
@@ -287,6 +292,11 @@ GoRouter buildAppRouter({
               ? const ClientShell(child: ReferScreen())
               : const EngineerShell(child: ReferScreen());
         },
+      ),
+      GoRoute(
+        path: '/revenue',
+        builder: (_, __) =>
+            const EngineerShell(child: RevenueDashboardScreen()),
       ),
     ],
   );

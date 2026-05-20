@@ -3,6 +3,11 @@ from django.urls import path
 from . import portal_views
 
 urlpatterns = [
+    path(
+        "dashboard/revenue/",
+        portal_views.RevenueDashboardView.as_view(),
+        name="revenue_dashboard",
+    ),
     path("billing/", portal_views.InvoiceListView.as_view(), name="invoice_list"),
     path(
         "billing/invoices/new/",

@@ -264,6 +264,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "quotes.tasks.expire_stale_quotes",
         "schedule": crontab(hour=3, minute=15),
     },
+    "care-plan-renewal-reminders": {
+        "task": "clients.tasks.check_care_plan_renewals",
+        "schedule": crontab(hour=8, minute=15),
+    },
 }
 
 # --- Email --------------------------------------------------------------

@@ -10,4 +10,5 @@ router.register("payments", views.PaymentViewSet, basename="payment")
 
 urlpatterns = router.urls + [
     path("webhooks/stripe/", StripeWebhookView.as_view(), name="stripe-webhook"),
+    path("revenue/", views.revenue_metrics, name="revenue-metrics"),
 ]

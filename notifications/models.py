@@ -38,6 +38,7 @@ class Notification(models.Model):
         SOCIAL_ALERT = "social_alert", "Social account alert"
         LEAD_REMINDER = "lead_reminder", "Lead follow-up reminder"
         REFERRAL_CREDIT = "referral_credit", "Referral credit"
+        CARE_PLAN_RENEWAL = "care_plan_renewal", "Care plan renewal reminder"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

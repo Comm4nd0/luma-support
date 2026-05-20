@@ -22,6 +22,37 @@ from .permissions import AdminPortalMixin
 from .services import generate_time_invoice
 
 
+class RevenueDashboardView(AdminPortalMixin, View):
+    """Admin-only revenue overview — current MRR, ARR, churn, 12-month chart."""
+
+    template_name = "portal/revenue_dashboard.html"
+
+    def get(self, request):
+        from decimal import Decimal
+
+        from django.template.response import TemplateResponse
+
+        from . import metrics
+
+        history = metrics.mrr_history(months=12)
+        mrr_now = metrics.current_mrr()
+        max_mrr = max((b.mrr for b in history), default=Decimal("0"))
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "revenue",
+                "current_mrr": mrr_now,
+                "arr": metrics.arr(),
+                "mrr_by_tier": metrics.mrr_by_tier(),
+                "history": history,
+                "max_mrr": max_mrr if max_mrr > 0 else Decimal("1"),
+                "gross_churn": metrics.gross_churn_rate(window_days=90),
+                "nrr": metrics.net_revenue_retention(months=12),
+            },
+        )
+
+
 class InvoiceListView(AdminPortalMixin, ListView):
     model = Invoice
     template_name = "portal/billing/invoice_list.html"

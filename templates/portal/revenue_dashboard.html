@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Revenue · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Recurring revenue</h1>
+</div>
+
+<div class="detail-grid" style="grid-template-columns: 2fr 1fr;">
+  <div>
+    <div class="card">
+      <h2>12-month MRR</h2>
+      <div style="display: flex; align-items: end; gap: 6px; height: 160px; padding-top: 8px;">
+        {% for b in history %}
+          {% widthratio b.mrr max_mrr 140 as bar_height %}
+          <div title="{{ b.month|date:'M Y' }}: £{{ b.mrr }}"
+               style="flex: 1; display: flex; flex-direction: column; align-items: stretch; justify-content: end; gap: 2px;">
+            <div style="background: var(--primary); height: {{ bar_height }}px; min-height: 2px; border-radius: 4px 4px 0 0;"></div>
+            <div class="muted" style="font-size: 10px; text-align: center;">{{ b.month|date:"M" }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>Month-by-month detail</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>MRR</th>
+            <th>Active</th>
+            <th>New</th>
+            <th>Expansion</th>
+            <th>Contraction</th>
+            <th>Churn</th>
+            <th>Net new</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in history %}
+            <tr>
+              <td>{{ b.month|date:"M Y" }}</td>
+              <td>£{{ b.mrr }}</td>
+              <td>{{ b.active_clients }}</td>
+              <td>£{{ b.new_mrr }}</td>
+              <td>£{{ b.expansion_mrr }}</td>
+              <td>£{{ b.contraction_mrr }}</td>
+              <td {% if b.churn_mrr %}class="sla-breach"{% endif %}>£{{ b.churn_mrr }}</td>
+              <td>£{{ b.net_new_mrr }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Current MRR</h3>
+      <p style="font-size: 36px; margin: 12px 0; font-weight: 700;">£{{ current_mrr }}</p>
+      <p class="muted" style="font-size: 13px;">
+        ARR: £{{ arr }}
+      </p>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>MRR by tier</h3>
+      <table class="table">
+        <tbody>
+          {% for tier, total in mrr_by_tier.items %}
+            <tr><td><span class="pill pill-tier-{{ tier }}">{{ tier }}</span></td><td>£{{ total }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Health</h3>
+      <dl class="kv">
+        <dt>Gross churn (90d)</dt><dd>{% widthratio gross_churn 1 100 %}%</dd>
+        <dt>Net rev retention</dt><dd>{% widthratio nrr 1 100 %}%</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -44,7 +44,8 @@ flutter:
   # build dies on first integration. We already ship a Podfile.lock, so
   # stay on CocoaPods for every plugin until the Firebase SPM tooling
   # stabilises and we can commit a Package.resolved.
-  disable-swift-package-manager: true
+  config:
+    enable-swift-package-manager: false
 
 # App icon configuration. Marco drops a 1024x1024 PNG at
 # `assets/icon/icon.png` then runs:

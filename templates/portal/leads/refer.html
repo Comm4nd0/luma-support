@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Refer a friend · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>Refer a friend</h1>
+
+{% if client %}
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <h2>Your link</h2>
+      <p class="muted" style="margin-top: -4px;">
+        Share this with friends, family, neighbours — anyone who needs Wi-Fi,
+        smart home, websites or CCTV sorted properly. We'll credit your
+        account £{{ credit }} every time someone you sent in becomes a client.
+      </p>
+      <p style="word-break: break-all; font-size: 16px; margin: 12px 0;">
+        <strong>{{ share_link }}</strong>
+      </p>
+      <p class="muted" style="font-size: 12px;">Your code: <code>{{ code.code }}</code></p>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>People you've referred</h2>
+      <table class="table">
+        <thead><tr><th>Name</th><th>Stage</th><th>Joined</th></tr></thead>
+        <tbody>
+          {% for lead in referrals %}
+          <tr>
+            <td>{{ lead.name }}</td>
+            <td><span class="pill pill-{{ lead.stage }}">{{ lead.get_stage_display }}</span></td>
+            <td>{{ lead.created_at|date:"Y-m-d" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="muted">No referrals yet — share the link above!</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Your credit</h3>
+      <p style="font-size: 32px; margin: 12px 0; font-weight: 700;">
+        £{{ code.credit_balance }}
+      </p>
+      <p class="muted" style="font-size: 13px;">
+        Applied automatically to your next monthly invoice. Lifetime
+        credit earned: £{{ code.lifetime_credit }}.
+      </p>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card" style="max-width: 560px;">
+  <p>Your account isn't linked to a client record, so there's no
+     referral code to show yet. Reply to support@lumatechsolutions.co.uk
+     and we'll sort it.</p>
+</div>
+{% endif %}
+{% endblock %}

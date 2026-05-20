@@ -37,6 +37,7 @@ class Notification(models.Model):
         NEW_TICKET = "new_ticket", "New ticket"
         SOCIAL_ALERT = "social_alert", "Social account alert"
         LEAD_REMINDER = "lead_reminder", "Lead follow-up reminder"
+        REFERRAL_CREDIT = "referral_credit", "Referral credit"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

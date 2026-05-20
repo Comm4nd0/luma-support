@@ -1,7 +1,15 @@
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import Client, Contact, System
-from .serializers import ClientSerializer, ContactSerializer, SystemSerializer
+from .models import Client, Contact, ReferralCode, System
+from .serializers import (
+    ClientSerializer,
+    ContactSerializer,
+    ReferralCodeSerializer,
+    SystemSerializer,
+)
 
 
 def _scope_to_user_client(qs, user, client_field: str = "client_id"):
@@ -43,3 +51,21 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_referral_code(request):
+    """Return the requesting user's client's referral code + stats."""
+    user = request.user
+    client = getattr(user, "client", None)
+    if client is None:
+        return Response(
+            {"detail": "Account not linked to a client."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    code = ReferralCode.for_client(client)
+    share_link = request.build_absolute_uri(f"/r/{code.code}/")
+    data = ReferralCodeSerializer(code).data
+    data["share_link"] = share_link
+    return Response(data)

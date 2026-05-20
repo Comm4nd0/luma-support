@@ -205,6 +205,15 @@ class Lead(models.Model):
                 body=f"Converted to client #{client.pk}",
                 actor=by_user,
             )
+        # Credit the referrer (if any) — pulled in lazily so the leads
+        # app stays independent of clients' optional referral feature.
+        if self.referring_client_id:
+            try:
+                from clients.referrals import credit_referrer
+
+                credit_referrer(self)
+            except Exception:
+                pass
         return client
 
 

@@ -73,6 +73,66 @@ class Client(models.Model):
         return Decimal(str(settings.DEFAULT_HOURLY_RATE))
 
 
+def _referral_code() -> str:
+    """Short, human-shareable referral code. Uppercase + digits, no
+    confusing letters (O/0/I/1 stripped). Uniqueness checked at save."""
+    import secrets
+
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "LUMA-" + "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+class ReferralCode(models.Model):
+    """A client's word-of-mouth referral code.
+
+    Created lazily the first time the client opens their "Refer a
+    friend" page (or via ``ReferralCode.for_client(client)``). The
+    balance grows when a referred Lead converts (``referrals.credit``)
+    and shrinks when monthly contract invoices apply the credit.
+    """
+
+    client = models.OneToOneField(
+        "Client",
+        on_delete=models.CASCADE,
+        related_name="referral_code",
+    )
+    code = models.CharField(
+        max_length=32, unique=True, default=_referral_code
+    )
+    credit_balance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0
+    )
+    lifetime_credit = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-credit_balance"]
+
+    def __str__(self) -> str:
+        return f"{self.code} → {self.client.name}"
+
+    @classmethod
+    def for_client(cls, client) -> "ReferralCode":
+        """Return (or create) the client's referral code, retrying on collision."""
+        existing = cls.objects.filter(client=client).first()
+        if existing:
+            return existing
+        from django.db import IntegrityError
+
+        for _ in range(8):
+            try:
+                return cls.objects.create(client=client)
+            except IntegrityError:
+                continue
+        # As a last resort, append the client pk to guarantee uniqueness.
+        return cls.objects.create(
+            client=client, code=f"{_referral_code()}-{client.pk}"
+        )
+
+
 class Contact(models.Model):
     """A person at a client organization."""
 

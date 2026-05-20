@@ -19,6 +19,7 @@ import 'screens/lead_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/quote_detail_screen.dart';
 import 'screens/quote_list_screen.dart';
+import 'screens/refer_screen.dart';
 import 'screens/maintenance_form_screen.dart';
 import 'screens/maintenance_list_screen.dart';
 import 'models/client.dart';
@@ -277,6 +278,15 @@ GoRouter buildAppRouter({
         builder: (_, state) => QuoteDetailScreen(
           quoteId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      GoRoute(
+        path: '/refer',
+        builder: (context, state) {
+          final user = context.read<CurrentUser>();
+          return user.isClient
+              ? const ClientShell(child: ReferScreen())
+              : const EngineerShell(child: ReferScreen());
+        },
       ),
     ],
   );

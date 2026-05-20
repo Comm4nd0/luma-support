@@ -318,6 +318,7 @@ SITE_URL = config("SITE_URL", default="http://localhost:8006")
 
 # --- Billing / Xero -----------------------------------------------------
 DEFAULT_HOURLY_RATE = config("DEFAULT_HOURLY_RATE", default="75.00", cast=Decimal)
+REFERRAL_CREDIT_GBP = config("REFERRAL_CREDIT_GBP", default="25.00", cast=Decimal)
 DEFAULT_CURRENCY = config("DEFAULT_CURRENCY", default="GBP")
 DEFAULT_TAX_TYPE = config("DEFAULT_TAX_TYPE", default="OUTPUT2")
 DEFAULT_ACCOUNT_CODE = config("DEFAULT_ACCOUNT_CODE", default="200")

@@ -90,6 +90,18 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                     onTap: () => context.push('/my-services'),
                   ),
                 ),
+                Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const LumaIcon(PhosphorIconsDuotone.gift),
+                    title: const Text('Refer a friend'),
+                    subtitle: const Text(
+                        'Send your link, earn credit on next month'),
+                    trailing:
+                        const LumaIcon(PhosphorIconsDuotone.caretRight),
+                    onTap: () => context.push('/refer'),
+                  ),
+                ),
                 _Section('Your open tickets', count: data.open.length),
                 if (data.open.isEmpty)
                   const Padding(

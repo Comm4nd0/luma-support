@@ -29,6 +29,7 @@
       <a href="{% url 'portal:ticket_list' %}" class="{% if active == 'tickets' %}active{% endif %}">Tickets</a>
       {% if user.is_client and user.client_id %}
         <a href="{% url 'portal:my_services' %}" class="{% if active == 'my_services' %}active{% endif %}">My services</a>
+        <a href="{% url 'portal:refer' %}" class="{% if active == 'refer' %}active{% endif %}">Refer</a>
       {% else %}
         <a href="{% url 'portal:client_list' %}" class="{% if active == 'clients' %}active{% endif %}">Clients</a>
         <a href="{% url 'portal:lead_list' %}" class="{% if active == 'leads' %}active{% endif %}">Leads</a>

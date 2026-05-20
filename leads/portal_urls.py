@@ -1,12 +1,21 @@
 """Portal routes for the lead pipeline (mounted at the project root)."""
 from django.urls import path
 
+from clients.referrals_views import ReferralDashboardView, ReferralRedirectView
+
 from . import portal_views as views
 from .public import ContactFormView
 
 urlpatterns = [
     # Public, unauthenticated — sits at the project root.
     path("contact/", ContactFormView.as_view(), name="contact"),
+    path(
+        "r/<str:code>/",
+        ReferralRedirectView.as_view(),
+        name="referral_redirect",
+    ),
+    # Authenticated, client-facing "Refer a friend" dashboard.
+    path("refer/", ReferralDashboardView.as_view(), name="refer"),
     path("leads/", views.LeadListView.as_view(), name="lead_list"),
     path("leads/new/", views.LeadCreateView.as_view(), name="lead_create"),
     path("leads/<int:pk>/", views.LeadDetailView.as_view(), name="lead_detail"),

@@ -81,9 +81,20 @@ class ContactFormView(View):
             or request.POST.get("ref")
             or ""
         ).strip()
+        referring_client = None
         if ref_code:
             source = LeadSource.REFERRAL
             source_detail = f"ref={ref_code[:64]}"
+            # Resolve the code to a real Client via ReferralCode so credit
+            # can be applied automatically when the lead converts.
+            try:
+                from clients.models import ReferralCode
+
+                rc = ReferralCode.objects.filter(code=ref_code).first()
+                if rc is not None:
+                    referring_client = rc.client
+            except Exception:
+                pass
         else:
             source = LeadSource.WEBSITE
             source_detail = ""
@@ -96,6 +107,7 @@ class ContactFormView(View):
             interest=message[:4000],
             source=source,
             source_detail=source_detail,
+            referring_client=referring_client,
         )
 
         # Cooldown stamped only after a successful submission so a bot

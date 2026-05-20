@@ -36,6 +36,7 @@ class ApiPaths {
   static String client(int id) => '/clients/clients/$id/';
   static const String systems = '/clients/systems/';
   static const String contacts = '/clients/contacts/';
+  static const String myReferralCode = '/clients/referral-code/';
 
   // Leads (staff-only — CRM pipeline before a Client exists)
   static const String leads = '/leads/leads/';

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Client, Contact, System
+from .models import Client, Contact, ReferralCode, System
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -113,3 +113,29 @@ class ClientSerializer(serializers.ModelSerializer):
         return obj.tickets.exclude(
             status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED]
         ).count()
+
+
+class ReferralCodeSerializer(serializers.ModelSerializer):
+    referrals = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReferralCode
+        fields = (
+            "code",
+            "credit_balance",
+            "lifetime_credit",
+            "referrals",
+        )
+
+    def get_referrals(self, obj) -> list[dict]:
+        out = []
+        for lead in obj.client.referrals.order_by("-created_at")[:50]:
+            out.append(
+                {
+                    "name": lead.name,
+                    "stage": lead.stage,
+                    "stage_display": lead.get_stage_display(),
+                    "created_at": lead.created_at.isoformat(),
+                }
+            )
+        return out

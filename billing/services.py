@@ -74,6 +74,20 @@ def generate_contract_invoice(
     )
     invoice.recalculate_totals()
     invoice.save(update_fields=["subtotal", "tax", "total", "updated_at"])
+
+    # Apply any outstanding referral credit as a negative line. Pulled in
+    # lazily so this module doesn't import `clients.referrals` at startup.
+    try:
+        from clients.referrals import apply_credit_to_invoice
+
+        if apply_credit_to_invoice(invoice) > 0:
+            invoice.recalculate_totals()
+            invoice.save(
+                update_fields=["subtotal", "tax", "total", "updated_at"]
+            )
+    except Exception:
+        pass
+
     return invoice, True
 
 

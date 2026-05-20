@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ client.name }} · Timeline · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin-bottom: 4px;">{{ client.name }}</h1>
+    <div class="muted">Timeline · {{ events|length }} event{{ events|length|pluralize }}</div>
+  </div>
+  <div class="toolbar">
+    <a class="btn btn-ghost" href="{% url 'portal:client_detail' client.pk %}">Back to client</a>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr><th>When</th><th>Kind</th><th>Title</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+        <tr>
+          <td>{{ e.occurred_at|naturaltime }}<br /><span class="muted" style="font-size: 11px;">{{ e.occurred_at|date:"Y-m-d H:i" }}</span></td>
+          <td><span class="pill pill-{{ e.pill }}">{{ e.kind }}</span></td>
+          <td>{% if e.url %}<a href="{{ e.url }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</td>
+          <td class="muted" style="white-space: pre-wrap;">{{ e.body|truncatechars:200 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">No events yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -140,6 +140,83 @@ class ReferralCode(models.Model):
         )
 
 
+class OnboardingTaskTemplate(models.Model):
+    """A reusable item Marco wants done for every new client.
+
+    Seeded once via the data migration; new templates can be added via
+    the admin. Each row turns into a `ClientOnboardingTask` instance
+    on the new Client when a Lead converts to Won.
+    """
+
+    title = models.CharField(max_length=200)
+    order = models.PositiveSmallIntegerField(default=0)
+    due_offset_days = models.PositiveSmallIntegerField(
+        default=7,
+        help_text="Days after the client is created when this should be done.",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "pk"]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class ClientOnboardingTask(models.Model):
+    """An open or completed item on a specific client's onboarding checklist."""
+
+    client = models.ForeignKey(
+        "Client", on_delete=models.CASCADE, related_name="onboarding_tasks"
+    )
+    title = models.CharField(max_length=200)
+    order = models.PositiveSmallIntegerField(default=0)
+    due_on = models.DateField(null=True, blank=True)
+    done = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["done", "order", "pk"]
+
+    def __str__(self) -> str:
+        return f"{self.client.name} — {self.title}"
+
+
+def seed_onboarding_tasks(client: "Client") -> int:
+    """Materialise the active OnboardingTaskTemplate rows onto a Client.
+
+    Idempotent — running it twice for the same client won't duplicate
+    the tasks. Returns the number of tasks created.
+    """
+    from datetime import timedelta as _td
+
+    from django.utils import timezone as _tz
+
+    existing = set(
+        client.onboarding_tasks.values_list("title", flat=True)
+    )
+    today = _tz.localdate()
+    n = 0
+    for tpl in OnboardingTaskTemplate.objects.filter(is_active=True):
+        if tpl.title in existing:
+            continue
+        ClientOnboardingTask.objects.create(
+            client=client,
+            title=tpl.title,
+            order=tpl.order,
+            due_on=today + _td(days=tpl.due_offset_days),
+        )
+        n += 1
+    return n
+
+
 class NpsResponse(models.Model):
     """Quarterly Net Promoter Score survey.
 

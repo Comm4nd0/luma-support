@@ -793,7 +793,50 @@ class ClientDetailView(LoginRequiredMixin, DetailView):
             from clients.health import score_client
 
             ctx["health"] = score_client(self.object)
+            ctx["onboarding_tasks"] = list(
+                self.object.onboarding_tasks.order_by("done", "order", "pk")
+            )
         return ctx
+
+
+class ClientTimelineView(StaffRequiredMixin, View):
+    """Unified per-client communication log — tickets, notes, quotes, invoices."""
+
+    template_name = "portal/client_timeline.html"
+
+    def get(self, request, pk):
+        from django.template.response import TemplateResponse
+
+        from clients.timeline import for_client
+
+        client = get_object_or_404(Client, pk=pk)
+        events = for_client(client)
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {"client": client, "events": events, "active": "clients"},
+        )
+
+
+class OnboardingToggleView(StaffRequiredMixin, View):
+    """Tick / untick a single onboarding task."""
+
+    def post(self, request, pk):
+        from clients.models import ClientOnboardingTask
+        from django.utils import timezone as _tz
+
+        task = get_object_or_404(ClientOnboardingTask, pk=pk)
+        task.done = not task.done
+        if task.done:
+            task.completed_at = _tz.now()
+            task.completed_by = request.user
+        else:
+            task.completed_at = None
+            task.completed_by = None
+        task.save(
+            update_fields=["done", "completed_at", "completed_by"]
+        )
+        return redirect("portal:client_detail", pk=task.client_id)
 
 
 class ContactForm(forms.ModelForm):

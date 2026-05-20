@@ -274,6 +274,10 @@ CELERY_BEAT_SCHEDULE = {
             hour=9, minute=0, day_of_month=1, month_of_year="1,4,7,10"
         ),
     },
+    "chase-overdue-invoices": {
+        "task": "billing.tasks.chase_overdue_invoices",
+        "schedule": crontab(hour=9, minute=30),
+    },
 }
 
 # --- Email --------------------------------------------------------------

@@ -53,6 +53,16 @@ urlpatterns = [
         views.ClientUpdateView.as_view(),
         name="client_edit",
     ),
+    path(
+        "clients/<int:pk>/timeline/",
+        views.ClientTimelineView.as_view(),
+        name="client_timeline",
+    ),
+    path(
+        "onboarding/<int:pk>/toggle/",
+        views.OnboardingToggleView.as_view(),
+        name="onboarding_toggle",
+    ),
     # Contacts
     path(
         "clients/<int:client_pk>/contacts/new/",

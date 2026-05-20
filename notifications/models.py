@@ -39,6 +39,7 @@ class Notification(models.Model):
         LEAD_REMINDER = "lead_reminder", "Lead follow-up reminder"
         REFERRAL_CREDIT = "referral_credit", "Referral credit"
         CARE_PLAN_RENEWAL = "care_plan_renewal", "Care plan renewal reminder"
+        INVOICE_OVERDUE = "invoice_overdue", "Invoice overdue"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

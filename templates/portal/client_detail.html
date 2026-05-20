@@ -14,6 +14,9 @@
   </div>
   <div class="toolbar">
     <a class="btn btn-ghost" href="{% url 'portal:client_edit' client.pk %}">Edit</a>
+    {% if user.can_view_all %}
+      <a class="btn btn-ghost" href="{% url 'portal:client_timeline' client.pk %}">Timeline</a>
+    {% endif %}
     <a class="btn" href="{% url 'portal:ticket_create' %}?client={{ client.pk }}">+ New ticket</a>
   </div>
 </div>
@@ -41,6 +44,36 @@
         </tbody>
       </table>
     </div>
+
+    {% if onboarding_tasks %}
+    <div class="card" style="margin-top: 20px;">
+      <h2>Onboarding ({{ onboarding_tasks|length }})</h2>
+      <table class="table">
+        <thead><tr><th></th><th>Task</th><th>Due</th><th>Done</th></tr></thead>
+        <tbody>
+          {% for task in onboarding_tasks %}
+            <tr {% if task.done %}style="opacity: 0.55;"{% endif %}>
+              <td style="width: 28px;">
+                <form method="post" action="{% url 'portal:onboarding_toggle' task.pk %}" class="inline-form">
+                  {% csrf_token %}
+                  <button class="btn btn-ghost" type="submit" title="{{ task.done|yesno:'Re-open,Mark done' }}">
+                    {{ task.done|yesno:"☑,☐" }}
+                  </button>
+                </form>
+              </td>
+              <td>{{ task.title }}</td>
+              <td>{{ task.due_on|default:"—" }}</td>
+              <td class="muted" style="font-size: 12px;">
+                {% if task.done %}
+                  {{ task.completed_at|date:"Y-m-d" }}{% if task.completed_by %} · {{ task.completed_by.email }}{% endif %}
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
 
     {% if user.is_admin_role %}
     <div class="card" style="margin-top: 20px;">

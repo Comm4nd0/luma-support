@@ -214,6 +214,14 @@ class Lead(models.Model):
                 credit_referrer(self)
             except Exception:
                 pass
+        # Seed the onboarding checklist so the new client gets the
+        # standard "send welcome / kickoff / first invoice" punch-list.
+        try:
+            from clients.models import seed_onboarding_tasks
+
+            seed_onboarding_tasks(client)
+        except Exception:
+            pass
         return client
 
 

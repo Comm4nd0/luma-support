@@ -9,6 +9,117 @@ from clients.models import CarePlanTier, Client
 
 
 @shared_task
+def chase_overdue_invoices():
+    """Dunning sweep — runs daily.
+
+    For each AUTHORISED/SENT invoice past `due_date`, fire reminders at
+    3 / 7 / 14 days overdue. We email the client (if there's a recipient
+    address) and create an in-app `INVOICE_OVERDUE` notification for
+    Marco. Deduped per-invoice per-bucket via the audit log so the
+    daily beat doesn't double-alert.
+    """
+    from datetime import timedelta as _td
+
+    from django.conf import settings as _settings
+    from django.contrib.auth import get_user_model
+    from django.contrib.contenttypes.models import ContentType
+    from django.core.mail import send_mail
+    from django.utils import timezone
+
+    from audit import log as audit_log
+    from audit.models import AuditLog
+    from notifications.models import Notification
+
+    from .models import Invoice
+
+    User = get_user_model()
+    today = timezone.localdate()
+    qs = Invoice.objects.filter(
+        status__in=[Invoice.Status.SENT, Invoice.Status.AUTHORISED],
+        due_date__lt=today,
+    ).select_related("client")
+
+    inv_ct = ContentType.objects.get_for_model(Invoice)
+    sent = 0
+    for invoice in qs:
+        days_overdue = (today - invoice.due_date).days
+        bucket = _dunning_bucket(days_overdue)
+        if bucket is None:
+            continue
+
+        already = AuditLog.objects.filter(
+            action="invoice.dunning",
+            target_ct=inv_ct,
+            target_id=invoice.pk,
+            metadata__bucket=bucket,
+        ).exists()
+        if already:
+            continue
+
+        recipient = invoice.client.email
+        if recipient:
+            subject = (
+                f"Invoice #{invoice.pk} — {bucket} days overdue"
+                if bucket != "1"
+                else f"Invoice #{invoice.pk} reminder"
+            )
+            body = (
+                f"Hi {invoice.client.name},\n\n"
+                f"This is a friendly reminder that invoice #{invoice.pk} "
+                f"({invoice.currency} {invoice.total}) was due "
+                f"{invoice.due_date:%Y-%m-%d} and is now {days_overdue} "
+                f"day{'s' if days_overdue != 1 else ''} overdue.\n\n"
+            )
+            if invoice.stripe_payment_link_url:
+                body += f"Pay online: {invoice.stripe_payment_link_url}\n\n"
+            body += "Thanks,\nLuma Tech Solutions\n"
+            send_mail(
+                subject,
+                body,
+                _settings.DEFAULT_FROM_EMAIL,
+                [recipient],
+                fail_silently=False,
+            )
+
+        title = (
+            f"Invoice #{invoice.pk} {days_overdue}d overdue — "
+            f"{invoice.client.name}"
+        )
+        body = (
+            f"{invoice.currency} {invoice.total} due "
+            f"{invoice.due_date:%Y-%m-%d}."
+        )
+        for u in User.objects.filter(
+            role__in=["admin", "engineer"], is_active=True
+        ):
+            Notification.objects.create(
+                user=u,
+                type=Notification.Type.INVOICE_OVERDUE,
+                title=title,
+                body=body,
+            )
+        audit_log(
+            "invoice.dunning",
+            target=invoice,
+            bucket=bucket,
+            days_overdue=days_overdue,
+            emailed=bool(recipient),
+        )
+        sent += 1
+
+    return f"chase_overdue_invoices: {sent} reminders sent"
+
+
+def _dunning_bucket(days_overdue: int) -> str | None:
+    """Map "days overdue" to a reminder bucket. 3/7/14 buckets, then weekly."""
+    if days_overdue in (3, 7, 14):
+        return str(days_overdue)
+    if days_overdue >= 21 and days_overdue % 7 == 0:
+        return f"{days_overdue}"
+    return None
+
+
+@shared_task
 def generate_contract_invoices():
     """Run on the 1st of each month — create draft contract invoices."""
     from .services import generate_contract_invoice

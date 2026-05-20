@@ -32,6 +32,7 @@
       {% else %}
         <a href="{% url 'portal:client_list' %}" class="{% if active == 'clients' %}active{% endif %}">Clients</a>
         <a href="{% url 'portal:lead_list' %}" class="{% if active == 'leads' %}active{% endif %}">Leads</a>
+        <a href="{% url 'portal:quote_list' %}" class="{% if active == 'quotes' %}active{% endif %}">Quotes</a>
       {% endif %}
       <a href="{% url 'portal:kb_list' %}" class="{% if active == 'kb' %}active{% endif %}">Knowledge</a>
       {% if user.can_view_all %}

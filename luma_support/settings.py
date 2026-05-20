@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "system",
     "social",
     "leads",
+    "quotes",
 ]
 
 MIDDLEWARE = [
@@ -258,6 +259,10 @@ CELERY_BEAT_SCHEDULE = {
     "lead-followup-reminders": {
         "task": "leads.tasks.send_followup_reminders",
         "schedule": crontab(hour=8, minute=30),
+    },
+    "expire-stale-quotes": {
+        "task": "quotes.tasks.expire_stale_quotes",
+        "schedule": crontab(hour=3, minute=15),
     },
 }
 

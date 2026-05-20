@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Quote {{ quote.number }} · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 680px;">
+    <h1 style="margin-top: 0;">Quote {{ quote.number }}</h1>
+    <p class="muted">
+      For {{ quote.recipient_name }} · valid until {{ quote.valid_until }}
+    </p>
+
+    {% if rejected %}
+      <div class="msg msg-info" style="margin: 16px 0;">Thanks — we've recorded that you'd like to pass on this one.</div>
+    {% endif %}
+    {% if expired %}
+      <div class="msg msg-warning" style="margin: 16px 0;">
+        This quote has expired ({{ quote.valid_until }}). Reply to the email and we'll send a fresh one.
+      </div>
+    {% endif %}
+
+    <table class="table">
+      <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for ln in quote.lines.all %}
+        <tr>
+          <td>{{ ln.description }}</td>
+          <td>{{ ln.quantity }}</td>
+          <td>{{ quote.currency }} {{ ln.unit_amount }}</td>
+          <td>{{ quote.currency }} {{ ln.line_total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="3" style="text-align: right;">Subtotal</td><td>{{ quote.currency }} {{ quote.subtotal }}</td></tr>
+        <tr><td colspan="3" style="text-align: right;">Tax</td><td>{{ quote.currency }} {{ quote.tax }}</td></tr>
+        <tr><td colspan="3" style="text-align: right;"><strong>Total</strong></td><td><strong>{{ quote.currency }} {{ quote.total }}</strong></td></tr>
+      </tfoot>
+    </table>
+
+    {% if quote.notes %}
+      <h3 style="margin-top: 18px;">Notes</h3>
+      <div style="white-space: pre-wrap;">{{ quote.notes }}</div>
+    {% endif %}
+
+    {% if not expired and not rejected %}
+    <hr style="opacity: 0.15; margin: 24px 0;" />
+    <h3 style="margin-top: 0;">Accept this quote</h3>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="accept" />
+      <div class="form-row">
+        <label>Type your name to confirm</label>
+        <input class="form-input" type="text" name="name" maxlength="200" required />
+      </div>
+      {% if error %}<p class="muted" style="color: var(--critical);">{{ error }}</p>{% endif %}
+      <div class="form-actions">
+        <button class="btn" type="submit">Accept quote</button>
+      </div>
+    </form>
+
+    <hr style="opacity: 0.15; margin: 24px 0;" />
+    <details>
+      <summary class="muted">Not for me right now</summary>
+      <form method="post" style="margin-top: 12px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reject" />
+        <div class="form-row">
+          <label>What would help? <span class="muted">(optional)</span></label>
+          <input class="form-input" type="text" name="reason" maxlength="200" />
+        </div>
+        <button class="btn btn-ghost" type="submit">Pass on this quote</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

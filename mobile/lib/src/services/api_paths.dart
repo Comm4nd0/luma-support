@@ -44,6 +44,13 @@ class ApiPaths {
   static String leadConvert(int id) => '/leads/leads/$id/convert/';
   static String leadActivities(int id) => '/leads/leads/$id/activities/';
 
+  // Quotes (staff-only)
+  static const String quotes = '/quotes/quotes/';
+  static String quote(int id) => '/quotes/quotes/$id/';
+  static String quoteSend(int id) => '/quotes/quotes/$id/send/';
+  static String quoteAccept(int id) => '/quotes/quotes/$id/accept/';
+  static String quoteReject(int id) => '/quotes/quotes/$id/reject/';
+
   // Knowledge
   static const String articles = '/knowledge/articles/';
   static String article(String slug) => '/knowledge/articles/$slug/';

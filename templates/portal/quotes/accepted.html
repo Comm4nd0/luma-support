@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Quote {{ quote.number }} accepted · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 520px; text-align: center;">
+    <h1 style="margin-top: 0;">{% if fresh %}Accepted — thank you!{% else %}Quote {{ quote.number }}{% endif %}</h1>
+    <p>We've started the next step. Marco will be in touch shortly to confirm dates.</p>
+    <p class="muted" style="margin-top: 24px;">Reference: {{ quote.number }}</p>
+  </div>
+</div>
+{% endblock %}

@@ -20,6 +20,7 @@ api_v1 = [
     path("knowledge/", include("knowledge.urls")),
     path("leads/", include("leads.urls")),
     path("notifications/", include("notifications.urls")),
+    path("quotes/", include("quotes.urls")),
     path("social/", include("social.urls")),
 ]
 

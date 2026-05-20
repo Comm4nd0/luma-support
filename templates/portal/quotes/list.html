@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Quotes · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Quotes</h1>
+  <a class="btn" href="{% url 'portal:quote_create' %}">+ New quote</a>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+  <form method="get" class="form-grid">
+    <div class="form-row">
+      <label>Status</label>
+      <select name="status" class="form-input">
+        <option value="">All</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row" style="align-self: end;">
+      <button class="btn" type="submit">Filter</button>
+      <a class="btn btn-ghost" href="{% url 'portal:quote_list' %}">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="card list-table">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Number</th>
+          <th>Recipient</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Valid until</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in quotes %}
+          <tr>
+            <td><a href="{% url 'portal:quote_detail' q.pk %}">{{ q.number }}</a></td>
+            <td>{{ q.recipient_name|default:"—" }}</td>
+            <td><span class="pill pill-{{ q.status }}">{{ q.get_status_display }}</span></td>
+            <td>{{ q.currency }} {{ q.total }}</td>
+            <td {% if q.is_expired %}class="sla-breach"{% endif %}>{{ q.valid_until }}</td>
+            <td>{{ q.created_at|date:"Y-m-d" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">No quotes yet. <a href="{% url 'portal:quote_create' %}">Draft one</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cards-mobile">
+  {% for q in quotes %}
+    <a class="list-card" href="{% url 'portal:quote_detail' q.pk %}">
+      <div class="list-card-head">
+        <div>
+          <div class="list-card-title">{{ q.number }}</div>
+          <div class="list-card-meta">{{ q.recipient_name|default:"—" }}</div>
+        </div>
+        <span class="pill pill-{{ q.status }}">{{ q.get_status_display }}</span>
+      </div>
+      <div class="list-card-row">
+        <div>{{ q.currency }} {{ q.total }}</div>
+        <div class="muted {% if q.is_expired %}sla-breach{% endif %}" style="font-size: 12px;">
+          until {{ q.valid_until }}
+        </div>
+      </div>
+    </a>
+  {% empty %}
+    <div class="card muted">No quotes yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

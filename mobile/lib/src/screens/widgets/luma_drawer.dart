@@ -52,6 +52,13 @@ class LumaDrawer extends StatelessWidget {
               ),
             if (isStaff)
               ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.fileText),
+                title: const Text('Quotes'),
+                subtitle: const Text('Proposals before invoicing'),
+                onTap: () => go('/quotes'),
+              ),
+            if (isStaff)
+              ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.calendar),
                 title: const Text('Maintenance'),
                 subtitle: const Text('Recurring work schedules'),

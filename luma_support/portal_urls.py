@@ -6,6 +6,7 @@ from django.views.generic import RedirectView
 from billing import portal_urls as billing_portal_urls
 from leads import portal_urls as leads_portal_urls
 from luma_support import portal_views as views
+from quotes import portal_urls as quotes_portal_urls
 from social import portal_urls as social_portal_urls
 
 app_name = "portal"
@@ -120,4 +121,6 @@ urlpatterns = [
     *social_portal_urls.urlpatterns,
     # Leads (staff only — gating enforced inside the views)
     *leads_portal_urls.urlpatterns,
+    # Quotes (staff only + public /q/<token>/ accept link)
+    *quotes_portal_urls.urlpatterns,
 ]

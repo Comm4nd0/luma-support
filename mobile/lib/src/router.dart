@@ -17,6 +17,8 @@ import 'screens/lead_detail_screen.dart';
 import 'screens/lead_form_screen.dart';
 import 'screens/lead_list_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/quote_detail_screen.dart';
+import 'screens/quote_list_screen.dart';
 import 'screens/maintenance_form_screen.dart';
 import 'screens/maintenance_list_screen.dart';
 import 'models/client.dart';
@@ -74,6 +76,10 @@ GoRouter buildAppRouter({
         return '/';
       }
       if (state.matchedLocation.startsWith('/leads') &&
+          currentUser.isClient) {
+        return '/';
+      }
+      if (state.matchedLocation.startsWith('/quotes') &&
           currentUser.isClient) {
         return '/';
       }
@@ -261,6 +267,16 @@ GoRouter buildAppRouter({
             leadId: int.parse(state.pathParameters['id']!),
           );
         },
+      ),
+      GoRoute(
+        path: '/quotes',
+        builder: (_, __) => const EngineerShell(child: QuoteListScreen()),
+      ),
+      GoRoute(
+        path: '/quotes/:id',
+        builder: (_, state) => QuoteDetailScreen(
+          quoteId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );

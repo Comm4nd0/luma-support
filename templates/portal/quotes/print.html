@@ -1,0 +1,72 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ quote.number }} · Luma Tech Solutions</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; max-width: 800px; margin: 24px auto; padding: 16px; }
+    h1 { margin: 0 0 4px; color: #0f172a; }
+    .brand { color: #14b8a6; font-weight: 700; }
+    .meta { color: #555; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background: #f7f7f7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    tfoot td { border-bottom: none; }
+    .totals td { padding-top: 6px; padding-bottom: 2px; }
+    .right { text-align: right; }
+    .footer { margin-top: 40px; color: #777; font-size: 12px; }
+    @media print { .no-print { display: none; } body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <div style="display: flex; justify-content: space-between; align-items: start;">
+    <div>
+      <div class="brand">Luma Tech Solutions</div>
+      <div class="meta">lumatechsolutions.co.uk</div>
+    </div>
+    <div style="text-align: right;">
+      <h1>Quote {{ quote.number }}</h1>
+      <div class="meta">Valid until {{ quote.valid_until }}</div>
+    </div>
+  </div>
+
+  <div>
+    <strong>For:</strong> {{ quote.recipient_name }}<br />
+    {% if quote.recipient_email %}{{ quote.recipient_email }}<br />{% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Description</th><th class="right">Qty</th><th class="right">Unit</th><th class="right">Total</th></tr>
+    </thead>
+    <tbody>
+      {% for ln in quote.lines.all %}
+      <tr>
+        <td>{{ ln.description }}</td>
+        <td class="right">{{ ln.quantity }}</td>
+        <td class="right">{{ quote.currency }} {{ ln.unit_amount }}</td>
+        <td class="right">{{ quote.currency }} {{ ln.line_total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="totals">
+      <tr><td colspan="3" class="right">Subtotal</td><td class="right">{{ quote.currency }} {{ quote.subtotal }}</td></tr>
+      <tr><td colspan="3" class="right">Tax</td><td class="right">{{ quote.currency }} {{ quote.tax }}</td></tr>
+      <tr><td colspan="3" class="right"><strong>Total</strong></td><td class="right"><strong>{{ quote.currency }} {{ quote.total }}</strong></td></tr>
+    </tfoot>
+  </table>
+
+  {% if quote.notes %}
+    <h3>Notes</h3>
+    <div style="white-space: pre-wrap;">{{ quote.notes }}</div>
+  {% endif %}
+
+  <div class="footer">
+    Generated {% now "Y-m-d H:i" %}. Reply by emailing support@lumatechsolutions.co.uk and reference {{ quote.number }}.
+  </div>
+  <div class="no-print" style="margin-top: 24px; text-align: center;">
+    <button onclick="window.print()" style="padding: 8px 16px;">Print / Save as PDF</button>
+  </div>
+</body>
+</html>

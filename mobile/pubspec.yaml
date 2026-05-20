@@ -36,6 +36,21 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.0
 
+# phosphor_flutter 2.1.0 (the latest on pub.dev as of May 2026) extends
+# Flutter's `IconData`, which was sealed `final` in Flutter 3.43. The
+# package is effectively unmaintained — upstream PR #62 with the fix has
+# been open since May 2026 with no maintainer response. Pin to the PR
+# author's fork at a specific commit so the lockfile is reproducible.
+# When upstream finally publishes a fix (or we migrate to a different
+# icon library), drop this override.
+#   https://github.com/phosphor-icons/flutter/issues/61
+#   https://github.com/phosphor-icons/flutter/pull/62
+dependency_overrides:
+  phosphor_flutter:
+    git:
+      url: https://github.com/subarnaPdl/phosphor_icons.git
+      ref: 514f0a883571c4453dbd6ee3041d1dcba4fb8fc7
+
 flutter:
   uses-material-design: true
   # Flutter 3.44 auto-enables Swift Package Manager and tries to add the

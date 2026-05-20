@@ -28,6 +28,8 @@ from .models import Attachment, Ticket, TicketNote
 
 logger = logging.getLogger(__name__)
 
+_DISPLAY_NAME_RE = re.compile(r'^\s*"?([^"<]+?)"?\s*<')
+
 # "support+42@example.com" → 42
 _PLUS_ADDRESS_RE = re.compile(r"\+(\d+)@", re.I)
 # "On Thu, 1 May 2026 at 09:14, Marco wrote:" — strip everything from here.
@@ -40,6 +42,7 @@ class InboundResult:
     ticket: Optional[Ticket]
     note: Optional[TicketNote]
     created_new_ticket: bool
+    lead: Optional[object] = None  # leads.Lead — typed as object to keep this module free of the leads import
 
 
 def parse_message(raw_bytes: bytes) -> Message:
@@ -114,6 +117,7 @@ def ingest(raw_bytes: bytes) -> InboundResult:
     """
     msg = parse_message(raw_bytes)
     subject = (msg.get("Subject") or "(no subject)").strip() or "(no subject)"
+    from_header = msg.get("From") or ""
     from_addrs = _addr_list(msg, "From")
     from_addr = from_addrs[0] if from_addrs else ""
     to_addrs = _addr_list(msg, "To") + _addr_list(msg, "Cc")
@@ -140,8 +144,12 @@ def ingest(raw_bytes: bytes) -> InboundResult:
         return InboundResult(ticket=ticket, note=note, created_new_ticket=False)
 
     if user is None:
-        logger.info("Inbound from unknown sender %r — dropping", from_addr)
-        return InboundResult(None, None, False)
+        # Unknown sender → a prospect just emailed in. Capture them as a
+        # lead so Marco gets the same dashboard signal as he would for
+        # any other inbound channel. Tickets only ever come from known
+        # clients, so this is the only place a Lead is created from mail.
+        lead = _lead_from_inbound(from_addr, from_header, subject, body)
+        return InboundResult(None, None, False, lead=lead)
 
     client = user.client
     if client is None:
@@ -162,3 +170,33 @@ def _save_attachments(ticket: Ticket, user, attachments) -> None:
     for filename, payload in attachments:
         a = Attachment(ticket=ticket, uploaded_by=user, filename=filename)
         a.file.save(filename, ContentFile(payload), save=True)
+
+
+def _lead_from_inbound(addr: str, from_header: str, subject: str, body: str):
+    """Create a `leads.Lead` for an inbound email from an unknown sender.
+
+    Imported lazily so the tickets app stays independent of leads — the
+    inbound flow degrades silently if the leads app is missing.
+    """
+    try:
+        from leads.models import Lead, LeadSource
+    except Exception:
+        logger.exception("leads app unavailable for inbound capture")
+        return None
+    name = _display_name(from_header) or addr.split("@", 1)[0] or "Unknown"
+    interest = (
+        f"Subject: {subject}\n\n{body}" if body else f"Subject: {subject}"
+    )[:4000]
+    return Lead.objects.create(
+        name=name[:200],
+        email=addr[:200],
+        source=LeadSource.INBOUND_EMAIL,
+        source_detail=f"Subject: {subject}"[:200],
+        interest=interest,
+    )
+
+
+def _display_name(from_header: str) -> str:
+    """Pull "Marco" out of 'Marco <marco@example.com>'; empty string if absent."""
+    m = _DISPLAY_NAME_RE.match(from_header or "")
+    return (m.group(1).strip() if m else "")

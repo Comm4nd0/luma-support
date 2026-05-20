@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Get in touch · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 560px;">
+    <h1 style="margin-top: 0;">Tell us what you need.</h1>
+    <p class="muted">
+      Quick reply, no sales pitch. Networks, smart home, websites, CCTV —
+      send us a line and we'll be back in touch.
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="ref" value="{{ ref }}" />
+
+      <div class="form-row">
+        <label>Your name</label>
+        <input class="form-input" type="text" name="name" maxlength="200"
+               value="{{ form.name|default:'' }}" required />
+      </div>
+      <div class="form-row">
+        <label>Email</label>
+        <input class="form-input" type="email" name="email" maxlength="200"
+               value="{{ form.email|default:'' }}" />
+      </div>
+      <div class="form-row">
+        <label>Phone</label>
+        <input class="form-input" type="tel" name="phone" maxlength="32"
+               value="{{ form.phone|default:'' }}" />
+      </div>
+      <div class="form-row">
+        <label>Company <span class="muted">(optional)</span></label>
+        <input class="form-input" type="text" name="company" maxlength="200"
+               value="{{ form.company|default:'' }}" />
+      </div>
+      <div class="form-row">
+        <label>What can we help with?</label>
+        <textarea class="form-input" name="message" rows="5"
+                  placeholder="A few sentences is plenty.">{{ form.message|default:'' }}</textarea>
+      </div>
+
+      {# Honeypot — kept invisible. Real users won't touch it; bots will. #}
+      <div style="position: absolute; left: -9999px;" aria-hidden="true">
+        <label>Website</label>
+        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      {% if error %}
+        <p class="muted" style="color: var(--critical);">{{ error }}</p>
+      {% endif %}
+      <div class="form-actions">
+        <button class="btn" type="submit">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

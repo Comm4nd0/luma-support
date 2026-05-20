@@ -325,3 +325,176 @@ def test_reminder_fans_out_to_all_staff_when_unassigned(
     assert Notification.objects.filter(
         type=Notification.Type.LEAD_REMINDER, user=admin_user
     ).count() == 1
+
+
+# -----------------------------------------------------------------
+# Public contact form (A4)
+# -----------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_contact_form_renders(client):
+    resp = client.get("/contact/")
+    assert resp.status_code == 200
+    assert b"name=\"name\"" in resp.content
+    assert b"name=\"website\"" in resp.content  # honeypot present
+
+
+@pytest.mark.django_db
+def test_contact_form_creates_website_lead(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    resp = client.post(
+        "/contact/",
+        data={
+            "name": "Sammy",
+            "email": "sammy@example.com",
+            "phone": "",
+            "company": "Sammy Ltd",
+            "message": "I want a UniFi network please.",
+            "website": "",
+        },
+    )
+    assert resp.status_code == 200
+    lead = Lead.objects.get(name="Sammy")
+    assert lead.source == LeadSource.WEBSITE
+    assert lead.email == "sammy@example.com"
+    assert "UniFi" in lead.interest
+
+
+@pytest.mark.django_db
+def test_contact_form_with_ref_tags_referral(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    resp = client.post(
+        "/contact/?ref=LUMA-MARCO-7K2",
+        data={
+            "name": "Tarja",
+            "email": "tarja@example.com",
+            "message": "Heard about you from a friend.",
+            "website": "",
+        },
+    )
+    assert resp.status_code == 200
+    lead = Lead.objects.get(name="Tarja")
+    assert lead.source == LeadSource.REFERRAL
+    assert "LUMA-MARCO-7K2" in lead.source_detail
+
+
+@pytest.mark.django_db
+def test_contact_form_honeypot_silently_drops(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    resp = client.post(
+        "/contact/",
+        data={
+            "name": "BotBot",
+            "email": "bot@example.com",
+            "message": "spam payload",
+            "website": "https://spam.example",  # honeypot filled
+        },
+    )
+    assert resp.status_code == 200
+    # Pretended success but no Lead written.
+    assert Lead.objects.filter(name="BotBot").count() == 0
+
+
+@pytest.mark.django_db
+def test_contact_form_requires_name(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    resp = client.post(
+        "/contact/",
+        data={"name": "", "email": "a@b.c", "message": "hi"},
+    )
+    assert resp.status_code == 200
+    assert b"Please tell us your name" in resp.content
+    assert Lead.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_contact_form_requires_email_or_phone(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    resp = client.post(
+        "/contact/",
+        data={"name": "Una", "email": "", "phone": "", "message": "hi"},
+    )
+    assert resp.status_code == 200
+    assert Lead.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_contact_form_rate_limits_repeat_posts(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    payload = {
+        "name": "Vince",
+        "email": "v@example.com",
+        "message": "hello",
+        "website": "",
+    }
+    first = client.post("/contact/", data=payload)
+    assert first.status_code == 200
+    second = client.post(
+        "/contact/", data={**payload, "name": "Wendy"}, REMOTE_ADDR="127.0.0.1"
+    )
+    assert second.status_code == 429
+    assert Lead.objects.filter(name="Wendy").count() == 0
+
+
+# -----------------------------------------------------------------
+# Inbound IMAP → Lead (A5)
+# -----------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_inbound_unknown_sender_creates_lead():
+    from tickets.inbound import ingest
+
+    raw = (
+        b"From: Pat Reilly <pat@stranger.test>\r\n"
+        b"To: support@lumatechsolutions.co.uk\r\n"
+        b"Subject: New build wiring quote?\r\n"
+        b"Content-Type: text/plain\r\n"
+        b"\r\n"
+        b"Hi, can you quote me for cabling a 4-bed new build?\r\n"
+    )
+    result = ingest(raw)
+    assert result.ticket is None
+    assert result.lead is not None
+    lead = Lead.objects.get(email="pat@stranger.test")
+    assert lead.name == "Pat Reilly"
+    assert lead.source == LeadSource.INBOUND_EMAIL
+    assert "cabling" in lead.interest
+
+
+@pytest.mark.django_db
+def test_inbound_known_sender_does_not_create_lead(client_record):
+    from accounts.models import User
+    from tickets.inbound import ingest
+
+    User.objects.create_user(
+        email="cu@acme.test",
+        password="x",
+        role=User.Role.CLIENT,
+        client=client_record,
+    )
+    raw = (
+        b"From: cu@acme.test\r\n"
+        b"To: support@lumatechsolutions.co.uk\r\n"
+        b"Subject: Wifi flaky\r\n"
+        b"Content-Type: text/plain\r\n"
+        b"\r\n"
+        b"It dropped twice this morning.\r\n"
+    )
+    result = ingest(raw)
+    assert result.ticket is not None  # opened a ticket as before
+    assert result.lead is None
+    assert Lead.objects.count() == 0

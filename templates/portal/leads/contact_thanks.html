@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Thanks · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card" style="max-width: 520px; text-align: center;">
+    <h1 style="margin-top: 0;">Got it — thanks.</h1>
+    <p>We'll be in touch within one working day.</p>
+    <p class="muted" style="margin-top: 24px;">
+      Already a client? <a href="{% url 'portal:login' %}">Sign in</a>.
+    </p>
+  </div>
+</div>
+{% endblock %}

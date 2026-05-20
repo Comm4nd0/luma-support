@@ -13,10 +13,14 @@ import 'screens/invoice_list_screen.dart';
 import 'screens/kb_detail_screen.dart';
 import 'screens/kb_list_screen.dart';
 import 'screens/audit_log_screen.dart';
+import 'screens/lead_detail_screen.dart';
+import 'screens/lead_form_screen.dart';
+import 'screens/lead_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/maintenance_form_screen.dart';
 import 'screens/maintenance_list_screen.dart';
 import 'models/client.dart';
+import 'models/lead.dart';
 import 'models/maintenance_schedule.dart';
 import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
@@ -66,6 +70,10 @@ GoRouter buildAppRouter({
         return '/';
       }
       if (state.matchedLocation.startsWith('/maintenance') &&
+          currentUser.isClient) {
+        return '/';
+      }
+      if (state.matchedLocation.startsWith('/leads') &&
           currentUser.isClient) {
         return '/';
       }
@@ -227,6 +235,32 @@ GoRouter buildAppRouter({
         path: '/social/inbox',
         builder: (_, __) =>
             const EngineerShell(child: SocialInboxScreen()),
+      ),
+      GoRoute(
+        path: '/leads',
+        builder: (_, __) => const EngineerShell(child: LeadListScreen()),
+      ),
+      GoRoute(
+        path: '/leads/new',
+        builder: (_, __) => const LeadFormScreen(),
+      ),
+      GoRoute(
+        path: '/leads/:id',
+        builder: (_, state) => LeadDetailScreen(
+          leadId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/leads/:id/edit',
+        builder: (_, state) {
+          final extra = state.extra;
+          if (extra is Lead) {
+            return LeadFormScreen(lead: extra);
+          }
+          return LeadEditLoader(
+            leadId: int.parse(state.pathParameters['id']!),
+          );
+        },
       ),
     ],
   );

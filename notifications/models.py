@@ -36,6 +36,7 @@ class Notification(models.Model):
         SYSTEM_ALERT = "system_alert", "System alert"
         NEW_TICKET = "new_ticket", "New ticket"
         SOCIAL_ALERT = "social_alert", "Social account alert"
+        LEAD_REMINDER = "lead_reminder", "Lead follow-up reminder"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

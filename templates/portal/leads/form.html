@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} lead · Luma Tech Solutions{% endblock %}
+{% block content %}
+<h1>{% if object %}Edit lead{% else %}New lead{% endif %}</h1>
+
+<div class="card" style="max-width: 800px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Name</label>{{ form.name }}{{ form.name.errors }}
+      </div>
+      <div class="form-row">
+        <label>Company</label>{{ form.company }}{{ form.company.errors }}
+      </div>
+      <div class="form-row">
+        <label>Email</label>{{ form.email }}{{ form.email.errors }}
+      </div>
+      <div class="form-row">
+        <label>Phone</label>{{ form.phone }}{{ form.phone.errors }}
+      </div>
+      <div class="form-row">
+        <label>Customer type</label>{{ form.customer_type }}{{ form.customer_type.errors }}
+      </div>
+      <div class="form-row">
+        <label>Stage</label>{{ form.stage }}{{ form.stage.errors }}
+      </div>
+      <div class="form-row">
+        <label>Source</label>{{ form.source }}{{ form.source.errors }}
+      </div>
+      <div class="form-row">
+        <label>Source detail <span class="muted">(e.g. "Facebook post 2026-04")</span></label>
+        {{ form.source_detail }}{{ form.source_detail.errors }}
+      </div>
+      <div class="form-row">
+        <label>Referring client <span class="muted">(if word-of-mouth)</span></label>
+        {{ form.referring_client }}{{ form.referring_client.errors }}
+      </div>
+      <div class="form-row">
+        <label>Estimated value (£)</label>
+        {{ form.estimated_value }}{{ form.estimated_value.errors }}
+      </div>
+      <div class="form-row">
+        <label>Next action at</label>
+        {{ form.next_action_at }}{{ form.next_action_at.errors }}
+      </div>
+      <div class="form-row">
+        <label>Assigned to</label>
+        {{ form.assigned_to }}{{ form.assigned_to.errors }}
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Interest <span class="muted">(what do they need?)</span></label>
+      {{ form.interest }}{{ form.interest.errors }}
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save lead</button>
+      <a class="btn btn-ghost" href="{% url 'portal:lead_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

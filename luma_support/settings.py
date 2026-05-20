@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "notifications",
     "system",
     "social",
+    "leads",
 ]
 
 MIDDLEWARE = [
@@ -253,6 +254,10 @@ CELERY_BEAT_SCHEDULE = {
     "send-monthly-reports": {
         "task": "tickets.tasks.send_monthly_reports",
         "schedule": crontab(hour=7, minute=0, day_of_month=1),
+    },
+    "lead-followup-reminders": {
+        "task": "leads.tasks.send_followup_reminders",
+        "schedule": crontab(hour=8, minute=30),
     },
 }
 

@@ -4,6 +4,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from billing import portal_urls as billing_portal_urls
+from leads import portal_urls as leads_portal_urls
 from luma_support import portal_views as views
 from social import portal_urls as social_portal_urls
 
@@ -117,4 +118,6 @@ urlpatterns = [
     *billing_portal_urls.urlpatterns,
     # Social (staff only — gating enforced inside the views)
     *social_portal_urls.urlpatterns,
+    # Leads (staff only — gating enforced inside the views)
+    *leads_portal_urls.urlpatterns,
 ]

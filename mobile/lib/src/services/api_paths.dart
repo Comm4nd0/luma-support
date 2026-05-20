@@ -37,6 +37,13 @@ class ApiPaths {
   static const String systems = '/clients/systems/';
   static const String contacts = '/clients/contacts/';
 
+  // Leads (staff-only — CRM pipeline before a Client exists)
+  static const String leads = '/leads/leads/';
+  static String lead(int id) => '/leads/leads/$id/';
+  static String leadAdvance(int id) => '/leads/leads/$id/advance/';
+  static String leadConvert(int id) => '/leads/leads/$id/convert/';
+  static String leadActivities(int id) => '/leads/leads/$id/activities/';
+
   // Knowledge
   static const String articles = '/knowledge/articles/';
   static String article(String slug) => '/knowledge/articles/$slug/';

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Leads · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Leads</h1>
+  <a class="btn" href="{% url 'portal:lead_create' %}">+ New lead</a>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+  <div class="kpi-strip" style="display: flex; flex-wrap: wrap; gap: 12px;">
+    {% for s in stage_counts %}
+      <a class="pill pill-{{ s.stage }}"
+         href="?stage={{ s.stage }}"
+         style="text-decoration: none;">
+        {{ s.label }}: {{ s.count }}
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 16px;">
+  <form method="get" class="form-grid">
+    <div class="form-row">
+      <label>Stage</label>
+      <select name="stage" class="form-input">
+        <option value="">All</option>
+        {% for value, label in stages %}
+          <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Source</label>
+      <select name="source" class="form-input">
+        <option value="">All</option>
+        {% for value, label in sources %}
+          <option value="{{ value }}" {% if filters.source == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row" style="align-self: end;">
+      <button class="btn" type="submit">Filter</button>
+      <a class="btn btn-ghost" href="{% url 'portal:lead_list' %}">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="card list-table">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Stage</th>
+          <th>Source</th>
+          <th>Value</th>
+          <th>Next action</th>
+          <th>Assigned</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+          <tr>
+            <td><a href="{% url 'portal:lead_detail' lead.pk %}">{{ lead.name }}</a></td>
+            <td>{{ lead.company|default:"—" }}</td>
+            <td><span class="pill pill-{{ lead.stage }}">{{ lead.get_stage_display }}</span></td>
+            <td>{{ lead.get_source_display }}</td>
+            <td>{% if lead.estimated_value %}£{{ lead.estimated_value }}{% else %}—{% endif %}</td>
+            <td {% if lead.is_overdue %}class="sla-breach"{% endif %}>
+              {% if lead.next_action_at %}{{ lead.next_action_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+            </td>
+            <td>{{ lead.assigned_to.email|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="muted">No leads yet. <a href="{% url 'portal:lead_create' %}">Add one</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="cards-mobile">
+  {% for lead in leads %}
+    <a class="list-card" href="{% url 'portal:lead_detail' lead.pk %}">
+      <div class="list-card-head">
+        <div>
+          <div class="list-card-title">{{ lead.name }}</div>
+          <div class="list-card-meta">{{ lead.company|default:"—" }} · {{ lead.get_source_display }}</div>
+        </div>
+        <span class="pill pill-{{ lead.stage }}">{{ lead.get_stage_display }}</span>
+      </div>
+      <div class="list-card-row">
+        <div class="muted" style="font-size: 13px;">
+          {% if lead.estimated_value %}£{{ lead.estimated_value }}{% else %}—{% endif %}
+        </div>
+        <div class="muted {% if lead.is_overdue %}sla-breach{% endif %}" style="font-size: 12px;">
+          {% if lead.next_action_at %}next: {{ lead.next_action_at|date:"Y-m-d" }}{% endif %}
+        </div>
+      </div>
+    </a>
+  {% empty %}
+    <div class="card muted">No leads yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

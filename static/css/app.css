@@ -304,6 +304,22 @@ table.table tbody tr:hover { background: var(--surface-2); }
 .pill-down { background: rgba(244,63,94,0.15); color: var(--critical); }
 .pill-unknown { background: rgba(100,116,139,0.18); color: var(--muted); }
 
+/* Lead pipeline stages (reuses pill-new from ticket statuses) */
+.pill-contacted { background: rgba(99,102,241,0.16); color: #a5b4fc; }
+.pill-qualified { background: rgba(20,184,166,0.16); color: var(--primary); }
+.pill-quoted { background: rgba(234,179,8,0.16); color: var(--medium); }
+.pill-won { background: rgba(34,197,94,0.16); color: var(--success); }
+.pill-lost { background: rgba(244,63,94,0.15); color: var(--critical); }
+.pill-dormant { background: rgba(100,116,139,0.18); color: var(--muted); }
+
+/* Lead activity kinds */
+.pill-note { background: rgba(100,116,139,0.18); color: var(--muted); }
+.pill-call { background: rgba(59,130,246,0.16); color: var(--info); }
+.pill-email { background: rgba(20,184,166,0.16); color: var(--primary); }
+.pill-meeting { background: rgba(168,85,247,0.16); color: #c084fc; }
+.pill-quote_sent { background: rgba(234,179,8,0.16); color: var(--medium); }
+.pill-stage_change { background: rgba(34,197,94,0.16); color: var(--success); }
+
 /* ---------- SLA countdown ---------- */
 .sla {
   font-variant-numeric: tabular-nums;

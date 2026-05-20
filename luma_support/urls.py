@@ -18,6 +18,7 @@ api_v1 = [
     path("clients/", include("clients.urls")),
     path("tickets/", include("tickets.urls")),
     path("knowledge/", include("knowledge.urls")),
+    path("leads/", include("leads.urls")),
     path("notifications/", include("notifications.urls")),
     path("social/", include("social.urls")),
 ]

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ lead.name }} · Lead · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin-bottom: 4px;">{{ lead.name }}</h1>
+    <div class="muted">
+      {{ lead.company|default:"—" }} ·
+      <span class="pill pill-{{ lead.stage }}">{{ lead.get_stage_display }}</span> ·
+      {{ lead.get_source_display }}
+      {% if lead.is_overdue %}<span class="pill pill-high">overdue</span>{% endif %}
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn btn-ghost" href="{% url 'portal:lead_edit' lead.pk %}">Edit</a>
+    {% if not lead.converted_client_id %}
+      <form method="post" action="{% url 'portal:lead_convert' lead.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button class="btn" type="submit">Convert to client</button>
+      </form>
+    {% else %}
+      <a class="btn" href="{% url 'portal:client_detail' lead.converted_client_id %}">View client</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <h2>Move to stage</h2>
+      <form method="post" action="{% url 'portal:lead_stage' lead.pk %}" class="form-grid">
+        {% csrf_token %}
+        <div class="form-row">
+          <label>Stage</label>
+          <select name="stage" class="form-input">
+            {% for value, label in stages %}
+              <option value="{{ value }}" {% if lead.stage == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Lost reason <span class="muted">(if marking Lost)</span></label>
+          <input type="text" name="lost_reason" class="form-input" value="{{ lead.lost_reason }}" />
+        </div>
+        <div class="form-row" style="align-self: end;">
+          <button class="btn" type="submit">Update stage</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>Activity ({{ activities|length }})</h2>
+      <form method="post" action="{% url 'portal:lead_activity_create' lead.pk %}" class="form-grid">
+        {% csrf_token %}
+        <div class="form-row">
+          <label>Kind</label>
+          <select name="kind" class="form-input">
+            {% for value, label in activity_kinds %}
+              {% if value != 'stage_change' %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row" style="grid-column: 1 / -1;">
+          <label>What happened</label>
+          <textarea name="body" rows="3" class="form-input" required></textarea>
+        </div>
+        <div class="form-row" style="grid-column: 1 / -1;">
+          <button class="btn" type="submit">Log activity</button>
+        </div>
+      </form>
+      <hr style="opacity: 0.15; margin: 16px 0;" />
+      <table class="table">
+        <thead><tr><th>When</th><th>Kind</th><th>Body</th><th>By</th></tr></thead>
+        <tbody>
+          {% for a in activities %}
+            <tr>
+              <td>{{ a.occurred_at|naturaltime }}</td>
+              <td><span class="pill pill-{{ a.kind }}">{{ a.get_kind_display }}</span></td>
+              <td style="white-space: pre-wrap;">{{ a.body }}</td>
+              <td>{{ a.actor.email|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="muted">No activity yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Contact</h3>
+      <dl class="kv">
+        <dt>Email</dt><dd>{% if lead.email %}<a href="mailto:{{ lead.email }}">{{ lead.email }}</a>{% else %}—{% endif %}</dd>
+        <dt>Phone</dt><dd>{{ lead.phone|default:"—" }}</dd>
+        <dt>Type</dt><dd>{{ lead.get_customer_type_display }}</dd>
+      </dl>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>Pipeline</h3>
+      <dl class="kv">
+        <dt>Source</dt><dd>{{ lead.get_source_display }}</dd>
+        {% if lead.source_detail %}<dt>Detail</dt><dd>{{ lead.source_detail }}</dd>{% endif %}
+        {% if lead.referring_client %}
+          <dt>Referred by</dt><dd><a href="{% url 'portal:client_detail' lead.referring_client.pk %}">{{ lead.referring_client.name }}</a></dd>
+        {% endif %}
+        <dt>Estimated value</dt><dd>{% if lead.estimated_value %}£{{ lead.estimated_value }}{% else %}—{% endif %}</dd>
+        <dt>Next action</dt><dd {% if lead.is_overdue %}class="sla-breach"{% endif %}>{% if lead.next_action_at %}{{ lead.next_action_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</dd>
+        <dt>Assigned</dt><dd>{{ lead.assigned_to.email|default:"—" }}</dd>
+        <dt>Created</dt><dd>{{ lead.created_at|date:"Y-m-d" }}</dd>
+        {% if lead.lost_reason %}<dt>Lost reason</dt><dd>{{ lead.lost_reason }}</dd>{% endif %}
+      </dl>
+    </div>
+
+    {% if lead.interest %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Interest</h3>
+      <div style="white-space: pre-wrap;">{{ lead.interest }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

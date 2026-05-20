@@ -107,3 +107,7 @@ plan tier (see `tickets/sla.py:CARE_PLAN_PRIORITY`).
 - Deploy: `./deploy.py` on the Hetzner host. Runs git pull → docker
   build → explicit migrate against the new image → `up -d`. Aborts
   cleanly if migrate fails (old container keeps serving).
+- **Xcode Cloud**: pushing to `master` (or `main`) automatically
+  triggers an iOS build in Xcode Cloud. The CI script is at
+  `mobile/ios/ci_scripts/ci_post_clone.sh`. Be aware that any push
+  to the default branch will kick off a build.

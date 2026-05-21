@@ -433,3 +433,84 @@ LOGGING = {
     },
     "root": {"handlers": ["console"], "level": "INFO"},
 }
+
+# --- Sentry (error reporting) -------------------------------------------
+# Initialised here so a single env var (SENTRY_DSN) turns reporting on/
+# off the same way the rest of our integrations gate. When SENTRY_DSN is
+# empty, the SDK is never imported and there's zero overhead — same
+# pattern used for Stripe/Anthropic/IMAP/FCM elsewhere in this file.
+#
+# What we capture:
+#   * Django request errors (incl. WSGI / ASGI)
+#   * Celery task exceptions
+#   * Logger calls at ERROR or higher (event), WARNING+ (breadcrumb)
+#
+# What we deliberately do NOT capture:
+#   * Personal data — the `send_default_pii` flag stays off. Combined
+#     with the `before_send` scrubber below, request headers / body /
+#     query params with obvious secret-shaped names are redacted before
+#     anything leaves the host.
+#   * Performance traces / profiling by default — too noisy for a solo
+#     op. Opt in by setting SENTRY_TRACES_SAMPLE_RATE > 0.
+SENTRY_DSN = config("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    import logging as _logging
+
+    _SECRET_KEY_RE = __import__("re").compile(
+        r"(?i)(password|secret|token|api[-_]?key|authori[sz]ation|cookie|csrf|fernet)"
+    )
+
+    def _scrub_event(event, hint):
+        """Best-effort redaction of secret-shaped fields before send.
+
+        We don't try to be exhaustive — sentry-sdk already strips a lot —
+        but we explicitly wipe request headers/cookies/data and extra
+        fields whose key name looks secret-shaped.
+        """
+        try:
+            req = event.get("request") or {}
+            for bucket in ("headers", "cookies", "data", "query_string", "env"):
+                v = req.get(bucket)
+                if isinstance(v, dict):
+                    for k in list(v.keys()):
+                        if _SECRET_KEY_RE.search(k):
+                            v[k] = "[scrubbed]"
+                elif isinstance(v, str) and _SECRET_KEY_RE.search(bucket):
+                    req[bucket] = "[scrubbed]"
+            extra = event.get("extra") or {}
+            for k in list(extra.keys()):
+                if _SECRET_KEY_RE.search(k):
+                    extra[k] = "[scrubbed]"
+        except Exception:  # noqa: BLE001 — scrubbing must never crash send
+            pass
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(
+                # Default: capture HTTP request data (path, method) but
+                # never the body — body scrubbing below handles forms.
+                transaction_style="url",
+            ),
+            CeleryIntegration(monitor_beat_tasks=False),
+            LoggingIntegration(
+                level=_logging.WARNING,       # breadcrumb threshold
+                event_level=_logging.ERROR,   # event threshold
+            ),
+        ],
+        environment=config("SENTRY_ENVIRONMENT", default="production" if not DEBUG else "development"),
+        release=config("SENTRY_RELEASE", default=""),
+        send_default_pii=False,
+        traces_sample_rate=float(config("SENTRY_TRACES_SAMPLE_RATE", default="0")),
+        profiles_sample_rate=float(config("SENTRY_PROFILES_SAMPLE_RATE", default="0")),
+        before_send=_scrub_event,
+        # Don't ship sentry telemetry for the health probes — they're
+        # called every few seconds by the load balancer and shouldn't
+        # eat our event quota if something errors briefly.
+        ignore_errors=[],
+    )

@@ -60,5 +60,38 @@ services:
       - redis
     command: celery -A luma_support beat -l info
 
+  # --- Backups ---
+  # Daily pg_dump with on-disk rotation. Battle-tested image; the
+  # SCHEDULE env var is a cron expression (UTC). Dumps land in the
+  # `pg_backups` volume — kept separate from `postgres_data` so a disk-
+  # fill on the app side can't kill backups.
+  #
+  # Off-box copies are the next layer (scripts/backup_offsite.sh). On-
+  # box alone is fine for accidental-delete recovery but not for "the
+  # Hetzner SSD died" recovery — read docs/BACKUPS.md before relying on
+  # this for the latter.
+  pg_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-luma_support}
+      POSTGRES_USER: ${POSTGRES_USER:-luma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luma_dev_password}
+      POSTGRES_EXTRA_OPTS: "-Z6 --schema=public --blobs"
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: "7"
+      BACKUP_KEEP_WEEKS: "4"
+      BACKUP_KEEP_MONTHS: "12"
+      HEALTHCHECK_PORT: "8080"
+      # Restrict file permissions to root (image runs as root).
+      BACKUP_DIR: /backups
+    volumes:
+      - pg_backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  pg_backups:

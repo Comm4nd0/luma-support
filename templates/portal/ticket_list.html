@@ -26,6 +26,12 @@
       <option value="{{ c.pk }}" {% if filters.client == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
     {% endfor %}
   </select>
+  <select name="tag">
+    <option value="">All tags</option>
+    {% for tag in tags %}
+      <option value="{{ tag.slug }}" {% if filters.tag == tag.slug %}selected{% endif %}>{{ tag.name }}</option>
+    {% endfor %}
+  </select>
   <button class="btn" type="submit">Filter</button>
   <a class="btn btn-ghost" href="{% url 'portal:ticket_list' %}">Reset</a>
 </form>
@@ -49,7 +55,12 @@
         {% for t in tickets %}
           <tr>
             <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
-            <td>{{ t.subject|truncatechars:60 }}</td>
+            <td>
+              {{ t.subject|truncatechars:60 }}
+              {% for tag in t.tags.all %}
+                <span class="tag-chip" style="--tag-color: {{ tag.color }};">{{ tag.name }}</span>
+              {% endfor %}
+            </td>
             <td><a href="{% url 'portal:client_detail' t.client.pk %}">{{ t.client.name }}</a></td>
             <td><span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span></td>
             <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
@@ -98,6 +109,9 @@
         <div class="list-card-pills">
           <span class="pill pill-{{ t.priority }}">{{ t.get_priority_display }}</span>
           <span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span>
+          {% for tag in t.tags.all %}
+            <span class="tag-chip" style="--tag-color: {{ tag.color }};">{{ tag.name }}</span>
+          {% endfor %}
         </div>
         <div class="muted" style="font-size: 12px;">
           {{ t.assigned_to.email|default:"unassigned" }}

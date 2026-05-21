@@ -1,3 +1,5 @@
+import 'ticket_tag.dart';
+
 enum TicketPriority { critical, high, medium, low }
 
 enum TicketStatus { newTicket, assigned, inProgress, waiting, resolved, closed }
@@ -93,6 +95,7 @@ class Ticket {
     required this.isPaused,
     required this.assignedToEmail,
     required this.csat,
+    required this.tags,
     required this.createdAt,
   });
 
@@ -110,11 +113,13 @@ class Ticket {
   final bool isPaused;
   final String? assignedToEmail;
   final CsatResponse? csat;
+  final List<TicketTag> tags;
   final DateTime createdAt;
 
   factory Ticket.fromJson(Map<String, dynamic> json) {
     final stored = _parseDate(json['sla_deadline']);
     final effective = _parseDate(json['effective_sla_deadline']) ?? stored;
+    final tagJson = (json['tags'] as List?) ?? const [];
     return Ticket(
       id: json['id'] as int,
       clientId: json['client'] as int? ?? 0,
@@ -132,6 +137,10 @@ class Ticket {
       csat: json['csat'] is Map
           ? CsatResponse.fromJson(json['csat'] as Map<String, dynamic>)
           : null,
+      tags: tagJson
+          .whereType<Map<String, dynamic>>()
+          .map(TicketTag.fromJson)
+          .toList(),
       createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
     );
   }

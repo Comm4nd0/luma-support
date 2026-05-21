@@ -5,7 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ticket.dart';
+import '../models/ticket_tag.dart';
 import '../repositories/tickets_repository.dart';
+import 'widgets/ticket_tile.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -152,6 +154,20 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (source != null) await _attachPhoto(source: source);
   }
 
+  Future<void> _editTags(Ticket ticket) async {
+    final all = await _repo.listTags();
+    if (!mounted) return;
+    final initial = ticket.tags.map((t) => t.id).toSet();
+    final selected = await showModalBottomSheet<Set<int>>(
+      context: context,
+      builder: (_) => _TagPicker(allTags: all, initial: initial),
+      isScrollControlled: true,
+    );
+    if (selected == null) return;
+    await _repo.setTags(ticket.id, selected.toList());
+    _refresh();
+  }
+
   Future<void> _captureSignature() async {
     final uploaded = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -211,6 +227,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 ),
               ],
               const SizedBox(height: 12),
+              if (t.tags.isNotEmpty || isStaff) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final tag in t.tags) _TagBadge(tag: tag),
+                          if (t.tags.isEmpty)
+                            const Text(
+                              'No tags',
+                              style: TextStyle(fontSize: 12, color: Colors.white54),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (isStaff)
+                      IconButton(
+                        tooltip: 'Edit tags',
+                        icon: const Icon(Icons.local_offer_outlined, size: 18),
+                        onPressed: () => _editTags(t),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
               Text(t.description, style: const TextStyle(height: 1.5)),
               if (t.csat != null && t.csat!.hasRating) ...[
                 const SizedBox(height: 16),
@@ -406,6 +449,105 @@ class _NoteDialogState extends State<_NoteDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+}
+
+class _TagBadge extends StatelessWidget {
+  const _TagBadge({required this.tag});
+
+  final TicketTag tag;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = parseTagColor(tag.color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.18),
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        tag.name,
+        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _TagPicker extends StatefulWidget {
+  const _TagPicker({required this.allTags, required this.initial});
+
+  final List<TicketTag> allTags;
+  final Set<int> initial;
+
+  @override
+  State<_TagPicker> createState() => _TagPickerState();
+}
+
+class _TagPickerState extends State<_TagPicker> {
+  late final Set<int> _selected = {...widget.initial};
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Tags', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            if (widget.allTags.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'No tags defined yet. Add one from the admin or web portal.',
+                  style: TextStyle(color: Colors.white60),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final tag in widget.allTags)
+                    FilterChip(
+                      label: Text(tag.name),
+                      selected: _selected.contains(tag.id),
+                      onSelected: (on) => setState(() {
+                        if (on) {
+                          _selected.add(tag.id);
+                        } else {
+                          _selected.remove(tag.id);
+                        }
+                      }),
+                      selectedColor:
+                          parseTagColor(tag.color).withOpacity(0.25),
+                      checkmarkColor: parseTagColor(tag.color),
+                    ),
+                ],
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, _selected),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

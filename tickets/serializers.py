@@ -6,8 +6,22 @@ from .models import (
     MaintenanceSchedule,
     Ticket,
     TicketNote,
+    TicketTag,
     TimeEntry,
 )
+
+
+class TicketTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketTag
+        fields = ("id", "name", "slug", "color")
+        read_only_fields = ("slug",)
+
+    def create(self, validated_data):
+        from django.utils.text import slugify
+
+        validated_data.setdefault("slug", slugify(validated_data["name"]))
+        return super().create(validated_data)
 
 
 class TimeEntrySerializer(serializers.ModelSerializer):
@@ -80,6 +94,14 @@ class TicketSerializer(serializers.ModelSerializer):
     time_entries = TimeEntrySerializer(many=True, read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
     csat = CsatResponseSerializer(read_only=True)
+    tags = TicketTagSerializer(many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        required=False,
+        queryset=TicketTag.objects.all(),
+        source="tags",
+    )
 
     class Meta:
         model = Ticket
@@ -106,6 +128,8 @@ class TicketSerializer(serializers.ModelSerializer):
             "time_entries",
             "attachments",
             "csat",
+            "tags",
+            "tag_ids",
             "created_at",
             "updated_at",
         )
@@ -132,6 +156,7 @@ class TicketListSerializer(serializers.ModelSerializer):
     is_breached = serializers.BooleanField(read_only=True)
     is_paused = serializers.BooleanField(read_only=True)
     effective_sla_deadline = serializers.DateTimeField(read_only=True)
+    tags = TicketTagSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ticket
@@ -148,6 +173,7 @@ class TicketListSerializer(serializers.ModelSerializer):
             "is_paused",
             "assigned_to",
             "assigned_to_email",
+            "tags",
             "created_at",
         )
 

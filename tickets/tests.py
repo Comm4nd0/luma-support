@@ -5,7 +5,7 @@ import pytest
 from django.utils import timezone
 
 from clients.models import CarePlanTier, Client
-from tickets.models import Ticket, TimeEntry
+from tickets.models import Ticket, TicketTag, TimeEntry
 from tickets.sla import auto_priority_for, deadline_for
 
 
@@ -103,6 +103,23 @@ def test_paused_tickets_excluded_from_sla_warnings(client_record):
     assert other in warnings
     paused = Ticket.objects.get(pk=t.pk)
     assert paused not in warnings
+
+
+@pytest.mark.django_db
+def test_ticket_tag_filter_via_slug(client_record):
+    unifi = TicketTag.objects.create(name="UniFi", slug="unifi")
+    outage = TicketTag.objects.create(name="Outage", slug="outage")
+    a = Ticket.objects.create(client=client_record, subject="a")
+    a.tags.add(unifi)
+    b = Ticket.objects.create(client=client_record, subject="b")
+    b.tags.add(unifi, outage)
+    c = Ticket.objects.create(client=client_record, subject="c")
+    c.tags.add(outage)
+
+    unifi_tickets = Ticket.objects.filter(tags__slug="unifi")
+    assert set(unifi_tickets) == {a, b}
+    both = Ticket.objects.filter(tags__slug="unifi").filter(tags__slug="outage")
+    assert set(both) == {b}
 
 
 @pytest.mark.django_db

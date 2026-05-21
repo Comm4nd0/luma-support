@@ -20,6 +20,30 @@ def _csat_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+class TicketTag(models.Model):
+    """Lightweight, free-form ticket categorisation.
+
+    Used for slicing dashboards ("show me all UniFi tickets") and as the
+    feature surface that 1.5 bulk-actions and 5.1 AI triage both write
+    to. Slug is the stable wire identifier so AI / inbound integrations
+    can attach tags by name without needing to hit the API for IDs first.
+    """
+
+    name = models.CharField(max_length=64, unique=True)
+    slug = models.SlugField(max_length=64, unique=True)
+    color = models.CharField(
+        max_length=7,
+        default="#14b8a6",
+        help_text="Hex colour with leading # — used to tint the pill.",
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 def _add_months(d: date, months: int) -> date:
     """Add `months` calendar months to `d`, clamping the day for short months."""
     total = d.month - 1 + months
@@ -109,6 +133,10 @@ class Ticket(models.Model):
 
     resolved_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+
+    tags = models.ManyToManyField(
+        "TicketTag", blank=True, related_name="tickets"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

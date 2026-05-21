@@ -416,31 +416,40 @@ class TicketListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = _scope_tickets(
-            Ticket.objects.select_related("client", "assigned_to", "system"),
+            Ticket.objects.select_related(
+                "client", "assigned_to", "system"
+            ).prefetch_related("tags"),
             self.request.user,
         )
         status = self.request.GET.get("status")
         priority = self.request.GET.get("priority")
         client = self.request.GET.get("client")
+        tag_slug = self.request.GET.get("tag")
         if status:
             qs = qs.filter(status=status)
         if priority:
             qs = qs.filter(priority=priority)
         if client:
             qs = qs.filter(client_id=client)
+        if tag_slug:
+            qs = qs.filter(tags__slug=tag_slug)
         return qs.order_by("sla_deadline", "-created_at")
 
     def get_context_data(self, **kwargs):
+        from tickets.models import TicketTag
+
         ctx = super().get_context_data(**kwargs)
         ctx["clients"] = _scope_clients(
             Client.objects.all(), self.request.user
         ).order_by("name")
         ctx["statuses"] = Ticket.Status.choices
         ctx["priorities"] = Ticket.Priority.choices
+        ctx["tags"] = TicketTag.objects.all()
         ctx["filters"] = {
             "status": self.request.GET.get("status", ""),
             "priority": self.request.GET.get("priority", ""),
             "client": self.request.GET.get("client", ""),
+            "tag": self.request.GET.get("tag", ""),
         }
         ctx["active"] = "tickets"
         ctx["now"] = timezone.now()
@@ -450,7 +459,15 @@ class TicketListView(LoginRequiredMixin, ListView):
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ["client", "system", "subject", "description", "priority", "assigned_to"]
+        fields = [
+            "client",
+            "system",
+            "subject",
+            "description",
+            "priority",
+            "assigned_to",
+            "tags",
+        ]
         widgets = {
             "subject": forms.TextInput(attrs={"class": "form-input"}),
             "description": forms.Textarea(attrs={"class": "form-input", "rows": 6}),
@@ -458,6 +475,7 @@ class TicketForm(forms.ModelForm):
             "client": forms.Select(attrs={"class": "form-input"}),
             "system": forms.Select(attrs={"class": "form-input"}),
             "assigned_to": forms.Select(attrs={"class": "form-input"}),
+            "tags": forms.CheckboxSelectMultiple(),
         }
 
 
@@ -484,6 +502,7 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
             )
             # Hide internal-only assignment for client users.
             form.fields.pop("assigned_to", None)
+            form.fields.pop("tags", None)
         return form
 
     def form_valid(self, form):

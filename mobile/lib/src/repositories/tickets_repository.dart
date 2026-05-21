@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../models/social_account.dart';
 import '../models/ticket.dart';
 import '../models/ticket_note.dart';
+import '../models/ticket_tag.dart';
 import '../services/api_client.dart';
 import '../services/api_paths.dart';
 
@@ -13,13 +14,18 @@ class TicketsRepository {
 
   final ApiClient _api;
 
-  Future<List<Ticket>> list({String? status, String? priority}) async {
+  Future<List<Ticket>> list({
+    String? status,
+    String? priority,
+    String? tagSlug,
+  }) async {
     try {
       final res = await _api.dio.get<dynamic>(
         ApiPaths.tickets,
         queryParameters: {
           if (status != null) 'status': status,
           if (priority != null) 'priority': priority,
+          if (tagSlug != null) 'tag_slug': tagSlug,
         },
       );
       final data = res.data;
@@ -29,6 +35,45 @@ class TicketsRepository {
       return rows
           .map((r) => Ticket.fromJson(r as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<List<TicketTag>> listTags() async {
+    try {
+      final res = await _api.dio.get<dynamic>(ApiPaths.ticketTags);
+      final data = res.data;
+      final rows = (data is Map && data.containsKey('results'))
+          ? data['results'] as List
+          : data as List;
+      return rows
+          .map((r) => TicketTag.fromJson(r as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<TicketTag> createTag({required String name, String? color}) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.ticketTags,
+        data: {'name': name, if (color != null) 'color': color},
+      );
+      return TicketTag.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<Ticket> setTags(int id, List<int> tagIds) async {
+    try {
+      final res = await _api.dio.patch<dynamic>(
+        ApiPaths.ticket(id),
+        data: {'tag_ids': tagIds},
+      );
+      return Ticket.fromJson(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

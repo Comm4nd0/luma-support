@@ -29,11 +29,21 @@
         <label for="id_priority">Priority</label>
         {{ form.priority }} {{ form.priority.errors }}
       </div>
+      {% if form.assigned_to %}
       <div class="form-row">
         <label for="id_assigned_to">Assigned to</label>
         {{ form.assigned_to }} {{ form.assigned_to.errors }}
       </div>
+      {% endif %}
     </div>
+    {% if form.tags %}
+    <div class="form-row">
+      <label>Tags</label>
+      <div class="tag-picker">
+        {{ form.tags }} {{ form.tags.errors }}
+      </div>
+    </div>
+    {% endif %}
     <div class="form-actions">
       <button class="btn" type="submit" name="_action" value="submit">Create ticket</button>
       <button class="btn btn-ghost" type="submit" name="_action" value="suggest">

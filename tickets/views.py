@@ -4,13 +4,21 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Attachment, MaintenanceSchedule, Ticket, TicketNote, TimeEntry
+from .models import (
+    Attachment,
+    MaintenanceSchedule,
+    Ticket,
+    TicketNote,
+    TicketTag,
+    TimeEntry,
+)
 from .serializers import (
     AttachmentSerializer,
     MaintenanceScheduleSerializer,
     TicketListSerializer,
     TicketNoteSerializer,
     TicketSerializer,
+    TicketTagSerializer,
     TimeEntrySerializer,
 )
 
@@ -20,17 +28,33 @@ class TicketViewSet(viewsets.ModelViewSet):
         "client", "system", "assigned_to", "created_by"
     ).prefetch_related("time_entries", "attachments")
 
-    filterset_fields = ["status", "priority", "client", "assigned_to", "system"]
+    filterset_fields = ["status", "priority", "client", "assigned_to", "system", "tags"]
     search_fields = ["subject", "description", "client__name"]
     ordering_fields = ["sla_deadline", "created_at", "priority"]
     ordering = ["sla_deadline", "-created_at"]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().prefetch_related("tags")
         user = self.request.user
         if user.can_view_all:
+            qs = self._maybe_filter_by_tag_slugs(qs)
             return qs
-        return qs.filter(client_id=user.client_id) if user.client_id else qs.none()
+        if not user.client_id:
+            return qs.none()
+        return self._maybe_filter_by_tag_slugs(qs.filter(client_id=user.client_id))
+
+    def _maybe_filter_by_tag_slugs(self, qs):
+        """``?tag_slug=unifi&tag_slug=outage`` -> tickets with ALL slugs.
+
+        Lets AI / inbound integrations filter without first resolving slugs
+        to PKs.
+        """
+        slugs = self.request.query_params.getlist("tag_slug") if hasattr(
+            self.request, "query_params"
+        ) else []
+        for slug in slugs:
+            qs = qs.filter(tags__slug=slug)
+        return qs.distinct() if slugs else qs
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -248,6 +272,39 @@ class MaintenanceScheduleViewSet(viewsets.ModelViewSet):
         if not self.request.user.can_view_all:
             return self.queryset.none()
         return super().get_queryset()
+
+
+class TicketTagViewSet(viewsets.ModelViewSet):
+    """CRUD for ticket tags. Read open to any authenticated user;
+    write restricted to staff so clients can't pollute the taxonomy."""
+
+    queryset = TicketTag.objects.all()
+    serializer_class = TicketTagSerializer
+    ordering = ["name"]
+
+    def get_permissions(self):
+        # Default permissions (IsAuthenticated) apply for read.
+        return super().get_permissions()
+
+    def _require_staff(self):
+        if not self.request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+    def create(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().destroy(request, *args, **kwargs)
 
 
 class TimeEntryViewSet(viewsets.ModelViewSet):

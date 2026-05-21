@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.utils.text import slugify
 
-from .models import Attachment, Ticket, TicketNote, TimeEntry
+from .models import Attachment, Ticket, TicketNote, TicketTag, TimeEntry
 
 
 class TimeEntryInline(admin.TabularInline):
@@ -36,9 +37,10 @@ class TicketAdmin(admin.ModelAdmin):
         "sla_deadline",
         "created_at",
     )
-    list_filter = ("status", "priority", "assigned_to")
+    list_filter = ("status", "priority", "assigned_to", "tags")
     search_fields = ("subject", "description", "client__name")
     autocomplete_fields = ("client", "system", "assigned_to", "created_by")
+    filter_horizontal = ("tags",)
     readonly_fields = (
         "sla_deadline",
         "resolved_at",
@@ -58,3 +60,15 @@ class TimeEntryAdmin(admin.ModelAdmin):
 @admin.register(Attachment)
 class AttachmentAdmin(admin.ModelAdmin):
     list_display = ("ticket", "filename", "uploaded_by", "uploaded_at")
+
+
+@admin.register(TicketTag)
+class TicketTagAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "color")
+    search_fields = ("name", "slug")
+    prepopulated_fields = {"slug": ("name",)}
+
+    def save_model(self, request, obj, form, change):
+        if not obj.slug:
+            obj.slug = slugify(obj.name)
+        super().save_model(request, obj, form, change)

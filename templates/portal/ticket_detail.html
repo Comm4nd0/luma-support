@@ -14,6 +14,9 @@
   <div>
     <span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
     <span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+    {% for tag in ticket.tags.all %}
+      <span class="tag-chip" style="--tag-color: {{ tag.color }};">{{ tag.name }}</span>
+    {% endfor %}
   </div>
 </div>
 

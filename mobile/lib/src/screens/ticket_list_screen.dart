@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../models/saved_ticket_filter.dart';
 import '../models/ticket.dart';
 import '../models/ticket_tag.dart';
 import '../repositories/tickets_repository.dart';
@@ -139,7 +140,9 @@ class TicketListScreen extends StatefulWidget {
 class _TicketListScreenState extends State<TicketListScreen> {
   late Future<List<Ticket>> _future;
   Future<List<TicketTag>>? _tagsFuture;
+  Future<List<SavedTicketFilter>>? _savedFuture;
   String? _activeTagSlug;
+  SavedTicketFilter? _activeSaved;
   final Set<int> _selected = {};
 
   TicketsRepository get _repo =>
@@ -150,9 +153,15 @@ class _TicketListScreenState extends State<TicketListScreen> {
     super.initState();
     _future = _load();
     _tagsFuture = _repo.listTags();
+    _savedFuture = _repo.listSavedFilters();
   }
 
-  Future<List<Ticket>> _load() => _repo.list(tagSlug: _activeTagSlug);
+  Future<List<Ticket>> _load() {
+    if (_activeSaved != null) {
+      return _repo.list(extra: _activeSaved!.toParams());
+    }
+    return _repo.list(tagSlug: _activeTagSlug);
+  }
 
   Future<void> _refresh() async {
     setState(() {
@@ -163,8 +172,59 @@ class _TicketListScreenState extends State<TicketListScreen> {
   void _setTag(String? slug) {
     setState(() {
       _activeTagSlug = slug;
+      _activeSaved = null;
       _future = _load();
     });
+  }
+
+  void _applySaved(SavedTicketFilter? sf) {
+    setState(() {
+      _activeSaved = sf;
+      _activeTagSlug = null;
+      _future = _load();
+    });
+  }
+
+  Future<void> _saveCurrent() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Save view'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    // Encode whatever filter is currently active.
+    final params = _activeSaved?.toParams() ??
+        {if (_activeTagSlug != null) 'tag_slug': _activeTagSlug!};
+    final qs = params.entries
+        .map((e) =>
+            '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    try {
+      await _repo.saveFilter(name: name, querystring: qs);
+      messenger.showSnackBar(SnackBar(content: Text('Saved “$name”.')));
+      setState(() {
+        _savedFuture = _repo.listSavedFilters();
+      });
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Save failed: $e')));
+    }
   }
 
   bool get _selectionMode => _selected.isNotEmpty;
@@ -230,6 +290,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
           : AppBar(
               title: const Text('Tickets'),
               actions: [
+                if (isStaff)
+                  IconButton(
+                    icon: const LumaIcon(PhosphorIconsDuotone.bookmarkSimple),
+                    tooltip: 'Save current view',
+                    onPressed: _saveCurrent,
+                  ),
                 IconButton(
                   icon: const LumaIcon(PhosphorIconsDuotone.arrowsClockwise),
                   onPressed: _refresh,
@@ -249,6 +315,40 @@ class _TicketListScreenState extends State<TicketListScreen> {
             ),
       body: Column(
         children: [
+          FutureBuilder<List<SavedTicketFilter>>(
+            future: _savedFuture,
+            builder: (context, snap) {
+              final saved = (snap.data ?? const <SavedTicketFilter>[])
+                  .where((s) => s.pinned)
+                  .toList();
+              if (saved.isEmpty) return const SizedBox.shrink();
+              return SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  children: [
+                    for (final sf in saved)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(sf.name),
+                          selected: _activeSaved?.id == sf.id,
+                          onSelected: (on) =>
+                              _applySaved(on ? sf : null),
+                        ),
+                      ),
+                    if (_activeSaved != null)
+                      TextButton(
+                        onPressed: () => _applySaved(null),
+                        child: const Text('Clear'),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
           FutureBuilder<List<TicketTag>>(
             future: _tagsFuture,
             builder: (context, snap) {

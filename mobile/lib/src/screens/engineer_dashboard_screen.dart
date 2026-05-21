@@ -8,6 +8,7 @@ import '../models/ticket.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
+import '../theme.dart';
 import 'widgets/luma_drawer.dart';
 import 'widgets/ticket_tile.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -34,10 +35,16 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
   Future<_DashboardData> _load() async {
     final all = await _tickets.list();
     DashboardStats? stats;
+    Map<String, dynamic>? sla;
     try {
       stats = await _tickets.dashboardStats();
     } catch (_) {
       // KPIs are nice-to-have on dashboard load; never block on them.
+    }
+    try {
+      sla = await _tickets.slaAnalytics(days: 30);
+    } catch (_) {
+      // Same — failing SLA fetch shouldn't blank the page.
     }
     return _DashboardData(
       slaWarnings: all.where((t) => t.isBreached || _withinWindow(t)).toList(),
@@ -47,6 +54,7 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
               t.status != TicketStatus.closed)
           .toList(),
       stats: stats,
+      sla: sla,
     );
   }
 
@@ -94,6 +102,7 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                   _KpiGrid(stats: data.stats!),
                   const SizedBox(height: 8),
                 ],
+                if (data.sla != null) _SlaCard(payload: data.sla!),
                 if (data.stats != null &&
                     data.stats!.socialAccounts.isNotEmpty) ...[
                   _SocialStrip(stats: data.stats!),
@@ -141,10 +150,12 @@ class _DashboardData {
     required this.slaWarnings,
     required this.open,
     required this.stats,
+    required this.sla,
   });
   final List<Ticket> slaWarnings;
   final List<Ticket> open;
   final DashboardStats? stats;
+  final Map<String, dynamic>? sla;
 }
 
 class _KpiGrid extends StatelessWidget {
@@ -365,6 +376,89 @@ class _SocialKpiCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SlaCard extends StatelessWidget {
+  const _SlaCard({required this.payload});
+  final Map<String, dynamic> payload;
+
+  @override
+  Widget build(BuildContext context) {
+    final totals = (payload['totals'] as Map?) ?? const {};
+    final closed = (totals['closed'] as num?)?.toInt() ?? 0;
+    final met = (totals['met'] as num?)?.toInt() ?? 0;
+    final breached = (totals['breached'] as num?)?.toInt() ?? 0;
+    final hit = totals['hit_rate'];
+    final pct = (hit is num) ? (hit * 100).round() : null;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'SLA — last 30 days',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            if (closed == 0)
+              const Text(
+                'No tickets closed in the window.',
+                style: TextStyle(color: kMuted),
+              )
+            else
+              Row(
+                children: [
+                  _SlaMetric(label: 'Closed', value: closed.toString()),
+                  _SlaMetric(
+                    label: 'Hit-rate',
+                    value: pct == null ? '—' : '$pct%',
+                    valueColor: pct != null && pct < 80
+                        ? Colors.amber
+                        : kPrimary,
+                  ),
+                  _SlaMetric(
+                    label: 'Breached',
+                    value: breached.toString(),
+                    valueColor: breached > 0 ? Colors.redAccent : null,
+                  ),
+                  _SlaMetric(label: 'Met', value: met.toString()),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SlaMetric extends StatelessWidget {
+  const _SlaMetric({required this.label, required this.value, this.valueColor});
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: valueColor ??
+                    Theme.of(context).colorScheme.onSurface,
+              )),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: kMuted),
+          ),
+        ],
       ),
     );
   }

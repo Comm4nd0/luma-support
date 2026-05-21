@@ -37,6 +37,10 @@ class ApiPaths {
   static String ticketTag(int id) => '/tickets/ticket-tags/$id/';
   static const String ticketTemplates = '/tickets/ticket-templates/';
   static const String ticketsBulk = '/tickets/tickets/bulk/';
+  static const String savedTicketFilters = '/tickets/saved-filters/';
+  static String savedTicketFilter(int id) => '/tickets/saved-filters/$id/';
+  static const String slaAnalyticsApi =
+      '/tickets/tickets/sla-analytics/';
   static const String timeEntries = '/tickets/time-entries/';
   static const String maintenanceSchedules =
       '/tickets/maintenance-schedules/';

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../models/saved_ticket_filter.dart';
 import '../models/social_account.dart';
 import '../models/ticket.dart';
 import '../models/ticket_note.dart';
@@ -19,15 +20,18 @@ class TicketsRepository {
     String? status,
     String? priority,
     String? tagSlug,
+    Map<String, String>? extra,
   }) async {
     try {
+      final params = <String, String>{
+        if (status != null) 'status': status,
+        if (priority != null) 'priority': priority,
+        if (tagSlug != null) 'tag_slug': tagSlug,
+        ...?extra,
+      };
       final res = await _api.dio.get<dynamic>(
         ApiPaths.tickets,
-        queryParameters: {
-          if (status != null) 'status': status,
-          if (priority != null) 'priority': priority,
-          if (tagSlug != null) 'tag_slug': tagSlug,
-        },
+        queryParameters: params,
       );
       final data = res.data;
       final rows = (data is Map && data.containsKey('results'))
@@ -36,6 +40,64 @@ class TicketsRepository {
       return rows
           .map((r) => Ticket.fromJson(r as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<List<SavedTicketFilter>> listSavedFilters() async {
+    try {
+      final res = await _api.dio.get<dynamic>(ApiPaths.savedTicketFilters);
+      final data = res.data;
+      final rows = (data is Map && data.containsKey('results'))
+          ? data['results'] as List
+          : data as List;
+      return rows
+          .map((r) => SavedTicketFilter.fromJson(r as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<SavedTicketFilter> saveFilter({
+    required String name,
+    required String querystring,
+    bool pinned = true,
+  }) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.savedTicketFilters,
+        data: {
+          'name': name,
+          'querystring': querystring,
+          'pinned': pinned,
+        },
+      );
+      return SavedTicketFilter.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<void> deleteSavedFilter(int id) async {
+    try {
+      await _api.dio.delete<dynamic>(ApiPaths.savedTicketFilter(id));
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  /// Staff-only SLA hit-rate summary over ``days``. Returns the raw
+  /// payload (totals + by_priority); callers can pick the bits they
+  /// want to render.
+  Future<Map<String, dynamic>> slaAnalytics({int days = 30}) async {
+    try {
+      final res = await _api.dio.get<dynamic>(
+        ApiPaths.slaAnalyticsApi,
+        queryParameters: {'days': days},
+      );
+      return Map<String, dynamic>.from(res.data as Map);
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

@@ -1,12 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/client.dart';
+import '../models/client_document.dart';
 import '../models/contact.dart';
 import '../models/ticket.dart';
+import '../repositories/client_documents_repository.dart';
 import '../repositories/clients_repository.dart';
 import '../repositories/invoices_repository.dart';
 import '../repositories/site_visits_repository.dart';
@@ -215,7 +220,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
           final data = snap.data!;
           final c = data.client;
           return DefaultTabController(
-            length: 3,
+            length: 4,
             child: Column(
               children: [
                 Padding(
@@ -252,10 +257,12 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                   ),
                 ),
                 const TabBar(
+                  isScrollable: true,
                   tabs: [
                     Tab(text: 'Systems'),
                     Tab(text: 'Contacts'),
                     Tab(text: 'Tickets'),
+                    Tab(text: 'Docs'),
                   ],
                 ),
                 Expanded(
@@ -264,6 +271,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                       _systemsTab(c),
                       _contactsTab(c),
                       _ticketsTab(data.tickets),
+                      _DocumentsTab(clientId: widget.clientId, isStaff: isStaff),
                     ],
                   ),
                 ),
@@ -372,4 +380,157 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Text(message, style: const TextStyle(color: Colors.grey)),
       );
+}
+
+class _DocumentsTab extends StatefulWidget {
+  const _DocumentsTab({required this.clientId, required this.isStaff});
+  final int clientId;
+  final bool isStaff;
+
+  @override
+  State<_DocumentsTab> createState() => _DocumentsTabState();
+}
+
+class _DocumentsTabState extends State<_DocumentsTab> {
+  late Future<List<ClientDocument>> _future;
+
+  ClientDocumentsRepository get _repo =>
+      ClientDocumentsRepository(context.read<ApiClient>());
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _repo.list(clientId: widget.clientId);
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _future = _repo.list(clientId: widget.clientId));
+  }
+
+  Future<void> _open(ClientDocument doc) async {
+    final url = Uri.parse(doc.fileUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't open the file.")),
+      );
+    }
+  }
+
+  Future<void> _upload() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickMedia();
+    if (picked == null) return;
+    final titleController =
+        TextEditingController(text: picked.name);
+    var kind = 'other';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Upload document'),
+        content: StatefulBuilder(
+          builder: (ctx2, setLocal) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: kind,
+                decoration: const InputDecoration(labelText: 'Kind'),
+                items: const [
+                  DropdownMenuItem(value: 'contract', child: Text('Contract')),
+                  DropdownMenuItem(value: 'warranty', child: Text('Warranty')),
+                  DropdownMenuItem(value: 'diagram', child: Text('Diagram')),
+                  DropdownMenuItem(value: 'welcome', child: Text('Welcome pack')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: (v) => setLocal(() => kind = v ?? 'other'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Upload'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _repo.upload(
+        clientId: widget.clientId,
+        title: titleController.text.trim().isEmpty
+            ? picked.name
+            : titleController.text.trim(),
+        file: File(picked.path),
+        kind: kind,
+      );
+      messenger.showSnackBar(const SnackBar(content: Text('Uploaded.')));
+      if (mounted) _refresh();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<List<ClientDocument>>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Center(child: Text('Error: ${snap.error}'));
+            }
+            final docs = snap.data ?? const <ClientDocument>[];
+            if (docs.isEmpty) {
+              return const _EmptyState('No documents yet.');
+            }
+            return ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                for (final d in docs)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(d.title),
+                      subtitle: Text(
+                        '${d.kind.name}'
+                        '${d.uploadedByEmail != null ? " · ${d.uploadedByEmail}" : ""}'
+                        '${!d.clientVisible ? " · internal" : ""}',
+                      ),
+                      trailing: const Icon(Icons.open_in_new, size: 18),
+                      onTap: () => _open(d),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+      floatingActionButton: widget.isStaff
+          ? FloatingActionButton.small(
+              onPressed: _upload,
+              tooltip: 'Upload document',
+              child: const Icon(Icons.add),
+            )
+          : null,
+    );
+  }
 }

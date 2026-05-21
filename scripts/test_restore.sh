@@ -86,6 +86,16 @@ if [ "$ready_streak" -lt 2 ]; then
   exit 2
 fi
 
+echo "==> creating roles referenced by the dump"
+# The dump references the production DB owner ("luma"). Create that
+# role in the throwaway so GRANT/OWNER TO statements resolve. If the
+# role already exists from a previous run (rare; throwaway containers
+# get torn down), the error is swallowed.
+DB_OWNER="${POSTGRES_USER:-luma}"
+ROLE_SQL='CREATE ROLE "'"$DB_OWNER"'" LOGIN PASSWORD '"'"'throwaway'"'"';'
+echo "$ROLE_SQL" | docker exec -i "$TEST_CONTAINER" \
+  psql -U postgres -d postgres > /dev/null 2>&1 || true
+
 echo "==> preparing throwaway db (drop+recreate public schema)"
 # pg_dump from postgres-backup-local includes CREATE SCHEMA public, but a
 # fresh Postgres image already has one -- drop it first to avoid the

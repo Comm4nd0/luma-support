@@ -54,6 +54,9 @@ class Client(models.Model):
 
     notes = models.TextField(blank=True)
 
+    # Opt-out switch for the Friday-9am client digest email.
+    weekly_digest_opt_in = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

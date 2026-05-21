@@ -85,6 +85,15 @@ def send_ticket_update_email(self, ticket_id: int, event: str = "updated"):
 
 
 @shared_task
+def send_weekly_client_digest() -> str:
+    """Fri-9am beat — fan out the per-client weekly summary email."""
+    from .digests import send_digests
+
+    n = send_digests()
+    return f"weekly digest: {n} emails sent"
+
+
+@shared_task
 def send_csat_email(ticket_id: int):
     """Email a single-use CSAT survey link to the client who opened the ticket.
 

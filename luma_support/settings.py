@@ -290,6 +290,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.chase_overdue_invoices",
         "schedule": crontab(hour=9, minute=30),
     },
+    "send-weekly-client-digest": {
+        "task": "notifications.tasks.send_weekly_client_digest",
+        # Friday 09:00 local — gives Marco a sensible "week wrap" cadence
+        # and avoids landing in Monday-morning inbox overload.
+        "schedule": crontab(hour=9, minute=0, day_of_week="fri"),
+    },
 }
 
 # --- Email --------------------------------------------------------------

@@ -3,11 +3,12 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Client, Contact, ReferralCode, System
+from .models import Client, Contact, ReferralCode, SiteVisit, System
 from .serializers import (
     ClientSerializer,
     ContactSerializer,
     ReferralCodeSerializer,
+    SiteVisitSerializer,
     SystemSerializer,
 )
 
@@ -102,6 +103,107 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user)
+
+
+class SiteVisitViewSet(viewsets.ModelViewSet):
+    """Staff-only site-visit logbook.
+
+    The lifecycle is two endpoints rather than CRUD-style writes:
+    POST /clients/<id>/site-visits/start/ opens a visit (with optional
+    lat/lon), and POST /site-visits/<id>/end/ closes it, stamping
+    ended_at + creating a billable TimeEntry on whichever ticket the
+    caller passes (so the visit time lands in the existing
+    time-tracking analytics).
+    """
+
+    queryset = SiteVisit.objects.select_related("client", "user").all()
+    serializer_class = SiteVisitSerializer
+    filterset_fields = ["client", "user"]
+
+    def get_queryset(self):
+        if not self.request.user.can_view_all:
+            return self.queryset.none()
+        return super().get_queryset()
+
+    @action(detail=True, methods=["post"], url_path="end")
+    def end(self, request, pk=None):
+        """Close an open visit; optionally roll it into a TimeEntry."""
+        from django.utils import timezone
+
+        from audit import log as audit_log
+        from tickets.models import Ticket, TimeEntry
+
+        visit = self.get_object()
+        if visit.ended_at is not None:
+            return Response({"detail": "already ended"}, status=400)
+        if visit.user_id != request.user.pk and not request.user.is_admin_role:
+            return Response({"detail": "not your visit"}, status=403)
+
+        visit.ended_at = timezone.now()
+        lat = request.data.get("lat")
+        lon = request.data.get("lon")
+        if lat is not None:
+            visit.lat_end = lat
+        if lon is not None:
+            visit.lon_end = lon
+        notes = (request.data.get("notes") or "").strip()
+        if notes:
+            visit.notes = (visit.notes + ("\n" if visit.notes else "") + notes)
+        # Optional: bill this visit's minutes against a ticket.
+        ticket_id = request.data.get("ticket")
+        if ticket_id and visit.duration_minutes:
+            ticket = Ticket.objects.filter(
+                pk=int(ticket_id), client=visit.client
+            ).first()
+            if ticket is None:
+                return Response(
+                    {"detail": "ticket not found or wrong client"}, status=400
+                )
+            visit.time_entry = TimeEntry.objects.create(
+                ticket=ticket, user=visit.user,
+                minutes=visit.duration_minutes,
+                description=f"Site visit at {visit.client.name}",
+                billable=True,
+            )
+        visit.save()
+        audit_log(
+            "site_visit.end",
+            actor=request.user,
+            request=request,
+            target=visit.client,
+            visit_id=visit.pk,
+            minutes=visit.duration_minutes,
+        )
+        return Response(self.get_serializer(visit).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def start_site_visit(request, client_id: int):
+    """POST /api/v1/clients/clients/<id>/site-visits/start/ — open a visit."""
+    from audit import log as audit_log
+
+    if not request.user.can_view_all:
+        return Response({"detail": "Staff only."}, status=403)
+    client = Client.objects.filter(pk=client_id).first()
+    if client is None:
+        return Response({"detail": "client not found"}, status=404)
+    visit = SiteVisit.objects.create(
+        client=client,
+        user=request.user,
+        lat_start=request.data.get("lat"),
+        lon_start=request.data.get("lon"),
+    )
+    audit_log(
+        "site_visit.start",
+        actor=request.user,
+        request=request,
+        target=client,
+        visit_id=visit.pk,
+        lat=str(visit.lat_start) if visit.lat_start else "",
+        lon=str(visit.lon_start) if visit.lon_start else "",
+    )
+    return Response(SiteVisitSerializer(visit).data, status=201)
 
 
 @api_view(["GET"])

@@ -1,6 +1,37 @@
 from rest_framework import serializers
 
-from .models import Client, Contact, ReferralCode, System
+from .models import Client, Contact, ReferralCode, SiteVisit, System
+
+
+class SiteVisitSerializer(serializers.ModelSerializer):
+    duration_minutes = serializers.IntegerField(read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        model = SiteVisit
+        fields = (
+            "id",
+            "client",
+            "user",
+            "user_email",
+            "started_at",
+            "ended_at",
+            "lat_start",
+            "lon_start",
+            "lat_end",
+            "lon_end",
+            "notes",
+            "duration_minutes",
+            "time_entry",
+        )
+        read_only_fields = (
+            "user",
+            "user_email",
+            "started_at",
+            "ended_at",
+            "duration_minutes",
+            "time_entry",
+        )
 
 
 class ContactSerializer(serializers.ModelSerializer):

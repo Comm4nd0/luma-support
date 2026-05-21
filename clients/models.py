@@ -196,6 +196,66 @@ class ClientOnboardingTask(models.Model):
         return f"{self.client.name} — {self.title}"
 
 
+class SiteVisit(models.Model):
+    """GPS-stamped on-site engineer visit.
+
+    The "start" action drops a row with started_at + optional GPS
+    coordinates. The "end" action stamps ended_at + end coordinates
+    and creates a billable TimeEntry on behalf of the engineer so the
+    visit duration shows up in the existing time-tracking surfaces.
+
+    Coordinates are optional everywhere — Marco can use this from a
+    desktop without a GPS by just hitting start / end on the buttons.
+    """
+
+    client = models.ForeignKey(
+        "Client", on_delete=models.PROTECT, related_name="site_visits"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="site_visits",
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    lat_start = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    lon_start = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    lat_end = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    lon_end = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    notes = models.TextField(blank=True)
+    time_entry = models.ForeignKey(
+        "tickets.TimeEntry",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.client.name} — {self.started_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def is_open(self) -> bool:
+        return self.ended_at is None
+
+    @property
+    def duration_minutes(self) -> int | None:
+        if not self.ended_at:
+            return None
+        return max(0, int((self.ended_at - self.started_at).total_seconds() // 60))
+
+
 def seed_onboarding_tasks(client: "Client") -> int:
     """Materialise the active OnboardingTaskTemplate rows onto a Client.
 

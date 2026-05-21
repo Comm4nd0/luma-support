@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "social",
     "leads",
     "quotes",
+    "features",
 ]
 
 MIDDLEWARE = [

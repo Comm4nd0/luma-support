@@ -73,6 +73,13 @@ class LumaDrawer extends StatelessWidget {
               ),
             if (isStaff)
               ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.sparkle),
+                title: const Text('Clear queue'),
+                subtitle: const Text('AI-suggested next action per ticket'),
+                onTap: () => go('/inbox-zero'),
+              ),
+            if (isStaff)
+              ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.chatCircleDots),
                 title: const Text('Social inbox'),
                 subtitle: const Text('DMs, mentions and comments'),

@@ -41,6 +41,7 @@ class ApiPaths {
   static String savedTicketFilter(int id) => '/tickets/saved-filters/$id/';
   static const String slaAnalyticsApi =
       '/tickets/tickets/sla-analytics/';
+  static const String inboxZero = '/tickets/tickets/inbox-zero/';
   static const String timeEntries = '/tickets/time-entries/';
   static const String maintenanceSchedules =
       '/tickets/maintenance-schedules/';

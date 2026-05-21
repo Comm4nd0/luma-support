@@ -88,6 +88,26 @@ class TicketsRepository {
     }
   }
 
+  /// Staff-only: Claude-suggested next action per open ticket assigned
+  /// to me. Returns ``[{ticket_id, action, reason}, …]``. Empty list
+  /// when ANTHROPIC_API_KEY isn't set on the backend.
+  Future<List<Map<String, dynamic>>> inboxZero({int limit = 15}) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.inboxZero,
+        data: {'limit': limit},
+      );
+      final body = res.data as Map<String, dynamic>;
+      final rows = (body['suggestions'] as List?) ?? const [];
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   /// Staff-only SLA hit-rate summary over ``days``. Returns the raw
   /// payload (totals + by_priority); callers can pick the bits they
   /// want to render.

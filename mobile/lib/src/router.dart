@@ -29,6 +29,7 @@ import 'models/maintenance_schedule.dart';
 import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
 import 'screens/payments_screen.dart';
+import 'screens/inbox_zero_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/recovery_codes_screen.dart';
 import 'screens/sessions_screen.dart';
@@ -234,6 +235,11 @@ GoRouter buildAppRouter({
         path: '/site-visits',
         builder: (_, __) =>
             const EngineerShell(child: SiteVisitsScreen()),
+      ),
+      GoRoute(
+        path: '/inbox-zero',
+        builder: (_, __) =>
+            const EngineerShell(child: InboxZeroScreen()),
       ),
       GoRoute(
         path: '/my-services',

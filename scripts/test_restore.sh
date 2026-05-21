@@ -64,15 +64,25 @@ docker run -d --rm --name "$TEST_CONTAINER" \
   -v "$VOLUME_NAME:/b:ro" \
   "$PG_IMAGE" >/dev/null
 
-# Wait for it to become ready.
-for i in $(seq 1 30); do
+# Wait for it to become ready. The postgres:16-alpine image briefly
+# restarts during init (initial bootstrap, then the actual server)
+# so we require TWO consecutive ready probes with a 2-second gap
+# between them, otherwise we can race into the restart window.
+ready_streak=0
+for i in $(seq 1 60); do
   if docker exec "$TEST_CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then
-    break
+    ready_streak=$((ready_streak + 1))
+    if [ "$ready_streak" -ge 2 ]; then
+      break
+    fi
+  else
+    ready_streak=0
   fi
   sleep 1
 done
-if ! docker exec "$TEST_CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then
-  echo "ERROR: throwaway postgres didn't come up."
+if [ "$ready_streak" -lt 2 ]; then
+  echo "ERROR: throwaway postgres did not become ready."
+  docker logs "$TEST_CONTAINER" 2>&1 | tail -20
   exit 2
 fi
 

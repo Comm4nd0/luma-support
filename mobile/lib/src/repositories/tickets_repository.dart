@@ -95,6 +95,16 @@ class TicketsRepository {
     }
   }
 
+  /// Merge ``sourceId`` into ``targetId`` — moves notes / time /
+  /// attachments / tags onto the target and closes the source.
+  Future<void> mergeInto(int sourceId, int targetId) async {
+    try {
+      await _api.dio.post<dynamic>(ApiPaths.ticketMergeInto(sourceId, targetId));
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   /// Apply one action to many tickets — see TicketViewSet.bulk.
   Future<int> bulk({
     required List<int> ids,

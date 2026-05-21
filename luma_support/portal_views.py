@@ -606,6 +606,67 @@ class TicketStatusUpdateView(LoginRequiredMixin, View):
         return redirect("portal:ticket_detail", pk=pk)
 
 
+class TicketMergeView(LoginRequiredMixin, View):
+    """Server-rendered counterpart to /api/v1/tickets/<id>/merge-into/.
+
+    Posts ``target`` (integer ticket id) — moves notes / time / tags /
+    attachments to the target and closes this one with a link back.
+    """
+
+    def post(self, request, pk):
+        from django.http import HttpResponseForbidden
+
+        from audit import log as audit_log
+
+        if not request.user.can_view_all:
+            return HttpResponseForbidden("Staff only.")
+        source = get_object_or_404(Ticket, pk=pk)
+        try:
+            target_pk = int(request.POST.get("target") or 0)
+            target = Ticket.objects.get(pk=target_pk)
+        except (ValueError, Ticket.DoesNotExist):
+            messages.error(request, "Pick an existing ticket to merge into.")
+            return redirect("portal:ticket_detail", pk=pk)
+        if source.pk == target.pk:
+            messages.error(request, "Cannot merge a ticket into itself.")
+            return redirect("portal:ticket_detail", pk=pk)
+        if source.client_id != target.client_id:
+            messages.error(
+                request, "Merge target must belong to the same client."
+            )
+            return redirect("portal:ticket_detail", pk=pk)
+
+        source.notes.update(ticket=target)
+        source.time_entries.update(ticket=target)
+        source.attachments.update(ticket=target)
+        for tag in source.tags.all():
+            target.tags.add(tag)
+        TicketNote.objects.create(
+            ticket=target,
+            author=request.user,
+            body=f"Merged #{source.pk} ({source.subject}) into this ticket.",
+            internal=True,
+        )
+        TicketNote.objects.create(
+            ticket=source,
+            author=request.user,
+            body=f"Merged into #{target.pk}. Closing.",
+            internal=True,
+        )
+        source.transition_to(Ticket.Status.CLOSED, by_user=request.user)
+        audit_log(
+            "ticket.merge",
+            actor=request.user,
+            request=request,
+            target=source,
+            merged_into=target.pk,
+        )
+        messages.success(
+            request, f"Merged ticket #{source.pk} into #{target.pk}."
+        )
+        return redirect("portal:ticket_detail", pk=target.pk)
+
+
 class TicketBulkActionView(LoginRequiredMixin, View):
     """Apply one action to multiple checked tickets from the list view.
 

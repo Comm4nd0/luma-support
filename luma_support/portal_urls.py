@@ -49,6 +49,11 @@ urlpatterns = [
         views.TicketBulkActionView.as_view(),
         name="ticket_bulk",
     ),
+    path(
+        "tickets/<int:pk>/merge/",
+        views.TicketMergeView.as_view(),
+        name="ticket_merge",
+    ),
     # Clients
     path("clients/", views.ClientListView.as_view(), name="client_list"),
     path("clients/new/", views.ClientCreateView.as_view(), name="client_create"),

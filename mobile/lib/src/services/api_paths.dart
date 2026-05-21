@@ -25,6 +25,8 @@ class ApiPaths {
       '/tickets/tickets/$id/draft-reply/';
   static String ticketSummarise(int id) =>
       '/tickets/tickets/$id/summarise/';
+  static String ticketMergeInto(int source, int target) =>
+      '/tickets/tickets/$source/merge-into/$target/';
   static const String slaWarnings = '/tickets/tickets/sla-warnings/';
   static const String dashboardStats = '/tickets/tickets/dashboard-stats/';
   static const String ticketTags = '/tickets/ticket-tags/';

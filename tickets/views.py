@@ -148,6 +148,70 @@ class TicketViewSet(viewsets.ModelViewSet):
                 related_ticket=ticket,
             )
 
+    @action(detail=True, methods=["post"], url_path="merge-into/(?P<target_pk>[0-9]+)")
+    def merge_into(self, request, pk=None, target_pk=None):
+        """Move this ticket's notes / time entries / attachments / tags onto
+        ``target_pk`` and close the source with a link back.
+
+        Both tickets must belong to the same client — refusing cross-client
+        merges is a guardrail against accidentally leaking notes between
+        accounts.
+        """
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+        from audit import log as audit_log
+
+        source = self.get_object()
+        try:
+            target = Ticket.objects.get(pk=target_pk)
+        except Ticket.DoesNotExist:
+            raise ValidationError({"target": "no such ticket"})
+        if source.pk == target.pk:
+            raise ValidationError({"target": "cannot merge a ticket into itself"})
+        if source.client_id != target.client_id:
+            raise ValidationError(
+                {"target": "merge target must belong to the same client"}
+            )
+
+        source.notes.update(ticket=target)
+        source.time_entries.update(ticket=target)
+        source.attachments.update(ticket=target)
+        for tag in source.tags.all():
+            target.tags.add(tag)
+
+        from .models import TicketNote
+
+        TicketNote.objects.create(
+            ticket=target,
+            author=request.user,
+            body=f"Merged #{source.pk} ({source.subject}) into this ticket.",
+            internal=True,
+        )
+        TicketNote.objects.create(
+            ticket=source,
+            author=request.user,
+            body=f"Merged into #{target.pk}. Closing.",
+            internal=True,
+        )
+        source.transition_to(Ticket.Status.CLOSED, by_user=request.user)
+
+        audit_log(
+            "ticket.merge",
+            actor=request.user,
+            request=request,
+            target=source,
+            merged_into=target.pk,
+        )
+
+        return Response(
+            {
+                "source": source.pk,
+                "target": target.pk,
+                "closed_source": True,
+            }
+        )
+
     @action(detail=False, methods=["post"], url_path="bulk")
     def bulk(self, request):
         """Apply one action to many tickets in one round-trip.

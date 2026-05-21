@@ -160,6 +160,44 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (source != null) await _attachPhoto(source: source);
   }
 
+  Future<void> _mergeIntoPrompt() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final controller = TextEditingController();
+    final targetIdStr = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Merge into ticket'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Target ticket #'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Merge'),
+          ),
+        ],
+      ),
+    );
+    if (targetIdStr == null) return;
+    final targetId = int.tryParse(targetIdStr.trim());
+    if (targetId == null) return;
+    try {
+      await _repo.mergeInto(widget.ticketId, targetId);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Merged into #$targetId.')),
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Merge failed: $e')));
+    }
+  }
+
   Future<void> _summariseThread() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -375,6 +413,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   onPressed: _summariseThread,
                   icon: const Icon(Icons.summarize_outlined),
                   label: const Text('Summarise thread'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _mergeIntoPrompt,
+                  icon: const Icon(Icons.merge_type_outlined),
+                  label: const Text('Merge into…'),
                 ),
               ],
             ],

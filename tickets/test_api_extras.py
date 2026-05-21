@@ -134,6 +134,63 @@ def test_dashboard_stats_returns_expected_keys(engineer_user, client_record):
     } <= set(body.keys())
 
 
+# ----- /tickets/<id>/merge-into/<target_id>/ ----------------------------
+
+
+def test_merge_moves_notes_time_attachments_and_closes_source(engineer_user, client_record):
+    from tickets.models import TicketNote, TicketTag, TimeEntry
+
+    a = Ticket.objects.create(client=client_record, subject="A")
+    b = Ticket.objects.create(client=client_record, subject="B")
+    TicketNote.objects.create(ticket=a, author=engineer_user, body="from A", internal=False)
+    TimeEntry.objects.create(ticket=a, user=engineer_user, minutes=10)
+    tag = TicketTag.objects.create(name="UniFi", slug="unifi")
+    a.tags.add(tag)
+
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(f"/api/v1/tickets/tickets/{a.pk}/merge-into/{b.pk}/")
+    assert resp.status_code == 200, resp.json()
+
+    a.refresh_from_db()
+    b.refresh_from_db()
+    assert a.status == Ticket.Status.CLOSED
+    # Original note + the system "merged" notes on both sides.
+    assert b.notes.filter(body__icontains="from A").count() == 1
+    assert b.notes.filter(body__icontains=f"Merged #{a.pk}").exists()
+    assert a.notes.filter(body__icontains=f"Merged into #{b.pk}").exists()
+    assert b.time_entries.count() == 1
+    assert tag in b.tags.all()
+
+
+def test_merge_refuses_cross_client(engineer_user, client_record):
+    from clients.models import Client
+
+    other = Client.objects.create(name="Other co")
+    a = Ticket.objects.create(client=client_record, subject="A")
+    b = Ticket.objects.create(client=other, subject="B")
+
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(f"/api/v1/tickets/tickets/{a.pk}/merge-into/{b.pk}/")
+    assert resp.status_code == 400
+
+
+def test_merge_requires_staff(client_record):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    cu = User.objects.create_user(
+        email="cmerge@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    a = Ticket.objects.create(client=client_record, subject="A")
+    b = Ticket.objects.create(client=client_record, subject="B")
+    c = APIClient()
+    c.force_authenticate(cu)
+    resp = c.post(f"/api/v1/tickets/tickets/{a.pk}/merge-into/{b.pk}/")
+    assert resp.status_code == 403
+
+
 # ----- /tickets/<id>/summarise/ -----------------------------------------
 
 

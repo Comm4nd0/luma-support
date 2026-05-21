@@ -291,6 +291,20 @@
       </form>
     </div>
 
+    {% if user.can_view_all %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Merge</h3>
+      <form method="post" action="{% url 'portal:ticket_merge' ticket.pk %}" style="display:flex; gap:6px; align-items:center;">
+        {% csrf_token %}
+        <input type="number" name="target" placeholder="Ticket #" min="1" required class="form-input" style="max-width: 110px;" />
+        <button class="btn btn-sm" type="submit" onclick="return confirm('Merge this ticket into the target? This closes the current ticket.');">Merge into</button>
+      </form>
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Moves notes, time, attachments and tags into the target ticket and closes this one.
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card" style="margin-top: 16px;">
       <h3>Details</h3>
       <dl class="kv">

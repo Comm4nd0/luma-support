@@ -84,7 +84,9 @@
 </div>
 <div id="kbd-help" class="cmdk-overlay" hidden>
   <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
-    <div style="padding: 16px 18px;">
+    <div style="padding: 16px 18px; position: relative;">
+      <button type="button" id="kbd-help-close" aria-label="Close keyboard shortcuts"
+              style="position:absolute; top:10px; right:12px; background:transparent; border:0; color:inherit; font-size:1.4rem; line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px;">&times;</button>
       <strong>Keyboard shortcuts</strong>
       <table class="table" style="margin-top: 8px;">
         <tbody>
@@ -138,11 +140,22 @@
       if (e.key === "c") { e.preventDefault(); window.location.assign("/tickets/new/"); return; }
       if (e.key === "?") { e.preventDefault(); help.hidden = false; return; }
     });
-    help && help.addEventListener("click", function (e) {
-      if (e.target === help) help.hidden = true;
-    });
+    function closeHelp() { if (help) help.hidden = true; }
+    if (help) {
+      // Click on the backdrop (anywhere outside the inner panel) closes.
+      help.addEventListener("click", function (e) {
+        if (!e.target.closest(".cmdk-panel")) closeHelp();
+      });
+      // The explicit close (×) button.
+      var closeBtn = document.getElementById("kbd-help-close");
+      if (closeBtn) closeBtn.addEventListener("click", closeHelp);
+    }
+    // Escape closes the help overlay even while focus is inside it.
     document.addEventListener("keydown", function (e) {
-      if (!help.hidden && e.key === "Escape") help.hidden = true;
+      if (help && !help.hidden && e.key === "Escape") {
+        e.preventDefault();
+        closeHelp();
+      }
     });
 
     var openAt = 0;

@@ -57,7 +57,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Optional: empty/unset ADMIN_IP_ALLOWLIST = no enforcement, so this
+    # is safe to leave wired in by default.
+    "accounts.middleware.AdminIpAllowlistMiddleware",
 ]
+
+ADMIN_IP_ALLOWLIST = config("ADMIN_IP_ALLOWLIST", default="")
 
 ROOT_URLCONF = "luma_support.urls"
 

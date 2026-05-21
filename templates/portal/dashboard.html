@@ -152,6 +152,20 @@
     {% endif %}
   </div>
 
+  {% if integrations_failing %}
+  <div class="card" style="border-color: rgba(239,68,68,0.45);">
+    <div class="card-header">
+      <h2 style="color: var(--danger);">Integrations needing attention</h2>
+      <a class="btn btn-sm btn-ghost" href="/system/integrations/" target="_blank">JSON</a>
+    </div>
+    <ul style="margin: 0; padding-left: 18px;">
+      {% for row in integrations_failing %}
+        <li><strong>{{ row.name }}</strong> — {{ row.detail }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {% if at_risk_clients %}
   <div class="card">
     <div class="card-header">

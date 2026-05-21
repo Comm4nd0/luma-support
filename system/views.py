@@ -29,3 +29,22 @@ def readyz(_request):
     ok = all(checks.values())
     return JsonResponse({"status": "ready" if ok else "not_ready", "checks": checks},
                         status=200 if ok else 503)
+
+
+def integrations(_request):
+    """Per-integration health snapshot — returns plain JSON.
+
+    Aimed at the staff dashboard tile and uptime-monitor checks. Returns
+    200 even when some integrations are misconfigured — the per-row
+    ``ok`` flag carries the state. The HTTP status would only flip
+    on a 500 from the snapshot itself.
+    """
+    from .integrations_health import snapshot
+
+    rows = snapshot()
+    return JsonResponse(
+        {
+            "integrations": rows,
+            "all_ok": all(r["ok"] for r in rows if r["configured"]),
+        }
+    )

@@ -344,6 +344,9 @@ class DashboardView(LoginRequiredMixin, View):
                 for s in at_risk
                 if s.client_id in risk_clients
             ]
+            from system.integrations_health import snapshot as _int_snapshot
+
+            integrations = _int_snapshot()
             context.update(
                 {
                     "unbilled_hours": (Decimal(unbilled_minutes) / Decimal(60)).quantize(
@@ -355,6 +358,10 @@ class DashboardView(LoginRequiredMixin, View):
                     "schedules_due": schedules_due,
                     "at_risk_clients": at_risk_rows,
                     "default_currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
+                    "integrations_health": integrations,
+                    "integrations_failing": [
+                        r for r in integrations if r["configured"] and not r["ok"]
+                    ],
                 }
             )
 

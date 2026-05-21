@@ -89,11 +89,14 @@ def test_setup_post_with_valid_code_enables_totp(engineer):
     secret = c.session["pending_totp_secret"]
     code = pyotp.TOTP(secret).now()
     resp = c.post(reverse("portal:totp_setup"), {"code": code})
+    # First-time enrolment redirects to the recovery-codes page (shown once).
     assert resp.status_code == 302
-    assert resp.url == reverse("portal:dashboard")
+    assert resp.url == reverse("portal:recovery_codes")
     engineer.refresh_from_db()
     assert engineer.totp_enabled is True
     assert engineer.get_totp_secret() == secret
+    # 10 recovery codes were minted.
+    assert engineer.recovery_codes.count() == 10
 
 
 def test_setup_post_with_wrong_code_does_not_enable(engineer):

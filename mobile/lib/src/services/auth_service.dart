@@ -53,6 +53,7 @@ class AuthService extends ChangeNotifier {
     String email,
     String password, {
     String? totpCode,
+    String? recoveryCode,
   }) async {
     final body = <String, String>{
       'email': email,
@@ -60,6 +61,9 @@ class AuthService extends ChangeNotifier {
     };
     if (totpCode != null && totpCode.isNotEmpty) {
       body['totp_code'] = totpCode;
+    }
+    if (recoveryCode != null && recoveryCode.isNotEmpty) {
+      body['recovery_code'] = recoveryCode;
     }
     http.Response res;
     try {

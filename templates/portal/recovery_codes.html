@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Recovery codes · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1 style="margin: 0;">Two-factor recovery codes</h1>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-ghost btn-sm" type="submit"
+            onclick="return confirm('Regenerate? All existing codes will become invalid immediately.');">
+      Regenerate
+    </button>
+  </form>
+</div>
+
+{% if codes %}
+<div class="card" style="border-color: rgba(20,184,166,0.45);">
+  <h2 style="margin-top: 0;">Save these somewhere safe — shown only once</h2>
+  <p class="muted">
+    Each code is a one-shot replacement for your authenticator code. Use a
+    code if you lose your phone. After it's used, it can't be reused.
+  </p>
+  <ul style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+             font-size: 18px; line-height: 1.8; list-style: none; padding: 0;
+             columns: 2; column-gap: 24px;">
+    {% for code in codes %}
+      <li>{{ code }}</li>
+    {% endfor %}
+  </ul>
+  <p class="muted" style="font-size: 12px;">
+    Closing this page will hide the codes for good — you'll need to regenerate
+    if you didn't copy them.
+  </p>
+</div>
+{% else %}
+<div class="card">
+  <p>
+    You have <strong>{{ remaining }}</strong> unused recovery code{{ remaining|pluralize }} on
+    file. Plaintext codes are only shown once, immediately after generation.
+    Run "Regenerate" if you've lost the codes you saved — that invalidates
+    any old set.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

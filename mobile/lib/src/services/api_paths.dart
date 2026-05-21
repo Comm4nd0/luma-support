@@ -12,6 +12,7 @@ class ApiPaths {
   static const String login = '/auth/jwt/create/';
   static const String refresh = '/auth/jwt/refresh/';
   static const String me = '/auth/users/me/';
+  static const String recoveryCodes = '/auth/recovery-codes/';
 
   // Tickets
   static const String tickets = '/tickets/tickets/';

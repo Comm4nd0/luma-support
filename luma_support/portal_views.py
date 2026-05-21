@@ -145,6 +145,8 @@ class TotpSetupView(_PendingUserMixin, View):
     def post(self, request):
         import pyotp
 
+        from accounts.models import RecoveryCode
+
         user = self._pending_user(request)
         secret = request.session.get("pending_totp_secret")
         if user is None or not secret:
@@ -159,8 +161,36 @@ class TotpSetupView(_PendingUserMixin, View):
         request.session.pop("pending_totp_user_id", None)
         request.session.pop("pending_totp_secret", None)
         login(request, user)
-        messages.success(request, "Two-factor auth enabled.")
-        return redirect("portal:dashboard")
+        # First-time enrolment: generate recovery codes and stash them in
+        # the session so the next page can show them once.
+        codes = RecoveryCode.regenerate_for(user)
+        request.session["fresh_recovery_codes"] = codes
+        return redirect("portal:recovery_codes")
+
+
+class RecoveryCodesView(LoginRequiredMixin, View):
+    template_name = "portal/recovery_codes.html"
+
+    def get(self, request):
+        from django.template.response import TemplateResponse
+
+        codes = request.session.pop("fresh_recovery_codes", None)
+        remaining = request.user.recovery_codes.filter(used_at__isnull=True).count()
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {"codes": codes, "remaining": remaining, "active": "profile"},
+        )
+
+    def post(self, request):
+        from accounts.models import RecoveryCode
+
+        codes = RecoveryCode.regenerate_for(request.user)
+        request.session["fresh_recovery_codes"] = codes
+        messages.success(
+            request, "Recovery codes regenerated — old codes are now invalid."
+        )
+        return redirect("portal:recovery_codes")
 
 
 class TotpVerifyView(_PendingUserMixin, View):

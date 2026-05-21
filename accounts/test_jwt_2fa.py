@@ -86,3 +86,75 @@ def test_totp_user_with_valid_code_gets_tokens(user_with_totp):
     )
     assert resp.status_code == 200
     assert "access" in resp.json()
+
+
+# ----- recovery codes ----------------------------------------------------
+
+
+def test_recovery_code_can_replace_totp_for_login(user_with_totp):
+    from accounts.models import RecoveryCode
+
+    user, _ = user_with_totp
+    codes = RecoveryCode.regenerate_for(user, count=3)
+    resp = APIClient().post(
+        JWT_URL,
+        {
+            "email": "secured@luma.test",
+            "password": "goodpass",
+            "recovery_code": codes[0],
+        },
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert "access" in resp.json()
+
+
+def test_recovery_code_is_single_use(user_with_totp):
+    from accounts.models import RecoveryCode
+
+    user, _ = user_with_totp
+    codes = RecoveryCode.regenerate_for(user, count=2)
+    first = APIClient().post(
+        JWT_URL,
+        {
+            "email": "secured@luma.test",
+            "password": "goodpass",
+            "recovery_code": codes[0],
+        },
+        format="json",
+    )
+    assert first.status_code == 200
+    # Replay the same code → invalid_totp.
+    second = APIClient().post(
+        JWT_URL,
+        {
+            "email": "secured@luma.test",
+            "password": "goodpass",
+            "recovery_code": codes[0],
+        },
+        format="json",
+    )
+    assert second.status_code == 401
+    assert second.json()["detail"] == "invalid_totp"
+
+
+def test_recovery_code_endpoint_returns_plaintexts(user_with_totp):
+    user, secret = user_with_totp
+    # Authenticate normally first.
+    code = pyotp.TOTP(secret).now()
+    login = APIClient().post(
+        JWT_URL,
+        {"email": "secured@luma.test", "password": "goodpass", "totp_code": code},
+        format="json",
+    )
+    access = login.json()["access"]
+    c = APIClient()
+    c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    resp = c.post("/api/v1/auth/recovery-codes/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["codes"]) == 10
+    assert body["remaining"] == 10
+    # Each code is XXXX-XXXX from the documented alphabet.
+    for plain in body["codes"]:
+        assert len(plain) == 9 and plain[4] == "-"

@@ -47,8 +47,18 @@ class TotpAwareTokenObtainPairSerializer(TokenObtainPairSerializer):
             return data
 
         code = (self.initial_data.get("totp_code") or "").strip().replace(" ", "")
-        if not code:
+        recovery = (self.initial_data.get("recovery_code") or "").strip()
+        if not code and not recovery:
             raise _TotpRequiredError()
+
+        # Recovery codes are a single-use fall-back when the phone is lost
+        # — accepted in lieu of a TOTP code. Consumed on success.
+        if recovery:
+            from .models import RecoveryCode
+
+            if RecoveryCode.consume(user, recovery):
+                return data
+            raise _InvalidTotpError()
 
         import pyotp
 
@@ -60,3 +70,23 @@ class TotpAwareTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class TotpAwareTokenObtainPairView(TokenObtainPairView):
     serializer_class = TotpAwareTokenObtainPairSerializer
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def regenerate_recovery_codes(request):
+    """POST /api/v1/auth/recovery-codes/ — refresh and return plaintext codes.
+
+    Plaintext is shown once; the caller must present them to the user
+    immediately and not store them.
+    """
+    from .models import RecoveryCode
+
+    codes = RecoveryCode.regenerate_for(request.user)
+    remaining = request.user.recovery_codes.filter(used_at__isnull=True).count()
+    return Response({"codes": codes, "remaining": remaining})

@@ -3,6 +3,9 @@
 Email is the USERNAME_FIELD; the username column is dropped.
 A `role` discriminator separates admins, engineers and client users.
 """
+import hashlib
+import secrets
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
@@ -103,3 +106,75 @@ class User(AbstractUser):
         """Staff (admin/engineer roles) and Django superusers see everything;
         client users are scoped to their own client's data."""
         return self.is_superuser or self.is_engineer
+
+
+def _hash_recovery_code(plain: str) -> str:
+    """Stable hash for matching at verify time. sha256 is sufficient — the
+    codes are short-lived single-use values, not passwords."""
+    return hashlib.sha256(plain.strip().upper().encode("utf-8")).hexdigest()
+
+
+def generate_recovery_code() -> str:
+    """Produce a human-typable 10-character code like ``WX9P-3K2L``."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I confusion
+    raw = "".join(secrets.choice(alphabet) for _ in range(8))
+    return f"{raw[:4]}-{raw[4:]}"
+
+
+class RecoveryCode(models.Model):
+    """One-shot recovery code for 2FA — exchangeable for a TOTP code.
+
+    Plaintext is shown to the user once on creation; only the hash is
+    stored. On successful use the row is marked ``used_at`` so the
+    same code can't be replayed.
+    """
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="recovery_codes",
+    )
+    code_hash = models.CharField(max_length=64, db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "code_hash"], name="uniq_recovery_code_per_user"
+            ),
+        ]
+
+    def __str__(self):
+        state = "used" if self.used_at else "active"
+        return f"recovery({state}) for {self.user_id}"
+
+    @classmethod
+    def regenerate_for(cls, user, count: int = 10) -> list[str]:
+        """Replace any existing codes with ``count`` fresh ones.
+
+        Returns the plaintexts (shown once to the user); only the hashes
+        are written to the DB.
+        """
+        cls.objects.filter(user=user).delete()
+        plains = []
+        for _ in range(count):
+            plain = generate_recovery_code()
+            cls.objects.create(user=user, code_hash=_hash_recovery_code(plain))
+            plains.append(plain)
+        return plains
+
+    @classmethod
+    def consume(cls, user, plain: str) -> bool:
+        """Mark a code used; returns True on a match, False otherwise."""
+        from django.utils import timezone
+
+        row = cls.objects.filter(
+            user=user, code_hash=_hash_recovery_code(plain), used_at__isnull=True
+        ).first()
+        if row is None:
+            return False
+        row.used_at = timezone.now()
+        row.save(update_fields=["used_at"])
+        return True

@@ -94,6 +94,25 @@ def score_clients(clients: Iterable[Client]) -> list[HealthScore]:
         r["ticket__client_id"]: (r["avg"], r["n"]) for r in csat_rows
     }
 
+    # --- Negative-sentiment signals --------------------------------------
+    # Count CSATs with rating <= 2 AND a written comment over the
+    # window — that's the most reliable "client is unhappy" signal we
+    # already have without dragging in real NLP. Promote to Claude /
+    # VADER later if a finer signal is needed.
+    negative_rows = (
+        CsatResponse.objects.filter(
+            ticket__client_id__in=ids,
+            responded_at__gte=window,
+            rating__lte=2,
+        )
+        .exclude(comment="")
+        .values("ticket__client_id")
+        .annotate(n=Count("id"))
+    )
+    negative_csat_by_client = {
+        r["ticket__client_id"]: r["n"] for r in negative_rows
+    }
+
     # --- Open tickets right now ------------------------------------------
     open_rows = (
         Ticket.objects.exclude(
@@ -147,6 +166,7 @@ def score_clients(clients: Iterable[Client]) -> list[HealthScore]:
         recent_n = recent_by_client.get(client.pk, 0)
         overdue_n = overdue_by_client.get(client.pk, 0)
         total_systems, ok_systems = systems_by_client.get(client.pk, (0, 0))
+        negative_n = negative_csat_by_client.get(client.pk, 0)
 
         reasons: list[str] = []
         weight_sum = Decimal("0")
@@ -160,6 +180,10 @@ def score_clients(clients: Iterable[Client]) -> list[HealthScore]:
                 reasons.append(f"CSAT averaging {csat_avg:.1f}/5")
         else:
             csat_score = Decimal("75")
+        if negative_n:
+            reasons.append(
+                f"{negative_n} negative CSAT comment{'s' if negative_n != 1 else ''} in 90d"
+            )
         score_acc += csat_score * Decimal(str(WEIGHT_CSAT))
         weight_sum += Decimal(str(WEIGHT_CSAT))
 

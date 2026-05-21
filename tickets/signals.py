@@ -48,6 +48,12 @@ def _notify_on_change(sender, instance, created, **kwargs):
 
     if created:
         _enqueue("created")
+        try:
+            from .tasks import triage_new_ticket
+
+            triage_new_ticket.delay(instance.pk)
+        except Exception:
+            pass
         return
 
     old = getattr(instance, "_old_status", None)

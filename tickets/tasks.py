@@ -108,6 +108,58 @@ def generate_scheduled_tickets() -> str:
 
 
 @shared_task
+def triage_new_ticket(ticket_id: int) -> str:
+    """Ask Claude to suggest priority + tags for a freshly-opened ticket.
+
+    Applies the suggestion when found and records the reasoning as an
+    internal note so engineers can see why the AI made the call. No-op
+    when the ``ai_triage`` feature flag is off or ANTHROPIC_API_KEY is
+    unset.
+    """
+    from features import is_enabled
+
+    from .ai import triage_ticket
+    from .models import Ticket, TicketNote, TicketTag
+
+    if not is_enabled("ai_triage"):
+        return "ai_triage disabled"
+
+    try:
+        ticket = Ticket.objects.select_related("client").get(pk=ticket_id)
+    except Ticket.DoesNotExist:
+        return "missing"
+
+    result = triage_ticket(ticket)
+    if result is None:
+        return "no result"
+
+    changes = []
+    if result.get("priority") and result["priority"] != ticket.priority:
+        ticket.priority = result["priority"]
+        ticket.save(update_fields=["priority"])
+        changes.append(f"priority -> {result['priority']}")
+    for slug in result.get("tag_slugs", []):
+        tag = TicketTag.objects.filter(slug=slug).first()
+        if tag is not None and not ticket.tags.filter(pk=tag.pk).exists():
+            ticket.tags.add(tag)
+            changes.append(f"tag +{slug}")
+
+    body_parts = ["[AI triage]"]
+    body_parts.append(result.get("reasoning") or "(no reasoning supplied)")
+    if changes:
+        body_parts.append("Applied: " + ", ".join(changes))
+    else:
+        body_parts.append("No changes applied.")
+    TicketNote.objects.create(
+        ticket=ticket,
+        author=None,
+        body="\n\n".join(body_parts),
+        internal=True,
+    )
+    return f"triaged: {', '.join(changes) or 'no-op'}"
+
+
+@shared_task
 def poll_inbound_mail() -> str:
     """Pull UNSEEN messages from the inbound IMAP mailbox and ingest them.
 

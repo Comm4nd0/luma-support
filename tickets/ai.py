@@ -42,6 +42,88 @@ def summarise_thread(ticket) -> str:
         return ""
 
 
+def triage_ticket(ticket) -> dict | None:
+    """Return Claude's triage suggestion for a freshly-opened ticket.
+
+    Result shape::
+
+        {"priority": "high", "tag_slugs": ["unifi", "outage"], "reasoning": "..."}
+
+    Returns ``None`` when ANTHROPIC_API_KEY is unset or the call fails
+    so callers can no-op safely. Tag slugs are restricted to the set
+    of TicketTag rows already in the database — Claude can only pick
+    from existing taxonomy, not invent new tags.
+    """
+    if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+        return None
+    try:
+        return _claude_triage(ticket)
+    except Exception:
+        logger.exception("tickets.ai.triage_ticket failed for #%s", ticket.pk)
+        return None
+
+
+def _claude_triage(ticket) -> dict | None:
+    import json
+
+    from anthropic import Anthropic
+
+    from .models import TicketTag
+
+    tags = list(TicketTag.objects.values_list("slug", "name"))
+    if not tags:
+        tag_block = "(no tags exist yet — return an empty tag list)"
+    else:
+        tag_block = "\n".join(f"- {slug}: {name}" for slug, name in tags)
+    valid_slugs = {slug for slug, _ in tags}
+
+    system_prompt = (
+        "You triage inbound IT support tickets for a UK MSP. "
+        "Choose a priority (one of critical, high, medium, low) and "
+        "select 0-3 tag slugs from the supplied taxonomy. "
+        "Critical = customer is offline / data at risk / payments down. "
+        "High = serious impairment to business hours. "
+        "Medium = non-blocking but should be done this week. "
+        "Low = nice to have / question. "
+        "Respond ONLY with a JSON object with keys: priority "
+        '(string), tag_slugs (array of strings — must be a subset of the '
+        "supplied slugs), reasoning (one sentence). No prose."
+    )
+    user_prompt = (
+        f"Client: {ticket.client.name}\n"
+        f"Care plan: {ticket.client.care_plan_tier}\n"
+        f"Subject: {ticket.subject}\n\n"
+        f"Description:\n{ticket.description or '(none)'}\n\n"
+        f"Available tag slugs:\n{tag_block}"
+    )
+
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    msg = client.messages.create(
+        model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+        max_tokens=400,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    raw = "".join(getattr(b, "text", "") for b in msg.content).strip()
+    # Tolerate stray ```json fences just in case.
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("triage: claude returned non-JSON: %r", raw[:200])
+        return None
+    priority = data.get("priority")
+    if priority not in {"critical", "high", "medium", "low"}:
+        return None
+    tag_slugs = [s for s in (data.get("tag_slugs") or []) if s in valid_slugs]
+    reasoning = (data.get("reasoning") or "")[:500]
+    return {"priority": priority, "tag_slugs": tag_slugs, "reasoning": reasoning}
+
+
 def _claude_summarise(ticket) -> str:
     from anthropic import Anthropic
 

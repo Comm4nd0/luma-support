@@ -8,8 +8,8 @@ import pytest
 from django.test import Client as DjangoClient
 from django.urls import reverse
 
-from tickets.ai import draft_reply
-from tickets.models import Ticket, TicketNote
+from tickets.ai import draft_reply, triage_ticket
+from tickets.models import Ticket, TicketNote, TicketTag
 
 pytestmark = pytest.mark.django_db
 
@@ -121,3 +121,89 @@ def test_draft_reply_view_returns_empty_draft_when_disabled(
     resp = c.post(reverse("portal:ticket_draft_reply", args=[t.pk]))
     assert resp.status_code == 200
     assert resp.json() == {"draft": ""}
+
+
+# ----- triage_ticket ---------------------------------------------------
+
+
+def test_triage_returns_none_when_key_unset(client_record, settings):
+    settings.ANTHROPIC_API_KEY = ""
+    assert triage_ticket(_ticket(client_record)) is None
+
+
+def test_triage_parses_claude_json(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    TicketTag.objects.create(name="UniFi", slug="unifi")
+    TicketTag.objects.create(name="Outage", slug="outage")
+    payload = (
+        '{"priority": "high", "tag_slugs": ["unifi", "made-up"], '
+        '"reasoning": "office wifi down"}'
+    )
+    fake_msg = SimpleNamespace(content=[SimpleNamespace(text=payload)])
+    fake_client = SimpleNamespace(
+        messages=SimpleNamespace(create=lambda **kw: fake_msg)
+    )
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        result = triage_ticket(_ticket(client_record))
+    assert result == {
+        "priority": "high",
+        # Unknown slug filtered out, known slug kept.
+        "tag_slugs": ["unifi"],
+        "reasoning": "office wifi down",
+    }
+
+
+def test_triage_rejects_bad_priority(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    fake_msg = SimpleNamespace(
+        content=[SimpleNamespace(text='{"priority": "wat", "tag_slugs": []}')]
+    )
+    fake_client = SimpleNamespace(
+        messages=SimpleNamespace(create=lambda **kw: fake_msg)
+    )
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        assert triage_ticket(_ticket(client_record)) is None
+
+
+def test_triage_swallows_errors(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    with patch("anthropic.Anthropic", side_effect=RuntimeError("api down")):
+        assert triage_ticket(_ticket(client_record)) is None
+
+
+def test_triage_task_applies_priority_and_tags(client_record, settings):
+    from features.models import FeatureFlag
+    from tickets.tasks import triage_new_ticket
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    FeatureFlag.objects.create(name="ai_triage", enabled=True, percentage=100)
+    TicketTag.objects.create(name="UniFi", slug="unifi")
+    t = _ticket(client_record)
+
+    with patch(
+        "tickets.ai.triage_ticket",
+        return_value={
+            "priority": "critical",
+            "tag_slugs": ["unifi"],
+            "reasoning": "wifi down across whole site",
+        },
+    ):
+        out = triage_new_ticket(t.pk)
+
+    assert "priority -> critical" in out
+    t.refresh_from_db()
+    assert t.priority == "critical"
+    assert list(t.tags.values_list("slug", flat=True)) == ["unifi"]
+    note = t.notes.order_by("-id").first()
+    assert note is not None
+    assert note.internal is True
+    assert "[AI triage]" in note.body
+    assert "wifi down" in note.body
+
+
+def test_triage_task_no_op_when_flag_disabled(client_record, settings):
+    from tickets.tasks import triage_new_ticket
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    t = _ticket(client_record)
+    assert triage_new_ticket(t.pk) == "ai_triage disabled"

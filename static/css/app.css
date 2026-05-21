@@ -480,6 +480,10 @@ table.table tbody tr:hover { background: var(--surface-2); }
   justify-content: center;
   padding-top: 12vh;
 }
+/* The overlay uses display:flex which overrides the browser default
+   `[hidden] { display: none }` rule -- so hidden overlays stay
+   visible. Re-assert the hide explicitly. */
+.cmdk-overlay[hidden] { display: none !important; }
 .cmdk-panel {
   width: 100%;
   max-width: 640px;

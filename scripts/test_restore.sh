@@ -76,6 +76,13 @@ if ! docker exec "$TEST_CONTAINER" pg_isready -U postgres >/dev/null 2>&1; then
   exit 2
 fi
 
+echo "==> preparing throwaway db (drop+recreate public schema)"
+# pg_dump from postgres-backup-local includes CREATE SCHEMA public, but a
+# fresh Postgres image already has one -- drop it first to avoid the
+# inevitable "schema already exists" error.
+docker exec "$TEST_CONTAINER" psql -U postgres -d "$TEST_DB" -v ON_ERROR_STOP=1 -c \
+  "DROP SCHEMA IF EXISTS public CASCADE;" > /dev/null
+
 echo "==> piping dump into throwaway db"
 if ! docker exec "$TEST_CONTAINER" sh -c "
     set -e

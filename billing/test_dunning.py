@@ -105,3 +105,56 @@ def test_invoice_within_due_date_not_chased(client_record):
     )
     chase_overdue_invoices()
     assert mail.outbox == []
+
+
+# -----------------------------------------------------------------
+# Dunning timeline helper + serializer
+# -----------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_dunning_events_for_returns_audit_rows(client_record):
+    from .dunning import dunning_events_for
+    from audit import log as audit_log
+
+    inv = Invoice.objects.create(
+        client=client_record,
+        kind=Invoice.Kind.ONE_OFF,
+        status=Invoice.Status.AUTHORISED,
+        subtotal=Decimal("100"),
+        total=Decimal("100"),
+        due_date=timezone.localdate() - timedelta(days=8),
+    )
+    audit_log("invoice.dunning", target=inv, bucket="3", days_overdue=3, emailed=True)
+    audit_log("invoice.dunning", target=inv, bucket="7", days_overdue=7, emailed=False)
+    rows = list(dunning_events_for(inv))
+    assert len(rows) == 2
+    # Ordered newest-first.
+    assert rows[0].metadata["bucket"] == "7"
+    assert rows[1].metadata["bucket"] == "3"
+
+
+@pytest.mark.django_db
+def test_invoice_serializer_exposes_dunning_events(admin_user, client_record):
+    from rest_framework.test import APIClient
+
+    from audit import log as audit_log
+
+    inv = Invoice.objects.create(
+        client=client_record,
+        kind=Invoice.Kind.ONE_OFF,
+        status=Invoice.Status.AUTHORISED,
+        subtotal=Decimal("100"),
+        total=Decimal("100"),
+        due_date=timezone.localdate() - timedelta(days=4),
+    )
+    audit_log("invoice.dunning", target=inv, bucket="3", days_overdue=3, emailed=True)
+    c = APIClient()
+    c.force_authenticate(admin_user)
+    resp = c.get(f"/api/v1/billing/invoices/{inv.pk}/")
+    assert resp.status_code == 200
+    events = resp.json().get("dunning_events", [])
+    assert len(events) == 1
+    assert events[0]["bucket"] == "3"
+    assert events[0]["days_overdue"] == 3
+    assert events[0]["emailed"] is True

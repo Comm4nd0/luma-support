@@ -115,6 +115,7 @@ class Invoice {
     required this.sentAt,
     required this.paidAt,
     required this.lines,
+    required this.dunningEvents,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -138,6 +139,7 @@ class Invoice {
   final DateTime? sentAt;
   final DateTime? paidAt;
   final List<InvoiceLine> lines;
+  final List<DunningEvent> dunningEvents;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -167,8 +169,33 @@ class Invoice {
         lines: ((json['lines'] as List?) ?? const [])
             .map((l) => InvoiceLine.fromJson(l as Map<String, dynamic>))
             .toList(),
+        dunningEvents: ((json['dunning_events'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(DunningEvent.fromJson)
+            .toList(),
         createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
         updatedAt: _parseDate(json['updated_at']),
+      );
+}
+
+class DunningEvent {
+  const DunningEvent({
+    required this.sentAt,
+    required this.bucket,
+    required this.daysOverdue,
+    required this.emailed,
+  });
+
+  final DateTime? sentAt;
+  final String bucket;
+  final int daysOverdue;
+  final bool emailed;
+
+  factory DunningEvent.fromJson(Map<String, dynamic> json) => DunningEvent(
+        sentAt: _parseDate(json['sent_at']),
+        bucket: (json['bucket'] ?? '').toString(),
+        daysOverdue: (json['days_overdue'] as num?)?.toInt() ?? 0,
+        emailed: json['emailed'] as bool? ?? false,
       );
 }
 

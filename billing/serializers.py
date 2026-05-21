@@ -29,6 +29,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     kind = serializers.ChoiceField(
         choices=Invoice.Kind.choices, default=Invoice.Kind.ONE_OFF
     )
+    dunning_events = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -52,6 +53,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "sent_at",
             "paid_at",
             "lines",
+            "dunning_events",
             "created_at",
             "updated_at",
         )
@@ -66,12 +68,26 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "stripe_payment_link_url",
             "sent_at",
             "paid_at",
+            "dunning_events",
             "created_at",
             "updated_at",
         )
         # The partial UniqueConstraint is enforced at DB level — drop the auto
         # UniqueTogetherValidator that would otherwise require period_start.
         validators: list = []
+
+    def get_dunning_events(self, obj):
+        from .dunning import dunning_events_for
+
+        return [
+            {
+                "sent_at": ev.created_at,
+                "bucket": ev.metadata.get("bucket"),
+                "days_overdue": ev.metadata.get("days_overdue"),
+                "emailed": bool(ev.metadata.get("emailed")),
+            }
+            for ev in dunning_events_for(obj)
+        ]
 
     def create(self, validated_data):
         lines_data = validated_data.pop("lines", [])

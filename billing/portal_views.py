@@ -95,8 +95,11 @@ class InvoiceDetailView(AdminPortalMixin, DetailView):
         )
 
     def get_context_data(self, **kwargs):
+        from .dunning import dunning_events_for
+
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "billing"
+        ctx["dunning_events"] = dunning_events_for(self.object)
         return ctx
 
 

@@ -357,6 +357,24 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                     ),
                 const SizedBox(height: 16),
                 _TotalsCard(invoice: inv, money: money),
+                if (inv.dunningEvents.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const _Section('Dunning timeline'),
+                  const SizedBox(height: 8),
+                  for (final ev in inv.dunningEvents)
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(
+                          ev.emailed ? Icons.mail_outline : Icons.notifications_none,
+                          size: 18,
+                        ),
+                        title: Text('${ev.bucket}d reminder — ${ev.daysOverdue}d overdue'),
+                        subtitle: Text(ev.sentAt?.toString() ?? ''),
+                      ),
+                    ),
+                ],
               ],
             ),
           );

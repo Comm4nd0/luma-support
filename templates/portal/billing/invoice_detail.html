@@ -73,6 +73,31 @@
       </table>
     </div>
     {% endif %}
+
+    {% if dunning_events %}
+    <div class="card" style="margin-top: 16px;">
+      <h2>Dunning timeline</h2>
+      <table class="table">
+        <thead><tr><th>Sent</th><th>Bucket</th><th>Days overdue</th><th>Channel</th></tr></thead>
+        <tbody>
+          {% for ev in dunning_events %}
+            <tr>
+              <td>{{ ev.created_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ ev.metadata.bucket }}d reminder</td>
+              <td>{{ ev.metadata.days_overdue }}</td>
+              <td>
+                {% if ev.metadata.emailed %}
+                  <span class="pill pill-medium">email</span>
+                {% else %}
+                  <span class="pill pill-low">in-app only</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
   </div>
 
   <div>

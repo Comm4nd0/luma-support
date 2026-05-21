@@ -7,9 +7,9 @@ from rest_framework.response import Response
 from clients.models import Client
 
 from . import metrics
-from .models import Invoice, Payment, XeroConnection
+from .models import CreditNote, Invoice, Payment, XeroConnection
 from .permissions import IsAdmin
-from .serializers import InvoiceSerializer, PaymentSerializer
+from .serializers import CreditNoteSerializer, InvoiceSerializer, PaymentSerializer
 from .services import generate_time_invoice
 
 
@@ -145,6 +145,26 @@ class PaymentViewSet(
     permission_classes = [IsAuthenticated, IsAdmin]
     filterset_fields = ["invoice"]
     ordering_fields = ["paid_at", "amount"]
+
+
+class CreditNoteViewSet(viewsets.ModelViewSet):
+    queryset = CreditNote.objects.select_related("client", "invoice").all()
+    serializer_class = CreditNoteSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+    filterset_fields = ["client", "invoice", "status"]
+    ordering = ["-created_at"]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="issue")
+    def issue(self, request, pk=None):
+        """Flip a DRAFT credit note to ISSUED and stamp issued_at."""
+        cn = self.get_object()
+        if cn.status != CreditNote.Status.DRAFT:
+            raise ValidationError({"detail": "only DRAFT credit notes can be issued"})
+        cn.mark_issued()
+        return Response(self.get_serializer(cn).data)
 
 
 @api_view(["POST"])

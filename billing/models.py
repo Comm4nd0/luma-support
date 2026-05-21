@@ -115,6 +115,64 @@ class Invoice(models.Model):
         self.total = subtotal + (self.tax or Decimal("0"))
 
 
+class CreditNote(models.Model):
+    """A credit applied against an invoice (or floating, against the client).
+
+    Kept deliberately small for v1: one amount + reason per note.
+    Push-to-Xero / Stripe-refund hooks can layer on later; the model
+    is shaped so they fit (xero_credit_note_id, stripe_refund_id).
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        ISSUED = "issued", "Issued"
+        VOIDED = "voided", "Voided"
+
+    client = models.ForeignKey(
+        "clients.Client", on_delete=models.PROTECT, related_name="credit_notes"
+    )
+    invoice = models.ForeignKey(
+        "billing.Invoice",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="credit_notes",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default="GBP")
+    reason = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.DRAFT
+    )
+
+    xero_credit_note_id = models.CharField(max_length=64, blank=True)
+    stripe_refund_id = models.CharField(max_length=64, blank=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"CreditNote #{self.pk} — {self.client.name} ({self.amount})"
+
+    def mark_issued(self):
+        from django.utils import timezone
+
+        self.status = self.Status.ISSUED
+        self.issued_at = timezone.now()
+        self.save(update_fields=["status", "issued_at", "updated_at"])
+
+
 class InvoiceLine(models.Model):
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, related_name="lines"

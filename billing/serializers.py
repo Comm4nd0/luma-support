@@ -1,6 +1,36 @@
 from rest_framework import serializers
 
-from .models import Invoice, InvoiceLine, Payment
+from .models import CreditNote, Invoice, InvoiceLine, Payment
+
+
+class CreditNoteSerializer(serializers.ModelSerializer):
+    client_name = serializers.CharField(source="client.name", read_only=True)
+
+    class Meta:
+        model = CreditNote
+        fields = (
+            "id",
+            "client",
+            "client_name",
+            "invoice",
+            "amount",
+            "currency",
+            "reason",
+            "status",
+            "xero_credit_note_id",
+            "stripe_refund_id",
+            "issued_at",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "client_name",
+            "xero_credit_note_id",
+            "stripe_refund_id",
+            "issued_at",
+            "created_at",
+            "updated_at",
+        )
 
 
 class InvoiceLineSerializer(serializers.ModelSerializer):

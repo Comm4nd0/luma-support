@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from .models import Invoice, InvoiceLine, Payment, XeroConnection
+from .models import CreditNote, Invoice, InvoiceLine, Payment, XeroConnection
+
+
+@admin.register(CreditNote)
+class CreditNoteAdmin(admin.ModelAdmin):
+    list_display = ("id", "client", "amount", "currency", "status", "issued_at", "created_at")
+    list_filter = ("status", "currency")
+    search_fields = ("client__name", "reason", "xero_credit_note_id")
+    autocomplete_fields = ("client", "invoice")
+    readonly_fields = ("issued_at", "xero_credit_note_id", "stripe_refund_id",
+                       "created_at", "updated_at")
 
 
 class InvoiceLineInline(admin.TabularInline):

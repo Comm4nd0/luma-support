@@ -59,4 +59,9 @@ urlpatterns = [
         portal_views.VatReportView.as_view(),
         name="vat_report",
     ),
+    path(
+        "billing/reports/profitability/",
+        portal_views.ProfitabilityReportView.as_view(),
+        name="profitability_report",
+    ),
 ]

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Profitability · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin: 0;">Profitability</h1>
+    <div class="muted">
+      Revenue (AUTHORISED + PAID invoices + pro-rata monthly fee) vs an
+      estimated cost (hours × £35/h default). Worst-margin clients first
+      — that's the list to act on.
+    </div>
+  </div>
+  <form method="get" class="toolbar">
+    <select name="days" onchange="this.form.submit()">
+      <option value="30"  {% if days == 30 %}selected{% endif %}>30 days</option>
+      <option value="60"  {% if days == 60 %}selected{% endif %}>60 days</option>
+      <option value="90"  {% if days == 90 %}selected{% endif %}>90 days</option>
+      <option value="180" {% if days == 180 %}selected{% endif %}>180 days</option>
+      <option value="365" {% if days == 365 %}selected{% endif %}>365 days</option>
+    </select>
+    <a class="btn btn-ghost btn-sm" href="?days={{ days }}&export=csv">Export CSV</a>
+  </form>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>Hours</th>
+        <th>Revenue</th>
+        <th>Estimated cost</th>
+        <th>Margin</th>
+        <th>Margin %</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a href="{% url 'portal:client_detail' row.client_id %}">{{ row.name }}</a></td>
+          <td>{{ row.hours_logged }}</td>
+          <td>{{ row.revenue }}</td>
+          <td>{{ row.estimated_cost }}</td>
+          <td style="{% if row.margin < 0 %}color: var(--danger);{% endif %}">
+            {{ row.margin }}
+          </td>
+          <td>{% if row.margin_pct is None %}—{% else %}{{ row.margin_pct }}%{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="muted">No clients yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

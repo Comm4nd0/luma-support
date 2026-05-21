@@ -54,6 +54,58 @@ class RevenueDashboardView(AdminPortalMixin, View):
         )
 
 
+class ProfitabilityReportView(AdminPortalMixin, View):
+    """Per-client revenue vs estimated cost over the chosen window."""
+
+    template_name = "portal/billing/profitability.html"
+
+    def get(self, request):
+        from datetime import date, timedelta
+
+        from django.template.response import TemplateResponse
+
+        from .profitability import client_profitability
+
+        today = date.today()
+        try:
+            days = int(request.GET.get("days", 90))
+        except (TypeError, ValueError):
+            days = 90
+        days = max(7, min(days, 365))
+        start = today - timedelta(days=days)
+
+        rows = client_profitability(start, today)
+
+        if request.GET.get("export") == "csv":
+            import csv
+
+            from django.http import HttpResponse
+
+            resp = HttpResponse(content_type="text/csv")
+            resp["Content-Disposition"] = (
+                f'attachment; filename="profitability-{today.isoformat()}.csv"'
+            )
+            w = csv.writer(resp)
+            w.writerow(["client", "revenue", "hours_logged",
+                        "estimated_cost", "margin", "margin_pct"])
+            for r in rows:
+                w.writerow([r.name, r.revenue, r.hours_logged,
+                            r.estimated_cost, r.margin, r.margin_pct])
+            return resp
+
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "billing",
+                "rows": rows,
+                "days": days,
+                "start": start,
+                "end": today,
+            },
+        )
+
+
 class VatReportView(AdminPortalMixin, View):
     """Quarterly VAT box totals — straightforward Making Tax Digital prep."""
 

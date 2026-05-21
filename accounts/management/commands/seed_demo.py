@@ -13,8 +13,9 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from clients.models import CarePlanTier, Client, System, SystemType
+from features.models import FeatureFlag
 from knowledge.models import Article
-from tickets.models import Ticket
+from tickets.models import Ticket, TicketTag, TicketTemplate
 
 
 def _upsert_user(User, *, email, password, **fields):
@@ -103,15 +104,29 @@ class Command(BaseCommand):
                 },
             )
 
+        # --- Tags ------------------------------------------------------
+        tag_specs = [
+            ("UniFi", "unifi", "#0ea5e9"),
+            ("Outage", "outage", "#ef4444"),
+            ("Website", "website", "#a855f7"),
+            ("Onboarding", "onboarding", "#22c55e"),
+        ]
+        tag_by_slug: dict[str, TicketTag] = {}
+        for name, slug, color in tag_specs:
+            tag, _ = TicketTag.objects.get_or_create(
+                slug=slug, defaults={"name": name, "color": color}
+            )
+            tag_by_slug[slug] = tag
+
         # --- Tickets ---------------------------------------------------
         tickets_def = [
-            (clients[1], "Lights not responding in lounge", "critical", "in_progress"),
-            (clients[0], "Wi-Fi dropping in back office", "high", "assigned"),
-            (clients[0], "Add staff member to email list", "medium", "new"),
-            (clients[2], "404 on /shop page", "medium", "waiting"),
-            (clients[3], "Quote request - small office network", "low", "new"),
+            (clients[1], "Lights not responding in lounge", "critical", "in_progress", []),
+            (clients[0], "Wi-Fi dropping in back office", "high", "assigned", ["unifi"]),
+            (clients[0], "Add staff member to email list", "medium", "new", ["onboarding"]),
+            (clients[2], "404 on /shop page", "medium", "waiting", ["website"]),
+            (clients[3], "Quote request - small office network", "low", "new", []),
         ]
-        for client, subject, priority, status in tickets_def:
+        for client, subject, priority, status, tags in tickets_def:
             existing = Ticket.objects.filter(client=client, subject=subject).first()
             if existing:
                 continue
@@ -125,12 +140,52 @@ class Command(BaseCommand):
                 created_by=admin,
             )
             t.save()
+            for slug in tags:
+                t.tags.add(tag_by_slug[slug])
             # Backdate the critical one so its SLA is breached on the dashboard.
             if subject.startswith("Lights"):
                 Ticket.objects.filter(pk=t.pk).update(
                     created_at=timezone.now() - timedelta(hours=3),
                     sla_deadline=timezone.now() - timedelta(hours=1),
                 )
+
+        # --- Canned reply templates ------------------------------------
+        template_specs = [
+            (
+                "Power cycle request",
+                "Could you power cycle the router (unplug for 30 seconds, "
+                "then plug back in) and let us know whether the issue persists?",
+                True,
+            ),
+            (
+                "Scheduled UniFi firmware",
+                "We've scheduled a UniFi firmware update for this evening at "
+                "21:00 — expect a brief connectivity blip while it applies.",
+                True,
+            ),
+            (
+                "Internal: needs Marco",
+                "Awaiting Marco's input — not safe to action under engineer "
+                "auth.",
+                False,
+            ),
+        ]
+        for name, body, public in template_specs:
+            TicketTemplate.objects.get_or_create(
+                name=name,
+                defaults={"body": body, "public_default": public, "created_by": admin},
+            )
+
+        # --- Feature flags (default off; visible in admin) -------------
+        flag_specs = [
+            ("ai_triage", "Auto-set priority/tags on inbound tickets via Claude."),
+            ("ai_summary", "Surface the TL;DR card on ticket detail."),
+            ("after_hours_oncall", "Send SMS + push for critical tickets outside business hours."),
+        ]
+        for name, description in flag_specs:
+            FeatureFlag.objects.get_or_create(
+                name=name, defaults={"description": description}
+            )
 
         # --- Knowledge articles ----------------------------------------
         articles_def = [

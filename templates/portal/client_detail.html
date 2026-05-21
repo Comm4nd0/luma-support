@@ -9,7 +9,15 @@
       {{ client.company }} ·
       <span class="pill pill-tier-{{ client.care_plan_tier }}">{{ client.get_care_plan_tier_display }} care plan</span> ·
       {{ client.get_customer_type_display }}
-      {% if health %} · <span class="pill pill-health-{{ health.band }}" title="{{ health.reasons|join:' · ' }}">Health {{ health.score }}</span>{% endif %}
+      {% if health %} ·
+        <button type="button"
+                class="pill pill-health-{{ health.band }}"
+                id="health-pill"
+                title="Click for breakdown"
+                style="border: 0; cursor: pointer;">
+          Health {{ health.score }}
+        </button>
+      {% endif %}
     </div>
   </div>
   <div class="toolbar">
@@ -201,6 +209,36 @@
     {% endif %}
   </div>
 </div>
+{% if health %}
+<div class="card" id="health-breakdown" style="display:none; margin-bottom: 16px;">
+  <h3 style="margin-top: 0;">Health breakdown</h3>
+  <dl class="kv">
+    <dt>Score</dt><dd>{{ health.score }} / 100 ({{ health.band }})</dd>
+    <dt>CSAT (90d avg)</dt><dd>{% if health.csat %}{{ health.csat|floatformat:1 }} / 5{% else %}—{% endif %}</dd>
+    <dt>Open tickets</dt><dd>{{ health.open_tickets }}</dd>
+    <dt>Overdue invoices</dt><dd>{{ health.overdue_invoices }}</dd>
+    <dt>Systems OK</dt><dd>{% if health.systems_ok_pct is not None %}{% widthratio health.systems_ok_pct 1 100 %}%{% else %}— (nothing monitored){% endif %}</dd>
+  </dl>
+  {% if health.reasons %}
+    <h4 style="margin-bottom: 6px;">Why</h4>
+    <ul style="margin: 0; padding-left: 18px;">
+      {% for reason in health.reasons %}<li>{{ reason }}</li>{% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted" style="margin: 0;">No negative signals — everything looking good.</p>
+  {% endif %}
+</div>
+<script>
+  (function () {
+    var pill = document.getElementById("health-pill");
+    var panel = document.getElementById("health-breakdown");
+    if (!pill || !panel) return;
+    pill.addEventListener("click", function () {
+      panel.style.display = panel.style.display === "none" ? "" : "none";
+    });
+  })();
+</script>
+{% endif %}
 {% if user.can_view_all %}
 <script>
   (function () {

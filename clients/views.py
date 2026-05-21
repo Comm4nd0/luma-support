@@ -1,5 +1,5 @@
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -31,6 +31,31 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user, "id")
+
+    @action(detail=True, methods=["get"])
+    def health(self, request, pk=None):
+        """Return the per-component health score breakdown.
+
+        Same shape that the portal's expandable health panel renders —
+        score, band, CSAT avg, open ticket count, overdue invoices,
+        systems %, and a list of human reasons.
+        """
+        from .health import score_client
+
+        client = self.get_object()
+        snapshot = score_client(client)
+        return Response(
+            {
+                "client_id": snapshot.client_id,
+                "score": snapshot.score,
+                "band": snapshot.band,
+                "csat": snapshot.csat,
+                "open_tickets": snapshot.open_tickets,
+                "overdue_invoices": snapshot.overdue_invoices,
+                "systems_ok_pct": snapshot.systems_ok_pct,
+                "reasons": snapshot.reasons,
+            }
+        )
 
 
 class SystemViewSet(viewsets.ModelViewSet):

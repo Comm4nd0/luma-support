@@ -29,6 +29,65 @@ class ClientDetailScreen extends StatefulWidget {
 class _ClientDetailScreenState extends State<ClientDetailScreen> {
   late Future<_ClientDetailData> _future;
 
+  Future<void> _showHealthBreakdown(Client c) async {
+    final repo = ClientsRepository(context.read<ApiClient>());
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final h = await repo.health(c.id);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (_) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Health ${h.score} / 100 (${h.band})',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                _kv('CSAT (90d avg)', h.csat == null ? '—' : '${h.csat!.toStringAsFixed(1)} / 5'),
+                _kv('Open tickets', h.openTickets.toString()),
+                _kv('Overdue invoices', h.overdueInvoices.toString()),
+                _kv(
+                  'Systems OK',
+                  h.systemsOkPct == null
+                      ? '— (nothing monitored)'
+                      : '${(h.systemsOkPct! * 100).round()}%',
+                ),
+                if (h.reasons.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Why', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  for (final reason in h.reasons)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text('• $reason'),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Health failed: $e')));
+    }
+  }
+
+  Widget _kv(String key, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            SizedBox(width: 160, child: Text(key, style: const TextStyle(color: Colors.white70))),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
+
   Future<void> _openStripePortal() async {
     final messenger = ScaffoldMessenger.of(context);
     final repo = InvoicesRepository(context.read<ApiClient>());
@@ -154,6 +213,12 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                           if (c.email.isNotEmpty) Chip(label: Text(c.email)),
                           if (c.phone.isNotEmpty) Chip(label: Text(c.phone)),
                           Chip(label: Text('Plan: ${c.carePlanTier}')),
+                          if (isStaff)
+                            ActionChip(
+                              avatar: const Icon(Icons.favorite_outline, size: 16),
+                              label: const Text('Health'),
+                              onPressed: () => _showHealthBreakdown(c),
+                            ),
                         ],
                       ),
                     ],

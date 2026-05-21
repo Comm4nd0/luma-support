@@ -42,6 +42,7 @@ class ApiPaths {
   // Clients / Systems / Contacts
   static const String clients = '/clients/clients/';
   static String client(int id) => '/clients/clients/$id/';
+  static String clientHealth(int id) => '/clients/clients/$id/health/';
   static const String systems = '/clients/systems/';
   static const String contacts = '/clients/contacts/';
   static const String myReferralCode = '/clients/referral-code/';

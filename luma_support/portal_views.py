@@ -494,7 +494,7 @@ class TicketListView(CsvExportMixin, LoginRequiredMixin, ListView):
         return qs.order_by("sla_deadline", "-created_at")
 
     def get_context_data(self, **kwargs):
-        from tickets.models import TicketTag
+        from tickets.models import SavedTicketFilter, TicketTag
 
         ctx = super().get_context_data(**kwargs)
         ctx["clients"] = _scope_clients(
@@ -509,6 +509,10 @@ class TicketListView(CsvExportMixin, LoginRequiredMixin, ListView):
             "client": self.request.GET.get("client", ""),
             "tag": self.request.GET.get("tag", ""),
         }
+        ctx["saved_filters"] = list(
+            SavedTicketFilter.objects.filter(user=self.request.user, pinned=True)
+        )
+        ctx["current_qs"] = self.request.GET.urlencode()
         ctx["active"] = "tickets"
         ctx["now"] = timezone.now()
         return ctx
@@ -750,6 +754,35 @@ class TicketMergeView(LoginRequiredMixin, View):
             request, f"Merged ticket #{source.pk} into #{target.pk}."
         )
         return redirect("portal:ticket_detail", pk=target.pk)
+
+
+class SavedTicketFilterCreateView(LoginRequiredMixin, View):
+    """Server-rendered counterpart to the API. POST {name, querystring,
+    pinned}."""
+
+    def post(self, request):
+        from tickets.models import SavedTicketFilter
+
+        name = (request.POST.get("name") or "").strip()
+        qs = (request.POST.get("querystring") or "").strip()
+        pinned = request.POST.get("pinned") == "1"
+        if not name or not qs:
+            messages.error(request, "Name + querystring required.")
+            return redirect("portal:ticket_list")
+        SavedTicketFilter.objects.update_or_create(
+            user=request.user, name=name,
+            defaults={"querystring": qs, "pinned": pinned},
+        )
+        messages.success(request, f"Saved view “{name}”.")
+        return redirect(f"/tickets/?{qs}")
+
+
+class SavedTicketFilterDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        from tickets.models import SavedTicketFilter
+
+        SavedTicketFilter.objects.filter(user=request.user, pk=pk).delete()
+        return redirect("portal:ticket_list")
 
 
 class TicketBulkActionView(LoginRequiredMixin, View):

@@ -4,12 +4,20 @@ from .models import (
     Attachment,
     CsatResponse,
     MaintenanceSchedule,
+    SavedTicketFilter,
     Ticket,
     TicketNote,
     TicketTag,
     TicketTemplate,
     TimeEntry,
 )
+
+
+class SavedTicketFilterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedTicketFilter
+        fields = ("id", "name", "querystring", "pinned", "sort_order", "created_at")
+        read_only_fields = ("created_at",)
 
 
 class TicketTemplateSerializer(serializers.ModelSerializer):

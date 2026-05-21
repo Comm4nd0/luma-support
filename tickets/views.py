@@ -8,6 +8,7 @@ from .models import (
     Attachment,
     IngestEndpoint,
     MaintenanceSchedule,
+    SavedTicketFilter,
     Ticket,
     TicketNote,
     TicketTag,
@@ -17,6 +18,7 @@ from .models import (
 from .serializers import (
     AttachmentSerializer,
     MaintenanceScheduleSerializer,
+    SavedTicketFilterSerializer,
     TicketListSerializer,
     TicketNoteSerializer,
     TicketSerializer,
@@ -638,6 +640,19 @@ class TicketTagViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         self._require_staff()
         return super().destroy(request, *args, **kwargs)
+
+
+class SavedTicketFilterViewSet(viewsets.ModelViewSet):
+    """Per-user CRUD for saved ticket-list filters."""
+
+    serializer_class = SavedTicketFilterSerializer
+    queryset = SavedTicketFilter.objects.all()
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class TicketTemplateViewSet(viewsets.ModelViewSet):

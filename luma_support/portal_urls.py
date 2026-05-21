@@ -56,6 +56,16 @@ urlpatterns = [
         name="ticket_bulk",
     ),
     path(
+        "tickets/saved-filters/save/",
+        views.SavedTicketFilterCreateView.as_view(),
+        name="ticket_filter_save",
+    ),
+    path(
+        "tickets/saved-filters/<int:pk>/delete/",
+        views.SavedTicketFilterDeleteView.as_view(),
+        name="ticket_filter_delete",
+    ),
+    path(
         "tickets/<int:pk>/merge/",
         views.TicketMergeView.as_view(),
         name="ticket_merge",

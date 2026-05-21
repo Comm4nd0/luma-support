@@ -13,6 +13,28 @@
   </div>
 </div>
 
+{% if user.can_view_all %}
+<div class="saved-filter-bar">
+  {% for sf in saved_filters %}
+    <a class="pill pill-{% if request.GET.urlencode == sf.querystring %}primary{% else %}ghost{% endif %}"
+       href="?{{ sf.querystring }}">{{ sf.name }}</a>
+  {% endfor %}
+  {% if current_qs %}
+    <form method="post" action="{% url 'portal:ticket_filter_save' %}"
+          class="saved-filter-save">
+      {% csrf_token %}
+      <input type="hidden" name="querystring" value="{{ current_qs }}" />
+      <input type="text" name="name" placeholder="Save view as…"
+             maxlength="80" required />
+      <label class="muted">
+        <input type="checkbox" name="pinned" value="1" checked /> Pin
+      </label>
+      <button class="btn btn-sm btn-ghost" type="submit">Save</button>
+    </form>
+  {% endif %}
+</div>
+{% endif %}
+
 <form class="filterbar" method="get">
   <select name="status">
     <option value="">All statuses</option>

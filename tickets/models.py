@@ -20,6 +20,38 @@ def _csat_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+class SavedTicketFilter(models.Model):
+    """Per-user saved query string for the ticket list.
+
+    The ``querystring`` field stores the exact GET params (e.g.
+    ``status=in_progress&priority=high&tag=unifi``). Persisting raw
+    URL-encoded params avoids having to keep a parallel JSON schema in
+    sync with whatever filters the list view supports today.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_ticket_filters",
+    )
+    name = models.CharField(max_length=80)
+    querystring = models.CharField(max_length=500)
+    pinned = models.BooleanField(default=False)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-pinned", "sort_order", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"], name="uniq_saved_filter_per_user"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.name}"
+
+
 class IngestEndpoint(models.Model):
     """A signed token-scoped URL that maps inbound JSON to a Ticket.
 

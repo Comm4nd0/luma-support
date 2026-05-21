@@ -72,5 +72,98 @@
 <footer class="footer">
   Luma Tech Solutions · <a href="{{ BRAND.url }}" target="_blank" rel="noopener">lumatechsolutions.co.uk</a>
 </footer>
+
+{% if user.is_authenticated %}
+<div id="cmdk" class="cmdk-overlay" hidden>
+  <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Quick search">
+    <input id="cmdk-input" type="text" placeholder="Search tickets, clients, KB… (Cmd/Ctrl-K)"
+           autocomplete="off" />
+    <ul id="cmdk-results" class="cmdk-results"></ul>
+    <div class="cmdk-hint">Tip: type ticket numbers like <code>#42</code> · Esc to close</div>
+  </div>
+</div>
+<script>
+  (function () {
+    var overlay = document.getElementById("cmdk");
+    var input = document.getElementById("cmdk-input");
+    var results = document.getElementById("cmdk-results");
+    if (!overlay) return;
+
+    var openAt = 0;
+    var rows = [];
+    var cursor = 0;
+    var inflight = null;
+
+    function open() {
+      overlay.hidden = false;
+      openAt = Date.now();
+      input.value = "";
+      results.innerHTML = "";
+      setTimeout(function () { input.focus(); }, 0);
+    }
+    function close() { overlay.hidden = true; }
+    function isOpen() { return !overlay.hidden; }
+
+    function render() {
+      results.innerHTML = "";
+      rows.forEach(function (row, i) {
+        var li = document.createElement("li");
+        li.className = "cmdk-row" + (i === cursor ? " active" : "");
+        li.innerHTML = '<span class="cmdk-type">' + row.type + '</span>' +
+                       '<span class="cmdk-label"></span>' +
+                       '<span class="cmdk-hint">' + (row.hint || "") + '</span>';
+        li.querySelector(".cmdk-label").textContent = row.label;
+        li.addEventListener("click", function () { go(row.url); });
+        results.appendChild(li);
+      });
+    }
+    function go(url) { close(); window.location.assign(url); }
+
+    var debounceTimer = null;
+    input && input.addEventListener("input", function () {
+      clearTimeout(debounceTimer);
+      var q = input.value.trim();
+      if (q.length < 2) { rows = []; render(); return; }
+      debounceTimer = setTimeout(function () { fetchResults(q); }, 120);
+    });
+
+    async function fetchResults(q) {
+      if (inflight) inflight.abort();
+      inflight = new AbortController();
+      try {
+        var resp = await fetch("/api/v1/search/?q=" + encodeURIComponent(q),
+                               {signal: inflight.signal, credentials: "same-origin"});
+        var data = await resp.json();
+        rows = data.results || [];
+        cursor = 0;
+        render();
+      } catch (e) { /* aborted or network */ }
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        isOpen() ? close() : open();
+        return;
+      }
+      if (!isOpen()) return;
+      if (e.key === "Escape") { close(); return; }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        cursor = Math.min(rows.length - 1, cursor + 1); render();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        cursor = Math.max(0, cursor - 1); render();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (rows[cursor]) go(rows[cursor].url);
+      }
+    });
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) close();
+    });
+  })();
+</script>
+{% endif %}
 </body>
 </html>

@@ -9,11 +9,14 @@ from accounts.jwt import (
     regenerate_recovery_codes,
 )
 
+from .search import search as cmdk_search
+
 api_v1 = [
     # TOTP-aware token endpoint must come BEFORE djoser.urls.jwt so it
     # shadows djoser's plain TokenObtainPairView at the same path.
     path("auth/jwt/create/", TotpAwareTokenObtainPairView.as_view()),
     path("auth/recovery-codes/", regenerate_recovery_codes),
+    path("search/", cmdk_search),
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),
     path("accounts/", include("accounts.urls")),

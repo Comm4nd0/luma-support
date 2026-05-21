@@ -306,6 +306,106 @@ class TicketViewSet(viewsets.ModelViewSet):
         except TicketTag.DoesNotExist:
             raise ValidationError({"value": "unknown tag slug"})
 
+    @action(detail=False, methods=["get"], url_path="time-analytics")
+    def time_analytics(self, request):
+        """Staff-only: billable / unbilled / invoiced hour rollup.
+
+        Query params:
+          ``from``     — ISO date (default 30 days ago)
+          ``to``       — ISO date (default today)
+          ``group_by`` — ``client`` (default) or ``user``
+
+        Returns ``{from, to, group_by, totals{billable_minutes,
+        non_billable_minutes, invoiced_minutes, unbilled_minutes},
+        rows[{key, label, billable, non_billable, invoiced, unbilled}]}``.
+        """
+        from datetime import datetime, timedelta
+
+        from django.db.models import Count, Q, Sum
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+        from django.utils import timezone as _tz
+
+        today = _tz.localdate()
+        try:
+            d_from = datetime.fromisoformat(
+                request.query_params.get("from") or (today - timedelta(days=30)).isoformat()
+            ).date()
+            d_to = datetime.fromisoformat(
+                request.query_params.get("to") or today.isoformat()
+            ).date()
+        except (TypeError, ValueError):
+            raise ValidationError({"detail": "invalid from/to date"})
+        group_by = request.query_params.get("group_by", "client")
+        if group_by not in ("client", "user"):
+            raise ValidationError({"detail": "group_by must be 'client' or 'user'"})
+
+        base = TimeEntry.objects.filter(
+            created_at__date__gte=d_from, created_at__date__lte=d_to
+        )
+
+        if group_by == "client":
+            key_field = "ticket__client_id"
+            label_field = "ticket__client__name"
+        else:
+            key_field = "user_id"
+            label_field = "user__email"
+
+        # Aggregating filtered sums in the DB needs a backend that
+        # supports Sum(... filter=...). SQLite (dev / test) chokes on
+        # the GROUP BY variant, so the safest cross-backend story is to
+        # fetch the per-entry tuples and aggregate in Python — the
+        # dataset is small (a year of time entries is on the order of
+        # thousands of rows for Marco's solo practice).
+        from collections import defaultdict
+
+        bucket = defaultdict(
+            lambda: {"label": "—", "billable": 0, "non_billable": 0,
+                     "invoiced": 0, "unbilled": 0, "entries": 0}
+        )
+        totals = {
+            "billable_minutes": 0,
+            "non_billable_minutes": 0,
+            "invoiced_minutes": 0,
+            "unbilled_minutes": 0,
+        }
+        rows_qs = base.values(key_field, label_field, "minutes", "billable",
+                              "invoice_line_id")
+        for r in rows_qs:
+            key = r[key_field]
+            slot = bucket[key]
+            slot["label"] = r[label_field] or "—"
+            slot["entries"] += 1
+            mins = r["minutes"] or 0
+            if r["billable"]:
+                slot["billable"] += mins
+                totals["billable_minutes"] += mins
+                if r["invoice_line_id"]:
+                    slot["invoiced"] += mins
+                    totals["invoiced_minutes"] += mins
+                else:
+                    slot["unbilled"] += mins
+                    totals["unbilled_minutes"] += mins
+            else:
+                slot["non_billable"] += mins
+                totals["non_billable_minutes"] += mins
+        out = [
+            {"key": k, **{kk: vv for kk, vv in v.items() if kk != "entries"}}
+            for k, v in bucket.items()
+        ]
+        out.sort(key=lambda r: (-r["billable"], -r["non_billable"]))
+        return Response(
+            {
+                "from": d_from.isoformat(),
+                "to": d_to.isoformat(),
+                "group_by": group_by,
+                "totals": totals,
+                "rows": out,
+            }
+        )
+
     @action(detail=False, methods=["get"], url_path="sla-analytics")
     def sla_analytics(self, request):
         """Staff-only: hit-rate per priority + worst clients over a window.

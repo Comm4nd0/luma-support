@@ -69,6 +69,11 @@ urlpatterns = [
         name="client_timeline",
     ),
     path(
+        "clients/<int:pk>/report.pdf",
+        views.ClientMonthlyReportView.as_view(),
+        name="client_monthly_report",
+    ),
+    path(
         "onboarding/<int:pk>/toggle/",
         views.OnboardingToggleView.as_view(),
         name="onboarding_toggle",

@@ -16,6 +16,7 @@
     <a class="btn btn-ghost" href="{% url 'portal:client_edit' client.pk %}">Edit</a>
     {% if user.can_view_all %}
       <a class="btn btn-ghost" href="{% url 'portal:client_timeline' client.pk %}">Timeline</a>
+      <a class="btn btn-ghost" href="{% url 'portal:client_monthly_report' client.pk %}" target="_blank" rel="noopener">Monthly PDF</a>
       <button class="btn btn-ghost" type="button" id="stripe-portal-btn" data-client="{{ client.pk }}">Open Stripe portal</button>
     {% endif %}
     <a class="btn" href="{% url 'portal:ticket_create' %}?client={{ client.pk }}">+ New ticket</a>

@@ -606,6 +606,38 @@ class TicketStatusUpdateView(LoginRequiredMixin, View):
         return redirect("portal:ticket_detail", pk=pk)
 
 
+class ClientMonthlyReportView(StaffRequiredMixin, View):
+    """Stream a PDF monthly support summary for ``client``.
+
+    Wraps ``tickets.reports.build_monthly_report_pdf`` — the same call
+    the Celery monthly-send task uses, so the email and the
+    download-now button always render the same content.
+    """
+
+    def get(self, request, pk):
+        from django.http import HttpResponse
+
+        from tickets.reports import build_monthly_report_pdf
+
+        client = get_object_or_404(Client, pk=pk)
+        today = timezone.localdate()
+        try:
+            year = int(request.GET.get("year", today.year))
+            month = int(request.GET.get("month", today.month))
+        except (TypeError, ValueError):
+            messages.error(request, "Invalid year/month.")
+            return redirect("portal:client_detail", pk=pk)
+        if not (1 <= month <= 12) or year < 2000 or year > 2100:
+            messages.error(request, "Year/month out of range.")
+            return redirect("portal:client_detail", pk=pk)
+
+        pdf_bytes = build_monthly_report_pdf(client, year, month)
+        filename = f"luma-report-{client.pk}-{year}-{month:02d}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
 class TicketMergeView(LoginRequiredMixin, View):
     """Server-rendered counterpart to /api/v1/tickets/<id>/merge-into/.
 

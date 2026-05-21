@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -145,6 +145,80 @@ class TicketViewSet(viewsets.ModelViewSet):
                 body=note.body[:240],
                 related_ticket=ticket,
             )
+
+    @action(detail=False, methods=["post"], url_path="bulk")
+    def bulk(self, request):
+        """Apply one action to many tickets in one round-trip.
+
+        Body: ``{"ids": [int, ...], "action": str, "value": <varies>}``.
+
+        Actions:
+            ``status``        -> value is one of Ticket.Status values.
+            ``priority``      -> value is one of Ticket.Priority values.
+            ``assigned_to``   -> value is a user id (or null to unassign).
+            ``add_tag``       -> value is a tag id or slug.
+            ``remove_tag``    -> value is a tag id or slug.
+
+        Each touched ticket gets its own audit row so the trail is the
+        same as the per-ticket equivalent action.
+        """
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+        ids = request.data.get("ids") or []
+        action_name = request.data.get("action")
+        value = request.data.get("value")
+        if not isinstance(ids, list) or not ids or not action_name:
+            raise ValidationError({"detail": "ids and action are required."})
+
+        from audit import log as audit_log
+
+        qs = Ticket.objects.filter(pk__in=ids)
+        tickets = list(qs)
+        touched = 0
+        for ticket in tickets:
+            if action_name == "status":
+                if value not in {v for v, _ in Ticket.Status.choices}:
+                    raise ValidationError({"value": "invalid status"})
+                ticket.transition_to(value, by_user=request.user)
+            elif action_name == "priority":
+                if value not in {v for v, _ in Ticket.Priority.choices}:
+                    raise ValidationError({"value": "invalid priority"})
+                ticket.priority = value
+                ticket.save(update_fields=["priority"])
+            elif action_name == "assigned_to":
+                ticket.assigned_to_id = value
+                ticket.save(update_fields=["assigned_to"])
+            elif action_name in ("add_tag", "remove_tag"):
+                tag = self._resolve_tag(value)
+                if action_name == "add_tag":
+                    ticket.tags.add(tag)
+                else:
+                    ticket.tags.remove(tag)
+            else:
+                raise ValidationError({"action": f"unknown action {action_name!r}"})
+            audit_log(
+                f"ticket.bulk.{action_name}",
+                actor=request.user,
+                request=request,
+                target=ticket,
+                value=value,
+            )
+            touched += 1
+        return Response({"touched": touched})
+
+    def _resolve_tag(self, value):
+        if value is None:
+            raise ValidationError({"value": "tag id or slug required"})
+        if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+            try:
+                return TicketTag.objects.get(pk=int(value))
+            except TicketTag.DoesNotExist:
+                raise ValidationError({"value": "unknown tag id"})
+        try:
+            return TicketTag.objects.get(slug=value)
+        except TicketTag.DoesNotExist:
+            raise ValidationError({"value": "unknown tag slug"})
 
     @action(detail=False, methods=["get"], url_path="sla-warnings")
     def sla_warnings(self, request):

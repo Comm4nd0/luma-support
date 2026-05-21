@@ -582,6 +582,75 @@ class TicketStatusUpdateView(LoginRequiredMixin, View):
         return redirect("portal:ticket_detail", pk=pk)
 
 
+class TicketBulkActionView(LoginRequiredMixin, View):
+    """Apply one action to multiple checked tickets from the list view.
+
+    Server-rendered counterpart to the /api/v1/tickets/bulk/ endpoint;
+    same semantics (and audit rows) but accepts an HTML form POST.
+    """
+
+    def post(self, request):
+        from django.http import HttpResponseForbidden
+
+        from audit import log as audit_log
+        from tickets.models import TicketTag
+
+        if not request.user.can_view_all:
+            return HttpResponseForbidden("Staff only.")
+
+        ids = [int(x) for x in request.POST.getlist("ids") if x.isdigit()]
+        action_name = request.POST.get("action", "")
+        value = request.POST.get("value") or None
+        if not ids or not action_name:
+            messages.error(request, "Pick at least one ticket and an action.")
+            return redirect(request.META.get("HTTP_REFERER", "portal:ticket_list"))
+
+        valid_statuses = {v for v, _ in Ticket.Status.choices}
+        valid_priorities = {v for v, _ in Ticket.Priority.choices}
+        touched = 0
+        try:
+            for ticket in Ticket.objects.filter(pk__in=ids):
+                if action_name == "status":
+                    if value not in valid_statuses:
+                        raise ValueError("invalid status")
+                    ticket.transition_to(value, by_user=request.user)
+                elif action_name == "priority":
+                    if value not in valid_priorities:
+                        raise ValueError("invalid priority")
+                    ticket.priority = value
+                    ticket.save(update_fields=["priority"])
+                elif action_name in ("add_tag", "remove_tag"):
+                    if not value:
+                        raise ValueError("tag required")
+                    tag = (
+                        TicketTag.objects.filter(pk=int(value)).first()
+                        if value.isdigit()
+                        else TicketTag.objects.filter(slug=value).first()
+                    )
+                    if tag is None:
+                        raise ValueError("unknown tag")
+                    if action_name == "add_tag":
+                        ticket.tags.add(tag)
+                    else:
+                        ticket.tags.remove(tag)
+                else:
+                    raise ValueError(f"unknown action {action_name!r}")
+                audit_log(
+                    f"ticket.bulk.{action_name}",
+                    actor=request.user,
+                    request=request,
+                    target=ticket,
+                    value=value,
+                )
+                touched += 1
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect(request.META.get("HTTP_REFERER", "portal:ticket_list"))
+
+        messages.success(request, f"Applied to {touched} ticket(s).")
+        return redirect(request.META.get("HTTP_REFERER", "portal:ticket_list"))
+
+
 class TimeEntryForm(forms.ModelForm):
     class Meta:
         model = TimeEntry

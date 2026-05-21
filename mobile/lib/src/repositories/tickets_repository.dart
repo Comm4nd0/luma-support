@@ -79,6 +79,28 @@ class TicketsRepository {
     }
   }
 
+  /// Apply one action to many tickets — see TicketViewSet.bulk.
+  Future<int> bulk({
+    required List<int> ids,
+    required String action,
+    Object? value,
+  }) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.ticketsBulk,
+        data: {
+          'ids': ids,
+          'action': action,
+          if (value != null) 'value': value,
+        },
+      );
+      final data = res.data as Map<String, dynamic>;
+      return (data['touched'] as num?)?.toInt() ?? 0;
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   Future<Ticket> get(int id) async {
     try {
       final res = await _api.dio.get<dynamic>(ApiPaths.ticket(id));

@@ -37,11 +37,39 @@
 </form>
 
 <!-- Desktop / tablet: table. Hidden on mobile via .list-table { display:none }. -->
+<form method="post" action="{% url 'portal:ticket_bulk' %}" id="bulk-form">
+{% csrf_token %}
+{% if user.can_view_all %}
+<div class="bulk-toolbar" id="bulk-toolbar" style="display:none;">
+  <span class="muted" id="bulk-count">0 selected</span>
+  <select name="action" required>
+    <option value="">Action…</option>
+    <option value="status">Set status</option>
+    <option value="priority">Set priority</option>
+    <option value="add_tag">Add tag</option>
+    <option value="remove_tag">Remove tag</option>
+  </select>
+  <select name="value" required>
+    <option value="">Value…</option>
+    <optgroup label="Status">
+      {% for v, label in statuses %}<option value="{{ v }}" data-for="status">{{ label }}</option>{% endfor %}
+    </optgroup>
+    <optgroup label="Priority">
+      {% for v, label in priorities %}<option value="{{ v }}" data-for="priority">{{ label }}</option>{% endfor %}
+    </optgroup>
+    <optgroup label="Tag">
+      {% for tag in tags %}<option value="{{ tag.slug }}" data-for="add_tag remove_tag">{{ tag.name }}</option>{% endfor %}
+    </optgroup>
+  </select>
+  <button class="btn btn-sm" type="submit">Apply</button>
+</div>
+{% endif %}
 <div class="card list-table">
   <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
+          {% if user.can_view_all %}<th><input type="checkbox" id="bulk-check-all" /></th>{% endif %}
           <th>#</th>
           <th>Subject</th>
           <th>Client</th>
@@ -54,6 +82,7 @@
       <tbody>
         {% for t in tickets %}
           <tr>
+            {% if user.can_view_all %}<td><input type="checkbox" name="ids" value="{{ t.pk }}" class="bulk-check" /></td>{% endif %}
             <td><a href="{% url 'portal:ticket_detail' t.pk %}">#{{ t.pk }}</a></td>
             <td>
               {{ t.subject|truncatechars:60 }}
@@ -78,12 +107,48 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" class="muted">No tickets match these filters.</td></tr>
+          <tr><td colspan="{% if user.can_view_all %}8{% else %}7{% endif %}" class="muted">No tickets match these filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+</form>
+{% if user.can_view_all %}
+<script>
+  (function () {
+    var form = document.getElementById("bulk-form");
+    if (!form) return;
+    var all = document.getElementById("bulk-check-all");
+    var rows = form.querySelectorAll(".bulk-check");
+    var toolbar = document.getElementById("bulk-toolbar");
+    var count = document.getElementById("bulk-count");
+    var actionSel = form.querySelector("select[name=action]");
+    var valueSel = form.querySelector("select[name=value]");
+
+    function refresh() {
+      var n = 0;
+      rows.forEach(function (cb) { if (cb.checked) n++; });
+      toolbar.style.display = n ? "flex" : "none";
+      count.textContent = n + " selected";
+      // Filter the value options to match the chosen action.
+      var chosen = actionSel.value;
+      Array.prototype.forEach.call(valueSel.options, function (opt) {
+        if (!opt.dataset.for) { opt.hidden = chosen !== ""; return; }
+        opt.hidden = chosen === "" || opt.dataset.for.split(" ").indexOf(chosen) === -1;
+      });
+    }
+
+    if (all) all.addEventListener("change", function () {
+      rows.forEach(function (cb) { cb.checked = all.checked; });
+      refresh();
+    });
+    rows.forEach(function (cb) { cb.addEventListener("change", refresh); });
+    actionSel.addEventListener("change", refresh);
+    refresh();
+  })();
+</script>
+{% endif %}
 
 <!-- Mobile: stacked cards. Hidden on desktop via .cards-mobile { display:none }. -->
 <div class="cards-mobile">

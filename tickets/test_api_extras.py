@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from rest_framework.test import APIClient
 
-from tickets.models import MaintenanceSchedule, Ticket
+from tickets.models import MaintenanceSchedule, Ticket, TicketTag
 
 pytestmark = pytest.mark.django_db
 
@@ -132,3 +132,84 @@ def test_dashboard_stats_returns_expected_keys(engineer_user, client_record):
         "maintenance_due_7d",
         "currency",
     } <= set(body.keys())
+
+
+# ----- /tickets/bulk/ ---------------------------------------------------
+
+
+def test_bulk_requires_staff(client_record):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        email="c2@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    t = Ticket.objects.create(client=client_record, subject="x")
+    c = APIClient()
+    c.force_authenticate(user)
+    resp = c.post(
+        "/api/v1/tickets/tickets/bulk/",
+        {"ids": [t.pk], "action": "status", "value": "closed"},
+        format="json",
+    )
+    assert resp.status_code == 403
+
+
+def test_bulk_status_closes_many_tickets(engineer_user, client_record):
+    tickets = [
+        Ticket.objects.create(client=client_record, subject=f"t{i}") for i in range(3)
+    ]
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        "/api/v1/tickets/tickets/bulk/",
+        {
+            "ids": [t.pk for t in tickets],
+            "action": "status",
+            "value": "closed",
+        },
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    assert resp.json() == {"touched": 3}
+    for t in tickets:
+        t.refresh_from_db()
+        assert t.status == Ticket.Status.CLOSED
+
+
+def test_bulk_add_tag_by_slug(engineer_user, client_record):
+    tag = TicketTag.objects.create(name="UniFi", slug="unifi")
+    tickets = [
+        Ticket.objects.create(client=client_record, subject=f"t{i}") for i in range(2)
+    ]
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        "/api/v1/tickets/tickets/bulk/",
+        {"ids": [t.pk for t in tickets], "action": "add_tag", "value": "unifi"},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    for t in tickets:
+        assert tag in t.tags.all()
+
+
+def test_bulk_writes_one_audit_row_per_ticket(engineer_user, client_record):
+    from audit.models import AuditLog
+
+    tickets = [
+        Ticket.objects.create(client=client_record, subject=f"t{i}") for i in range(2)
+    ]
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    c.post(
+        "/api/v1/tickets/tickets/bulk/",
+        {
+            "ids": [t.pk for t in tickets],
+            "action": "status",
+            "value": "resolved",
+        },
+        format="json",
+    )
+    rows = AuditLog.objects.filter(action="ticket.bulk.status")
+    assert rows.count() == 2

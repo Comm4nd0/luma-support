@@ -7,10 +7,16 @@ import '../../theme.dart';
 /// Compact list tile used on dashboards and the ticket list. Pulled into
 /// its own file so styling stays consistent across screens.
 class TicketTile extends StatelessWidget {
-  const TicketTile({super.key, required this.ticket, this.onTap});
+  const TicketTile({
+    super.key,
+    required this.ticket,
+    this.onTap,
+    this.onLongPress,
+  });
 
   final Ticket ticket;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   Color _priorityColor(TicketPriority p) {
     switch (p) {
@@ -43,6 +49,7 @@ class TicketTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         onTap: onTap,
+        onLongPress: onLongPress,
         title: Text(ticket.subject,
             maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Column(

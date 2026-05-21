@@ -66,6 +66,13 @@ class LumaDrawer extends StatelessWidget {
               ),
             if (isStaff)
               ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.mapPin),
+                title: const Text('Site visits'),
+                subtitle: const Text('On-site check-in / check-out'),
+                onTap: () => go('/site-visits'),
+              ),
+            if (isStaff)
+              ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.chatCircleDots),
                 title: const Text('Social inbox'),
                 subtitle: const Text('DMs, mentions and comments'),

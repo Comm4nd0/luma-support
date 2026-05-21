@@ -9,6 +9,7 @@ import '../models/contact.dart';
 import '../models/ticket.dart';
 import '../repositories/clients_repository.dart';
 import '../repositories/invoices_repository.dart';
+import '../repositories/site_visits_repository.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
@@ -88,6 +89,26 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         ),
       );
 
+  Future<void> _startSiteVisit() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = SiteVisitsRepository(context.read<ApiClient>());
+    try {
+      await repo.start(widget.clientId);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Site visit started.'),
+          action: SnackBarAction(
+            label: 'Visits',
+            onPressed: () => context.push('/site-visits'),
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed to start: $e')));
+    }
+  }
+
   Future<void> _openStripePortal() async {
     final messenger = ScaffoldMessenger.of(context);
     final repo = InvoicesRepository(context.read<ApiClient>());
@@ -161,6 +182,12 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
       appBar: AppBar(
         title: const Text('Client'),
         actions: [
+          if (isStaff)
+            IconButton(
+              tooltip: 'Start site visit',
+              icon: const Icon(Icons.location_on_outlined),
+              onPressed: _startSiteVisit,
+            ),
           if (isStaff)
             IconButton(
               tooltip: 'Stripe portal',

@@ -82,12 +82,68 @@
     <div class="cmdk-hint">Tip: type ticket numbers like <code>#42</code> · Esc to close</div>
   </div>
 </div>
+<div id="kbd-help" class="cmdk-overlay" hidden>
+  <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div style="padding: 16px 18px;">
+      <strong>Keyboard shortcuts</strong>
+      <table class="table" style="margin-top: 8px;">
+        <tbody>
+          <tr><td><kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd></td><td>Open quick search</td></tr>
+          <tr><td><kbd>c</kbd></td><td>New ticket</td></tr>
+          <tr><td><kbd>g</kbd> then <kbd>d</kbd></td><td>Go to dashboard</td></tr>
+          <tr><td><kbd>g</kbd> then <kbd>t</kbd></td><td>Go to tickets</td></tr>
+          <tr><td><kbd>g</kbd> then <kbd>c</kbd></td><td>Go to clients</td></tr>
+          <tr><td><kbd>g</kbd> then <kbd>k</kbd></td><td>Go to knowledge base</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close any overlay</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 <script>
   (function () {
     var overlay = document.getElementById("cmdk");
     var input = document.getElementById("cmdk-input");
     var results = document.getElementById("cmdk-results");
+    var help = document.getElementById("kbd-help");
     if (!overlay) return;
+
+    var pendingGo = false;
+    var pendingGoTimer = null;
+    function expectGoKey() {
+      pendingGo = true;
+      clearTimeout(pendingGoTimer);
+      pendingGoTimer = setTimeout(function () { pendingGo = false; }, 1200);
+    }
+    function isTyping(t) {
+      if (!t) return false;
+      var tag = (t.tagName || "").toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" ||
+             t.isContentEditable;
+    }
+    document.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTyping(e.target)) return;
+      if (!overlay.hidden || !help.hidden) return;
+      if (pendingGo) {
+        var dest = {d: "/dashboard/", t: "/tickets/", c: "/clients/", k: "/kb/"}[e.key];
+        pendingGo = false;
+        clearTimeout(pendingGoTimer);
+        if (dest) { e.preventDefault(); window.location.assign(dest); }
+        return;
+      }
+      if (e.key === "g") { e.preventDefault(); expectGoKey(); return; }
+      if (e.key === "c") { e.preventDefault(); window.location.assign("/tickets/new/"); return; }
+      if (e.key === "?") { e.preventDefault(); help.hidden = false; return; }
+    });
+    help && help.addEventListener("click", function (e) {
+      if (e.target === help) help.hidden = true;
+    });
+    document.addEventListener("keydown", function (e) {
+      if (!help.hidden && e.key === "Escape") help.hidden = true;
+    });
 
     var openAt = 0;
     var rows = [];

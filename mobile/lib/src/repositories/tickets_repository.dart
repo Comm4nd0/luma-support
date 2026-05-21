@@ -193,6 +193,23 @@ class TicketsRepository {
     }
   }
 
+  /// Staff-only: ask Claude for a TL;DR of the ticket thread. Returns
+  /// the empty string when ANTHROPIC_API_KEY isn't configured on the
+  /// backend. The backend caches per-ticket; pass refresh=true to
+  /// regenerate.
+  Future<String> summariseThread(int id, {bool refresh = false}) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.ticketSummarise(id),
+        data: {'refresh': refresh},
+      );
+      final data = res.data as Map<String, dynamic>;
+      return data['summary'] as String? ?? '';
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   /// Staff-only: ask Claude for a draft reply. Returns the empty string
   /// when ANTHROPIC_API_KEY isn't configured on the backend.
   Future<String> draftReply(int id) async {

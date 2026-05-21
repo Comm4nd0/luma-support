@@ -160,6 +160,35 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (source != null) await _attachPhoto(source: source);
   }
 
+  Future<void> _summariseThread() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final summary = await _repo.summariseThread(widget.ticketId);
+      if (!mounted) return;
+      if (summary.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('AI summarisation is disabled on this server.')),
+        );
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('TL;DR'),
+          content: SingleChildScrollView(child: Text(summary)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Summarise failed: $e')));
+    }
+  }
+
   Future<void> _editTags(Ticket ticket) async {
     final all = await _repo.listTags();
     if (!mounted) return;
@@ -340,6 +369,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   onPressed: _draftReply,
                   icon: const Icon(Icons.auto_awesome_outlined),
                   label: const Text('Draft reply with AI'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _summariseThread,
+                  icon: const Icon(Icons.summarize_outlined),
+                  label: const Text('Summarise thread'),
                 ),
               ],
             ],

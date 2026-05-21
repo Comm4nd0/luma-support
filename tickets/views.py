@@ -230,6 +230,46 @@ class TicketViewSet(viewsets.ModelViewSet):
             qs = qs.filter(client_id=user.client_id) if user.client_id else qs.none()
         return Response(TicketListSerializer(qs, many=True).data)
 
+    @action(detail=True, methods=["post"], url_path="summarise")
+    def summarise(self, request, pk=None):
+        """Staff-only: return a Claude TL;DR of the ticket thread.
+
+        Cached on the ticket (``ai_summary`` / ``ai_summary_at``); the
+        cache is invalidated by the TicketNote post_save signal so a
+        stale summary never lingers after new conversation. Returns
+        ``{"summary": ""}`` when ANTHROPIC_API_KEY is unset, mirroring
+        ``draft_reply``.
+        """
+        from django.utils import timezone
+
+        from .ai import summarise_thread
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+        ticket = self.get_object()
+        refresh = request.data.get("refresh") if hasattr(request, "data") else None
+        if ticket.ai_summary and not refresh:
+            return Response(
+                {
+                    "summary": ticket.ai_summary,
+                    "generated_at": ticket.ai_summary_at,
+                    "cached": True,
+                }
+            )
+        summary = summarise_thread(ticket)
+        if summary:
+            Ticket.objects.filter(pk=ticket.pk).update(
+                ai_summary=summary, ai_summary_at=timezone.now()
+            )
+            ticket.refresh_from_db(fields=["ai_summary", "ai_summary_at"])
+        return Response(
+            {
+                "summary": summary,
+                "generated_at": ticket.ai_summary_at,
+                "cached": False,
+            }
+        )
+
     @action(detail=True, methods=["post"], url_path="draft-reply")
     def draft_reply(self, request, pk=None):
         """Staff-only: ask Claude for an engineer-side draft reply.

@@ -25,6 +25,65 @@ def draft_reply(ticket) -> str:
         return ""
 
 
+def summarise_thread(ticket) -> str:
+    """Return a short bullet-point TL;DR of the ticket conversation.
+
+    Returns "" when ANTHROPIC_API_KEY is unset or the call fails so the
+    UI can render the button safely; never raises.
+    """
+    if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+        return ""
+    try:
+        return _claude_summarise(ticket)
+    except Exception:
+        logger.exception(
+            "tickets.ai.summarise_thread failed for ticket #%s", ticket.pk
+        )
+        return ""
+
+
+def _claude_summarise(ticket) -> str:
+    from anthropic import Anthropic
+
+    notes = ticket.notes.select_related("author").order_by("created_at")
+    history_lines = []
+    for note in notes:
+        who = (
+            "Client"
+            if note.author and getattr(note.author, "is_client", False)
+            else "Engineer"
+        )
+        tag = " (internal)" if note.internal else ""
+        history_lines.append(f"{who}{tag}: {note.body.strip()}")
+    history = "\n\n".join(history_lines) or "(no notes yet)"
+
+    system_prompt = (
+        "You are summarising an IT support ticket conversation for a "
+        "UK MSP engineer who is about to triage it. Produce at most 6 "
+        "short bullets. Lead with the current state, then key facts "
+        "(what was tried, what worked / didn't), then the open "
+        "question. Use markdown bullet syntax (- ). No preamble. No "
+        "closing summary line."
+    )
+    user_prompt = (
+        f"Ticket #{ticket.pk}: {ticket.subject}\n"
+        f"Client: {ticket.client.name}\n"
+        f"Status: {ticket.get_status_display()}\n"
+        f"Priority: {ticket.get_priority_display()}\n\n"
+        f"Description:\n{ticket.description or '(none)'}\n\n"
+        f"Conversation:\n{history}"
+    )
+
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    msg = client.messages.create(
+        model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+        max_tokens=500,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    return "".join(getattr(b, "text", "") for b in msg.content).strip()
+
+
 def _claude_draft(ticket) -> str:
     from anthropic import Anthropic
 

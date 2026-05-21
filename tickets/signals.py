@@ -2,7 +2,21 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Ticket
+from .models import Ticket, TicketNote
+
+
+@receiver(post_save, sender=TicketNote)
+def _invalidate_ai_summary(sender, instance, created, **kwargs):
+    """Drop the cached Claude summary when fresh notes land.
+
+    The summary is a snapshot of the conversation; once a new note is
+    posted, the cached version is stale. Cheap to re-derive on demand.
+    """
+    if not created:
+        return
+    Ticket.objects.filter(pk=instance.ticket_id).update(
+        ai_summary="", ai_summary_at=None
+    )
 
 
 @receiver(pre_save, sender=Ticket)

@@ -175,6 +175,12 @@ class Ticket(models.Model):
         "TicketTag", blank=True, related_name="tickets"
     )
 
+    # Cached Claude-generated thread summary. Invalidated by the
+    # post_save signal on TicketNote so a stale summary never lingers
+    # after new conversation.
+    ai_summary = models.TextField(blank=True)
+    ai_summary_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

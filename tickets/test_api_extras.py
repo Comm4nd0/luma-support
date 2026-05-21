@@ -134,6 +134,65 @@ def test_dashboard_stats_returns_expected_keys(engineer_user, client_record):
     } <= set(body.keys())
 
 
+# ----- /tickets/<id>/summarise/ -----------------------------------------
+
+
+def test_summarise_requires_staff(client_record):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        email="cs@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    t = Ticket.objects.create(client=client_record, subject="x")
+    c = APIClient()
+    c.force_authenticate(user)
+    resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/summarise/")
+    assert resp.status_code == 403
+
+
+def test_summarise_returns_empty_when_disabled(engineer_user, client_record, settings):
+    settings.ANTHROPIC_API_KEY = ""
+    t = Ticket.objects.create(client=client_record, subject="x")
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/summarise/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["summary"] == ""
+    assert body["cached"] is False
+
+
+def test_summarise_uses_cache_when_present(engineer_user, client_record):
+    from django.utils import timezone
+
+    t = Ticket.objects.create(client=client_record, subject="x")
+    Ticket.objects.filter(pk=t.pk).update(
+        ai_summary="- already cached", ai_summary_at=timezone.now()
+    )
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/summarise/")
+    body = resp.json()
+    assert body["summary"] == "- already cached"
+    assert body["cached"] is True
+
+
+def test_new_note_invalidates_summary_cache(engineer_user, client_record):
+    from django.utils import timezone
+
+    from tickets.models import TicketNote
+
+    t = Ticket.objects.create(client=client_record, subject="x")
+    Ticket.objects.filter(pk=t.pk).update(
+        ai_summary="- old", ai_summary_at=timezone.now()
+    )
+    TicketNote.objects.create(ticket=t, author=engineer_user, body="new", internal=True)
+    t.refresh_from_db()
+    assert t.ai_summary == ""
+    assert t.ai_summary_at is None
+
+
 # ----- /tickets/bulk/ ---------------------------------------------------
 
 

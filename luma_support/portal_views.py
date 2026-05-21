@@ -24,6 +24,7 @@ from django.views.generic import (
 
 from clients.models import Client, Contact, System
 from knowledge.models import Article
+from luma_support.exports import CsvExportMixin
 from notifications.models import Notification
 from tickets.models import CsatResponse, MaintenanceSchedule, Ticket, TicketNote, TimeEntry
 
@@ -408,11 +409,28 @@ class CsatSubmitView(View):
 # ---------------------------------------------------------------------
 
 
-class TicketListView(LoginRequiredMixin, ListView):
+class TicketListView(CsvExportMixin, LoginRequiredMixin, ListView):
     model = Ticket
     template_name = "portal/ticket_list.html"
     paginate_by = 50
     context_object_name = "tickets"
+    csv_filename = "tickets"
+    csv_columns = (
+        ("id", "pk"),
+        ("subject", "subject"),
+        ("client", "client.name"),
+        ("system", "system.name"),
+        ("priority", "get_priority_display"),
+        ("status", "get_status_display"),
+        ("assigned_to", "assigned_to.email"),
+        ("sla_deadline", "sla_deadline"),
+        ("effective_sla_deadline", "effective_sla_deadline"),
+        ("is_paused", "is_paused"),
+        ("is_breached", "is_breached"),
+        ("created_at", "created_at"),
+        ("resolved_at", "resolved_at"),
+        ("closed_at", "closed_at"),
+    )
 
     def get_queryset(self):
         qs = _scope_tickets(
@@ -729,11 +747,24 @@ class TicketDraftReplyView(LoginRequiredMixin, UserPassesTestMixin, View):
 # ---------------------------------------------------------------------
 
 
-class ClientListView(LoginRequiredMixin, ListView):
+class ClientListView(CsvExportMixin, LoginRequiredMixin, ListView):
     model = Client
     template_name = "portal/client_list.html"
     paginate_by = 50
     context_object_name = "clients"
+    csv_filename = "clients"
+    csv_columns = (
+        ("id", "pk"),
+        ("name", "name"),
+        ("company", "company"),
+        ("email", "email"),
+        ("phone", "phone"),
+        ("vat_number", "vat_number"),
+        ("care_plan_tier", "care_plan_tier"),
+        ("monthly_fee", "monthly_fee"),
+        ("hourly_rate", "hourly_rate"),
+        ("created_at", "created_at"),
+    )
 
     def get_queryset(self):
         qs = _scope_clients(Client.objects.all(), self.request.user)

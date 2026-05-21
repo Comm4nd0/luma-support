@@ -3,7 +3,12 @@
 {% block content %}
 <div class="card-header">
   <h1>Clients</h1>
-  <a class="btn" href="{% url 'portal:client_create' %}">+ New client</a>
+  <div style="display:flex; gap:8px;">
+    {% if user.can_view_all %}
+      <a class="btn btn-ghost btn-sm" href="?export=csv">Export CSV</a>
+    {% endif %}
+    <a class="btn" href="{% url 'portal:client_create' %}">+ New client</a>
+  </div>
 </div>
 
 <!-- Desktop / tablet: table. -->

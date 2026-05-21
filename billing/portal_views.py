@@ -16,6 +16,7 @@ from django.views.generic import DetailView, ListView, View
 from django.views.generic.edit import CreateView, UpdateView
 
 from clients.models import Client
+from luma_support.exports import CsvExportMixin
 
 from .models import Invoice, InvoiceLine, XeroConnection
 from .permissions import AdminPortalMixin
@@ -53,11 +54,26 @@ class RevenueDashboardView(AdminPortalMixin, View):
         )
 
 
-class InvoiceListView(AdminPortalMixin, ListView):
+class InvoiceListView(CsvExportMixin, AdminPortalMixin, ListView):
     model = Invoice
     template_name = "portal/billing/invoice_list.html"
     paginate_by = 50
     context_object_name = "invoices"
+    csv_filename = "invoices"
+    csv_columns = (
+        ("id", "pk"),
+        ("kind", "get_kind_display"),
+        ("client", "client.name"),
+        ("status", "get_status_display"),
+        ("subtotal", "subtotal"),
+        ("tax", "tax"),
+        ("total", "total"),
+        ("currency", "currency"),
+        ("due_date", "due_date"),
+        ("created_at", "created_at"),
+        ("paid_at", "paid_at"),
+        ("xero_invoice_id", "xero_invoice_id"),
+    )
 
     def get_queryset(self):
         return Invoice.objects.select_related("client").order_by("-created_at")

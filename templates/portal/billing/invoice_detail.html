@@ -12,6 +12,7 @@
   </div>
   <div class="toolbar">
     <a class="btn btn-ghost" href="{% url 'portal:invoice_list' %}">Back</a>
+    <button class="btn btn-ghost btn-sm" type="button" onclick="window.print();">Print</button>
     {% if invoice.status == 'draft' %}
       <a class="btn btn-ghost" href="{% url 'portal:invoice_edit' invoice.pk %}">Edit</a>
     {% endif %}

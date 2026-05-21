@@ -569,3 +569,41 @@ h3 { font-size: 15px; margin: 0 0 10px; }
 
   .brand-text { display: none; }   /* keep just the mark on tight phones */
 }
+
+/* ---------- Print ----------
+   Optimised for printing invoices, quotes, and monthly client
+   reports. Hides chrome, switches to dark-on-white, and removes
+   shadows that don't print well. Anything with .no-print is
+   suppressed; .print-only is shown only when printing. */
+@media print {
+  body { background: #fff; color: #000; }
+  .topbar,
+  .luma-drawer,
+  .footer,
+  .toolbar,
+  .filterbar,
+  .pagination,
+  nav,
+  .btn,
+  .bulk-toolbar,
+  .sla-badge,
+  .pill,
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  .card,
+  .card-header {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    color: #000;
+  }
+  a, a:visited { color: #000; text-decoration: underline; }
+  table.table th, table.table td { border-color: #ddd; }
+  /* Avoid awkward breaks mid-row. */
+  table.table tr, dl.kv dt, dl.kv dd { page-break-inside: avoid; }
+  /* Force the body to flow to a comfortable margin. */
+  @page { margin: 16mm 14mm; }
+}
+.print-only { display: none; }

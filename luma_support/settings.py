@@ -296,6 +296,16 @@ CELERY_BEAT_SCHEDULE = {
         # and avoids landing in Monday-morning inbox overload.
         "schedule": crontab(hour=9, minute=0, day_of_week="fri"),
     },
+    "run-anomaly-sweep": {
+        "task": "system.tasks.run_anomaly_sweep",
+        # Daily at 04:30 local — quiet hour, lets the night's UniFi
+        # polls accumulate baseline before the sweep runs.
+        "schedule": crontab(hour=4, minute=30),
+    },
+    "prune-old-health-samples": {
+        "task": "system.tasks.prune_old_health_samples",
+        "schedule": crontab(hour=5, minute=0, day_of_week="sun"),
+    },
 }
 
 # --- Email --------------------------------------------------------------

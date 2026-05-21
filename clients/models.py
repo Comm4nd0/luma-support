@@ -196,6 +196,31 @@ class ClientOnboardingTask(models.Model):
         return f"{self.client.name} — {self.title}"
 
 
+class HealthSample(models.Model):
+    """Time-series sample for a monitored system metric.
+
+    Used by ``system.anomaly`` to spot spikes / dips against a rolling
+    baseline. Old rows can be pruned by a beat task; the index keeps
+    "newest N for a (system, metric)" queries cheap.
+    """
+
+    system = models.ForeignKey(
+        "System",
+        on_delete=models.CASCADE,
+        related_name="health_samples",
+    )
+    metric = models.CharField(max_length=64)
+    value = models.FloatField()
+    sampled_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-sampled_at"]
+        indexes = [models.Index(fields=["system", "metric", "-sampled_at"])]
+
+    def __str__(self):
+        return f"{self.system_id}/{self.metric}={self.value} @{self.sampled_at}"
+
+
 def _client_document_path(instance, filename):
     return f"client-docs/{instance.client_id}/{filename}"
 

@@ -109,3 +109,25 @@ def _maybe_alert(system_, old_health: str) -> None:
             title=title,
             body=body,
         )
+
+
+@shared_task
+def run_anomaly_sweep() -> str:
+    """Nightly: detect anomalies in monitored systems → draft tickets."""
+    from .anomaly import sweep
+
+    n = sweep()
+    return f"run_anomaly_sweep: {n} tickets opened"
+
+
+@shared_task
+def prune_old_health_samples(keep_days: int = 90) -> str:
+    """Drop HealthSample rows older than ``keep_days`` so the table
+    doesn't grow unbounded under daily monitoring."""
+    from datetime import timedelta
+
+    from clients.models import HealthSample
+
+    cutoff = timezone.now() - timedelta(days=keep_days)
+    deleted, _ = HealthSample.objects.filter(sampled_at__lt=cutoff).delete()
+    return f"prune_old_health_samples: {deleted} rows deleted"

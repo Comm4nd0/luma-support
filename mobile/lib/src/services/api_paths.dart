@@ -29,6 +29,7 @@ class ApiPaths {
   static String ticketMergeInto(int source, int target) =>
       '/tickets/tickets/$source/merge-into/$target/';
   static const String slaWarnings = '/tickets/tickets/sla-warnings/';
+  static const String slaAnalytics = '/tickets/tickets/sla-analytics/';
   static const String dashboardStats = '/tickets/tickets/dashboard-stats/';
   static const String ticketTags = '/tickets/ticket-tags/';
   static String ticketTag(int id) => '/tickets/ticket-tags/$id/';

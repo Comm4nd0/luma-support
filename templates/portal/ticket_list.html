@@ -5,6 +5,9 @@
 <div class="card-header">
   <h1>Tickets</h1>
   <div style="display:flex; gap:8px;">
+    {% if user.can_view_all %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'portal:sla_analytics' %}">SLA performance</a>
+    {% endif %}
     <a class="btn btn-ghost btn-sm" href="?{{ request.GET.urlencode }}{% if request.GET %}&{% endif %}export=csv">Export CSV</a>
     <a class="btn" href="{% url 'portal:ticket_create' %}">+ New ticket</a>
   </div>

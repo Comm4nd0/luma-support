@@ -286,6 +286,99 @@ class TicketViewSet(viewsets.ModelViewSet):
         except TicketTag.DoesNotExist:
             raise ValidationError({"value": "unknown tag slug"})
 
+    @action(detail=False, methods=["get"], url_path="sla-analytics")
+    def sla_analytics(self, request):
+        """Staff-only: hit-rate per priority + worst clients over a window.
+
+        Query params: ``days`` (default 30). Returns::
+
+            {
+              "window_days": 30,
+              "totals": {"closed": N, "met": M, "breached": B, "hit_rate": 0.0..1.0},
+              "by_priority": [
+                {"priority": "high", "closed": N, "met": M, "hit_rate": ...},
+                ...
+              ],
+              "worst_clients": [
+                {"client_id": N, "name": "...", "closed": N, "breached": B},
+                ...
+              ]
+            }
+        """
+        from datetime import timedelta
+
+        from django.db.models import Count, F, Q
+        from django.utils import timezone
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(1, min(days, 365))
+        since = timezone.now() - timedelta(days=days)
+
+        # We only count tickets that actually closed in the window — open
+        # ones aren't decided yet. A "met" close is one where resolved_at
+        # was on or before the SLA deadline.
+        closed_qs = Ticket.objects.filter(
+            status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED],
+            resolved_at__gte=since,
+            sla_deadline__isnull=False,
+        )
+
+        def _hit_rate(closed, met):
+            return round(met / closed, 3) if closed else None
+
+        totals = closed_qs.aggregate(
+            closed=Count("id"),
+            met=Count("id", filter=Q(resolved_at__lte=F("sla_deadline"))),
+        )
+        totals["breached"] = totals["closed"] - totals["met"]
+        totals["hit_rate"] = _hit_rate(totals["closed"], totals["met"])
+
+        by_priority = []
+        for prio, _ in Ticket.Priority.choices:
+            row = closed_qs.filter(priority=prio).aggregate(
+                closed=Count("id"),
+                met=Count("id", filter=Q(resolved_at__lte=F("sla_deadline"))),
+            )
+            if row["closed"]:
+                row["breached"] = row["closed"] - row["met"]
+                row["hit_rate"] = _hit_rate(row["closed"], row["met"])
+                row["priority"] = prio
+                by_priority.append(row)
+
+        worst = (
+            closed_qs.values("client_id", "client__name")
+            .annotate(
+                closed=Count("id"),
+                breached=Count("id", filter=Q(resolved_at__gt=F("sla_deadline"))),
+            )
+            .filter(breached__gt=0)
+            .order_by("-breached", "-closed")[:10]
+        )
+        worst_list = [
+            {
+                "client_id": r["client_id"],
+                "name": r["client__name"],
+                "closed": r["closed"],
+                "breached": r["breached"],
+            }
+            for r in worst
+        ]
+
+        return Response(
+            {
+                "window_days": days,
+                "totals": totals,
+                "by_priority": by_priority,
+                "worst_clients": worst_list,
+            }
+        )
+
     @action(detail=False, methods=["get"], url_path="sla-warnings")
     def sla_warnings(self, request):
         qs = Ticket.objects.sla_warnings()

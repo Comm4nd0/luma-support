@@ -1242,6 +1242,76 @@ class ArticleListView(LoginRequiredMixin, ListView):
         return ctx
 
 
+class SlaAnalyticsView(StaffRequiredMixin, View):
+    """Staff-only SLA hit-rate report — per priority + worst clients."""
+
+    template_name = "portal/sla_analytics.html"
+
+    def get(self, request):
+        from datetime import timedelta
+
+        from django.db.models import Count, F, Q
+        from django.template.response import TemplateResponse
+
+        try:
+            days = int(request.GET.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(1, min(days, 365))
+        since = timezone.now() - timedelta(days=days)
+
+        closed_qs = Ticket.objects.filter(
+            status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED],
+            resolved_at__gte=since,
+            sla_deadline__isnull=False,
+        )
+
+        def _rate(closed, met):
+            return (met / closed) if closed else None
+
+        totals = closed_qs.aggregate(
+            closed=Count("id"),
+            met=Count("id", filter=Q(resolved_at__lte=F("sla_deadline"))),
+        )
+        totals["breached"] = totals["closed"] - totals["met"]
+        totals["hit_rate"] = _rate(totals["closed"], totals["met"])
+
+        per_priority = []
+        for prio, label in Ticket.Priority.choices:
+            row = closed_qs.filter(priority=prio).aggregate(
+                closed=Count("id"),
+                met=Count("id", filter=Q(resolved_at__lte=F("sla_deadline"))),
+            )
+            if row["closed"]:
+                row["priority"] = prio
+                row["label"] = label
+                row["breached"] = row["closed"] - row["met"]
+                row["hit_rate"] = _rate(row["closed"], row["met"])
+                per_priority.append(row)
+
+        worst = (
+            closed_qs.values("client_id", "client__name")
+            .annotate(
+                closed=Count("id"),
+                breached=Count("id", filter=Q(resolved_at__gt=F("sla_deadline"))),
+            )
+            .filter(breached__gt=0)
+            .order_by("-breached")[:10]
+        )
+
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "tickets",
+                "window_days": days,
+                "totals": totals,
+                "per_priority": per_priority,
+                "worst": list(worst),
+            },
+        )
+
+
 class KbGapsReportView(StaffRequiredMixin, View):
     """Staff-only "topics with no articles" report.
 

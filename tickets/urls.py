@@ -1,5 +1,7 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
+from .inbound_webhook import webhook_ingest
 from .views import (
     MaintenanceScheduleViewSet,
     TicketTagViewSet,
@@ -17,4 +19,6 @@ router.register(
     "maintenance-schedules", MaintenanceScheduleViewSet, basename="maintenance"
 )
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path("webhook/<str:token>/", webhook_ingest, name="webhook-ingest"),
+]

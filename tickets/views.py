@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from .models import (
     Attachment,
+    IngestEndpoint,
     MaintenanceSchedule,
     Ticket,
     TicketNote,

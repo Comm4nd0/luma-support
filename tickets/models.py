@@ -20,6 +20,67 @@ def _csat_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+class IngestEndpoint(models.Model):
+    """A signed token-scoped URL that maps inbound JSON to a Ticket.
+
+    Use case: piping Grafana / Uptime Kuma / Sentry / GitHub Actions
+    alerts straight into the ticket queue without standing up a custom
+    bridge. The caller POSTs JSON to
+    ``/api/v1/tickets/webhook/<token>/``; the endpoint extracts a
+    subject / description per the simple field-mapping below and opens
+    a Ticket on behalf of the configured client.
+
+    Field mapping is intentionally tiny — Marco can pick a JSON key for
+    each Ticket field via ``subject_field`` / ``body_field``. Anything
+    fancier (jq, JSONPath) can be added later if needed.
+    """
+
+    name = models.CharField(max_length=80, unique=True)
+    token = models.CharField(max_length=64, unique=True)
+    client = models.ForeignKey(
+        "clients.Client",
+        on_delete=models.CASCADE,
+        related_name="ingest_endpoints",
+    )
+    default_priority = models.CharField(
+        max_length=16,
+        choices=[("critical", "Critical"), ("high", "High"),
+                 ("medium", "Medium"), ("low", "Low")],
+        default="medium",
+    )
+    default_assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    subject_field = models.CharField(
+        max_length=64,
+        default="title",
+        help_text="JSON key in the inbound body to use as the ticket subject.",
+    )
+    body_field = models.CharField(
+        max_length=64,
+        default="message",
+        help_text="JSON key for the ticket description (falls back to full payload).",
+    )
+    last_called_at = models.DateTimeField(null=True, blank=True)
+    last_status = models.CharField(max_length=32, blank=True)
+    enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} → {self.client.name}"
+
+    @classmethod
+    def generate_token(cls) -> str:
+        return secrets.token_urlsafe(32)
+
+
 class TicketTemplate(models.Model):
     """Reusable canned reply / note body.
 

@@ -3,6 +3,7 @@ from django.utils.text import slugify
 
 from .models import (
     Attachment,
+    IngestEndpoint,
     Ticket,
     TicketNote,
     TicketTag,
@@ -67,6 +68,20 @@ class TimeEntryAdmin(admin.ModelAdmin):
 @admin.register(Attachment)
 class AttachmentAdmin(admin.ModelAdmin):
     list_display = ("ticket", "filename", "uploaded_by", "uploaded_at")
+
+
+@admin.register(IngestEndpoint)
+class IngestEndpointAdmin(admin.ModelAdmin):
+    list_display = ("name", "client", "default_priority", "enabled",
+                    "last_status", "last_called_at")
+    list_filter = ("enabled", "default_priority")
+    search_fields = ("name", "client__name")
+    readonly_fields = ("last_called_at", "last_status", "created_at", "token")
+
+    def save_model(self, request, obj, form, change):
+        if not obj.token:
+            obj.token = IngestEndpoint.generate_token()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(TicketTemplate)

@@ -42,6 +42,92 @@ def summarise_thread(ticket) -> str:
         return ""
 
 
+def propose_inbox_actions(tickets) -> list[dict]:
+    """For each ticket in ``tickets``, ask Claude what to do next.
+
+    Returns a list of ``{ticket_id, action, reason}`` dicts. Action is
+    one of: ``close``, ``reply``, ``ask``, ``defer``. Empty list when
+    ANTHROPIC_API_KEY is unset or the call fails — caller can hide the
+    feature gracefully.
+
+    Designed for "clear my queue" workflows: present the list as a
+    swipe-style approval flow on mobile or a stacked card view on web.
+    """
+    tickets = list(tickets)
+    if not tickets:
+        return []
+    if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+        return []
+    try:
+        return _claude_inbox_zero(tickets)
+    except Exception:
+        logger.exception("tickets.ai.propose_inbox_actions failed")
+        return []
+
+
+def _claude_inbox_zero(tickets) -> list[dict]:
+    import json
+
+    from anthropic import Anthropic
+
+    lines = []
+    for t in tickets:
+        last_note = t.notes.order_by("-created_at").first()
+        last = (last_note.body[:200] + "…") if last_note and len(last_note.body) > 200 else (last_note.body if last_note else "")
+        lines.append(
+            f"- id={t.pk} priority={t.priority} status={t.status} "
+            f"subject={t.subject!r} last_note={last!r}"
+        )
+    listing = "\n".join(lines)
+
+    system_prompt = (
+        "You triage a small support queue for a UK MSP. For each ticket "
+        "below pick exactly one action: 'close' (resolution looks complete), "
+        "'reply' (engineer should send a substantive update now), 'ask' "
+        "(need more info from the client), or 'defer' (legitimate but "
+        "not urgent — push to tomorrow). Respond with strict JSON only: "
+        "{\"actions\": [{\"ticket_id\": int, \"action\": str, "
+        "\"reason\": str (one short sentence)}, …]}. No prose."
+    )
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    msg = client.messages.create(
+        model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+        max_tokens=1200,
+        system=system_prompt,
+        messages=[{"role": "user", "content": listing}],
+    )
+    raw = "".join(getattr(b, "text", "") for b in msg.content).strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("inbox-zero: claude returned non-JSON: %r", raw[:200])
+        return []
+    valid = {"close", "reply", "ask", "defer"}
+    ids = {t.pk for t in tickets}
+    out = []
+    for row in data.get("actions") or []:
+        try:
+            tid = int(row.get("ticket_id"))
+        except (TypeError, ValueError):
+            continue
+        action = row.get("action")
+        if tid not in ids or action not in valid:
+            continue
+        out.append(
+            {
+                "ticket_id": tid,
+                "action": action,
+                "reason": (row.get("reason") or "")[:240],
+            }
+        )
+    return out
+
+
 def draft_kb_article(ticket) -> dict | None:
     """Turn a (typically resolved) ticket into a draft KB article.
 

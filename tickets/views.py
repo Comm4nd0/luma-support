@@ -428,6 +428,30 @@ class TicketViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="inbox-zero")
+    def inbox_zero(self, request):
+        """Staff-only: Claude-suggested action per open ticket assigned to me.
+
+        Body (optional): ``{"limit": int (default 15)}``. Returns
+        ``{"suggestions": [{ticket_id, action, reason}, …]}``. Empty
+        list when ANTHROPIC_API_KEY isn't set.
+        """
+        from .ai import propose_inbox_actions
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+        try:
+            limit = int(request.data.get("limit", 15))
+        except (TypeError, ValueError):
+            limit = 15
+        limit = max(1, min(limit, 30))
+        qs = (
+            Ticket.objects.open()
+            .filter(assigned_to=request.user)
+            .order_by("sla_deadline", "-created_at")[:limit]
+        )
+        return Response({"suggestions": propose_inbox_actions(list(qs))})
+
     @action(detail=True, methods=["post"], url_path="promote-to-kb")
     def promote_to_kb(self, request, pk=None):
         """Staff-only: draft a KB article from this ticket via Claude.

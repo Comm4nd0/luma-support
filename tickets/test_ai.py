@@ -8,7 +8,7 @@ import pytest
 from django.test import Client as DjangoClient
 from django.urls import reverse
 
-from tickets.ai import draft_kb_article, draft_reply, triage_ticket
+from tickets.ai import draft_kb_article, draft_reply, propose_inbox_actions, triage_ticket
 from tickets.models import Ticket, TicketNote, TicketTag
 
 pytestmark = pytest.mark.django_db
@@ -275,3 +275,71 @@ def test_promote_to_kb_endpoint_returns_null_draft_when_disabled(
     resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/promote-to-kb/")
     assert resp.status_code == 200
     assert resp.json() == {"draft": None}
+
+
+# ----- propose_inbox_actions / inbox-zero endpoint ----------------------
+
+
+def test_inbox_zero_returns_empty_when_key_unset(client_record, settings):
+    settings.ANTHROPIC_API_KEY = ""
+    assert propose_inbox_actions([_ticket(client_record)]) == []
+
+
+def test_inbox_zero_filters_unknown_actions_and_ids(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    t = _ticket(client_record)
+    payload = (
+        '{"actions": ['
+        f'{{"ticket_id": {t.pk}, "action": "close", "reason": "looks done"}},'
+        f'{{"ticket_id": {t.pk}, "action": "fart", "reason": "x"}},'
+        '{"ticket_id": 99999, "action": "reply", "reason": "x"}'
+        ']}'
+    )
+    fake_msg = SimpleNamespace(content=[SimpleNamespace(text=payload)])
+    fake_client = SimpleNamespace(
+        messages=SimpleNamespace(create=lambda **kw: fake_msg)
+    )
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        out = propose_inbox_actions([t])
+    assert out == [{"ticket_id": t.pk, "action": "close", "reason": "looks done"}]
+
+
+def test_inbox_zero_endpoint_requires_staff(client_record):
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient as DrfClient
+
+    User = get_user_model()
+    cu = User.objects.create_user(
+        email="ci@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    c = DrfClient()
+    c.force_authenticate(cu)
+    resp = c.post("/api/v1/tickets/tickets/inbox-zero/")
+    assert resp.status_code == 403
+
+
+def test_inbox_zero_endpoint_scopes_to_my_assignments(
+    engineer_user, client_record, settings
+):
+    from rest_framework.test import APIClient as DrfClient
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    mine = Ticket.objects.create(
+        client=client_record, subject="mine", assigned_to=engineer_user
+    )
+    Ticket.objects.create(client=client_record, subject="not mine")
+
+    captured = {}
+
+    def capture(**kw):
+        captured["body"] = kw["messages"][0]["content"]
+        return SimpleNamespace(content=[SimpleNamespace(text='{"actions": []}')])
+
+    fake_client = SimpleNamespace(messages=SimpleNamespace(create=capture))
+    c = DrfClient()
+    c.force_authenticate(engineer_user)
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        resp = c.post("/api/v1/tickets/tickets/inbox-zero/")
+    assert resp.status_code == 200
+    assert f"id={mine.pk}" in captured["body"]
+    assert "subject='not mine'" not in captured["body"]

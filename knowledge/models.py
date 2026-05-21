@@ -60,6 +60,36 @@ class Article(models.Model):
         )
 
 
+class ArticleRevision(models.Model):
+    """Frozen snapshot of an Article's body whenever the body changes.
+
+    Written by a post_save signal; supports the "what did this article
+    used to say?" / rollback story without bloating the Article row
+    itself.
+    """
+
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE, related_name="revisions"
+    )
+    title = models.CharField(max_length=300)
+    content = models.TextField()
+    edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    edited_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-edited_at"]
+        indexes = [models.Index(fields=["article", "-edited_at"])]
+
+    def __str__(self):
+        return f"rev of {self.article_id} @ {self.edited_at:%Y-%m-%d %H:%M}"
+
+
 class KbSearchLog(models.Model):
     """One row per KB search / suggest request.
 

@@ -1303,7 +1303,23 @@ class ArticleDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "kb"
+        ctx["revisions_count"] = self.object.revisions.count()
         return ctx
+
+
+class ArticleHistoryView(StaffRequiredMixin, View):
+    template_name = "portal/kb_history.html"
+
+    def get(self, request, slug):
+        from django.template.response import TemplateResponse
+
+        article = get_object_or_404(Article, slug=slug)
+        revisions = article.revisions.select_related("edited_by")
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {"article": article, "revisions": revisions, "active": "kb"},
+        )
 
 
 # ---------------------------------------------------------------------

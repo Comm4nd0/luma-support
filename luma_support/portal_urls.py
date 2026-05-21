@@ -99,6 +99,11 @@ urlpatterns = [
     path("kb/", views.ArticleListView.as_view(), name="kb_list"),
     path("kb/gaps/", views.KbGapsReportView.as_view(), name="kb_gaps"),
     path("kb/<slug:slug>/", views.ArticleDetailView.as_view(), name="kb_detail"),
+    path(
+        "kb/<slug:slug>/history/",
+        views.ArticleHistoryView.as_view(),
+        name="kb_history",
+    ),
     # Maintenance schedules (staff only)
     path(
         "schedules/",

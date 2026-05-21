@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}History · {{ article.title }} · KB{% endblock %}
+{% block content %}
+<a class="btn btn-ghost btn-sm" href="{% url 'portal:kb_detail' article.slug %}">← Back to article</a>
+<div class="card-header" style="margin-top: 16px;">
+  <h1 style="margin: 0;">History · {{ article.title }}</h1>
+</div>
+{% if not revisions %}
+  <p class="muted">No revisions recorded yet.</p>
+{% else %}
+  {% for rev in revisions %}
+    <div class="card" style="margin-bottom: 12px;">
+      <div class="muted" style="font-size: 12px;">
+        {{ rev.edited_at|date:"Y-m-d H:i" }}
+        {% if rev.edited_by %} · {{ rev.edited_by.email }}{% endif %}
+        {% if rev.title != article.title %} · titled "{{ rev.title }}"{% endif %}
+      </div>
+      <div style="white-space: pre-wrap; margin-top: 8px;">{{ rev.content }}</div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

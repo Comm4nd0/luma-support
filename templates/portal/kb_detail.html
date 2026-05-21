@@ -8,6 +8,9 @@
   <div class="muted" style="margin-bottom: 16px;">
     Updated {{ article.updated_at|date:"d M Y" }}
     {% if article.client_visible %} · client-visible{% endif %}
+    {% if user.can_view_all and revisions_count %}
+      · <a href="{% url 'portal:kb_history' article.slug %}">history ({{ revisions_count }})</a>
+    {% endif %}
   </div>
   <div style="white-space: pre-wrap;">{{ article.content }}</div>
 </article>

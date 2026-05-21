@@ -45,13 +45,26 @@
 
       <form method="post" action="{% url 'portal:ticket_note' ticket.pk %}" style="margin-top: 12px;" id="ticket-note-form">
         {% csrf_token %}
+        {% if note_templates %}
+        <div class="form-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+          <label class="muted" for="ticket-note-template" style="margin: 0;">Insert template</label>
+          <select id="ticket-note-template" class="form-input" style="flex: 1;">
+            <option value="">Choose…</option>
+            {% for tpl in note_templates %}
+              <option value="{{ tpl.pk }}"
+                      data-body="{{ tpl.body }}"
+                      data-public="{% if tpl.public_default %}1{% else %}0{% endif %}">{{ tpl.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
         <div class="form-row">
           <label>Add a note</label>
           <textarea name="body" id="ticket-note-body" required></textarea>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <label class="muted" style="display: flex; gap: 6px; align-items: center;">
-            <input type="checkbox" name="internal" checked />
+            <input type="checkbox" name="internal" id="ticket-note-internal" checked />
             Internal only
           </label>
           <div style="display: flex; gap: 8px;">
@@ -62,6 +75,26 @@
           </div>
         </div>
       </form>
+      {% if note_templates %}
+      <script>
+        (function () {
+          var sel = document.getElementById("ticket-note-template");
+          if (!sel) return;
+          sel.addEventListener("change", function () {
+            var opt = sel.options[sel.selectedIndex];
+            if (!opt || !opt.value) return;
+            var ta = document.getElementById("ticket-note-body");
+            ta.value = (ta.value ? ta.value + "\n\n" : "") + (opt.dataset.body || "");
+            if (opt.dataset.public === "1") {
+              var cb = document.getElementById("ticket-note-internal");
+              if (cb) cb.checked = false;
+            }
+            sel.selectedIndex = 0;
+            ta.focus();
+          });
+        })();
+      </script>
+      {% endif %}
       {% if user.can_view_all %}
       <script>
         (function () {

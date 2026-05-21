@@ -20,6 +20,43 @@ def _csat_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+class TicketTemplate(models.Model):
+    """Reusable canned reply / note body.
+
+    Use case: Marco hits the same phrasing again and again ("we're
+    scheduling your UniFi firmware update on Tuesday", "please power
+    cycle the router and let us know if it recurs"). Templates are
+    inserted into the note compose box on web + mobile and can opt-in
+    to defaulting the resulting note to public (client-visible).
+    """
+
+    name = models.CharField(max_length=120, unique=True)
+    body = models.TextField()
+    public_default = models.BooleanField(
+        default=True,
+        help_text=(
+            "When inserted, default the note's 'internal' checkbox to OFF "
+            "(so the client sees the reply). Disable for engineer-only "
+            "scratchpads."
+        ),
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class TicketTag(models.Model):
     """Lightweight, free-form ticket categorisation.
 

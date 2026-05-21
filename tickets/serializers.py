@@ -7,8 +7,23 @@ from .models import (
     Ticket,
     TicketNote,
     TicketTag,
+    TicketTemplate,
     TimeEntry,
 )
+
+
+class TicketTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketTemplate
+        fields = (
+            "id",
+            "name",
+            "body",
+            "public_default",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("created_at", "updated_at")
 
 
 class TicketTagSerializer(serializers.ModelSerializer):

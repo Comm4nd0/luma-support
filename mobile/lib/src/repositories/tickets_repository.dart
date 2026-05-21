@@ -6,6 +6,7 @@ import '../models/social_account.dart';
 import '../models/ticket.dart';
 import '../models/ticket_note.dart';
 import '../models/ticket_tag.dart';
+import '../models/ticket_template.dart';
 import '../services/api_client.dart';
 import '../services/api_paths.dart';
 
@@ -74,6 +75,21 @@ class TicketsRepository {
         data: {'tag_ids': tagIds},
       );
       return Ticket.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
+  Future<List<TicketTemplate>> listTemplates() async {
+    try {
+      final res = await _api.dio.get<dynamic>(ApiPaths.ticketTemplates);
+      final data = res.data;
+      final rows = (data is Map && data.containsKey('results'))
+          ? data['results'] as List
+          : data as List;
+      return rows
+          .map((r) => TicketTemplate.fromJson(r as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ApiException.fromDio(e);
     }

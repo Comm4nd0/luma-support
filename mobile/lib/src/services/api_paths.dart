@@ -27,6 +27,7 @@ class ApiPaths {
   static const String dashboardStats = '/tickets/tickets/dashboard-stats/';
   static const String ticketTags = '/tickets/ticket-tags/';
   static String ticketTag(int id) => '/tickets/ticket-tags/$id/';
+  static const String ticketTemplates = '/tickets/ticket-templates/';
   static const String ticketsBulk = '/tickets/tickets/bulk/';
   static const String timeEntries = '/tickets/time-entries/';
   static const String maintenanceSchedules =

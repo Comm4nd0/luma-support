@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 from rest_framework.test import APIClient
 
-from tickets.models import MaintenanceSchedule, Ticket, TicketTag
+from tickets.models import MaintenanceSchedule, Ticket, TicketTag, TicketTemplate
 
 pytestmark = pytest.mark.django_db
 
@@ -192,6 +192,42 @@ def test_bulk_add_tag_by_slug(engineer_user, client_record):
     assert resp.status_code == 200, resp.json()
     for t in tickets:
         assert tag in t.tags.all()
+
+
+def test_ticket_template_crud_is_staff_only(engineer_user, client_record):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    client_user = User.objects.create_user(
+        email="cl@acme.test",
+        password="x",
+        role=User.Role.CLIENT,
+        client=client_record,
+    )
+    cuser = APIClient()
+    cuser.force_authenticate(client_user)
+    resp = cuser.post(
+        "/api/v1/tickets/ticket-templates/",
+        {"name": "T", "body": "hi", "public_default": True},
+        format="json",
+    )
+    assert resp.status_code in (403, 404)
+
+    eng = APIClient()
+    eng.force_authenticate(engineer_user)
+    resp = eng.post(
+        "/api/v1/tickets/ticket-templates/",
+        {"name": "Power cycle", "body": "Please reboot.", "public_default": True},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.json()
+    assert TicketTemplate.objects.count() == 1
+    # Client can't see them either.
+    listed = cuser.get("/api/v1/tickets/ticket-templates/")
+    assert listed.status_code == 200
+    payload = listed.json()
+    rows = payload["results"] if isinstance(payload, dict) and "results" in payload else payload
+    assert rows == []
 
 
 def test_bulk_writes_one_audit_row_per_ticket(engineer_user, client_record):

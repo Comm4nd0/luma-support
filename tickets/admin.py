@@ -1,7 +1,14 @@
 from django.contrib import admin
 from django.utils.text import slugify
 
-from .models import Attachment, Ticket, TicketNote, TicketTag, TimeEntry
+from .models import (
+    Attachment,
+    Ticket,
+    TicketNote,
+    TicketTag,
+    TicketTemplate,
+    TimeEntry,
+)
 
 
 class TimeEntryInline(admin.TabularInline):
@@ -60,6 +67,13 @@ class TimeEntryAdmin(admin.ModelAdmin):
 @admin.register(Attachment)
 class AttachmentAdmin(admin.ModelAdmin):
     list_display = ("ticket", "filename", "uploaded_by", "uploaded_at")
+
+
+@admin.register(TicketTemplate)
+class TicketTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "public_default", "updated_at")
+    search_fields = ("name", "body")
+    list_filter = ("public_default",)
 
 
 @admin.register(TicketTag)

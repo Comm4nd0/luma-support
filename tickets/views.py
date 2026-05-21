@@ -10,6 +10,7 @@ from .models import (
     Ticket,
     TicketNote,
     TicketTag,
+    TicketTemplate,
     TimeEntry,
 )
 from .serializers import (
@@ -19,6 +20,7 @@ from .serializers import (
     TicketNoteSerializer,
     TicketSerializer,
     TicketTagSerializer,
+    TicketTemplateSerializer,
     TimeEntrySerializer,
 )
 
@@ -379,6 +381,42 @@ class TicketTagViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         self._require_staff()
         return super().destroy(request, *args, **kwargs)
+
+
+class TicketTemplateViewSet(viewsets.ModelViewSet):
+    """Staff-only CRUD for reusable canned replies."""
+
+    queryset = TicketTemplate.objects.all()
+    serializer_class = TicketTemplateSerializer
+    ordering = ["name"]
+
+    def get_queryset(self):
+        if not self.request.user.can_view_all:
+            return self.queryset.none()
+        return super().get_queryset()
+
+    def _require_staff(self):
+        if not self.request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+
+    def create(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 
 class TimeEntryViewSet(viewsets.ModelViewSet):

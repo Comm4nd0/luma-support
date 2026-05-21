@@ -556,6 +556,8 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         )
 
     def get_context_data(self, **kwargs):
+        from tickets.models import TicketTemplate
+
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "tickets"
         ctx["time_entries"] = self.object.time_entries.select_related("user")
@@ -565,6 +567,10 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             notes = notes.filter(internal=False)
         ctx["notes"] = notes
         ctx["status_choices"] = Ticket.Status.choices
+        if self.request.user.can_view_all:
+            ctx["note_templates"] = TicketTemplate.objects.all()
+        else:
+            ctx["note_templates"] = []
         ctx["now"] = timezone.now()
         return ctx
 

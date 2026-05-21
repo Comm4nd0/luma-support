@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../models/ticket.dart';
 import '../models/ticket_tag.dart';
+import '../models/ticket_template.dart';
 import '../repositories/tickets_repository.dart';
 import 'widgets/ticket_tile.dart';
 import '../services/api_client.dart';
@@ -62,9 +63,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Future<void> _addNote() async {
     final isStaff = context.read<CurrentUser>().isStaff;
+    final templates = isStaff ? await _repo.listTemplates() : <TicketTemplate>[];
+    if (!mounted) return;
     final result = await showDialog<_NoteDialogResult>(
       context: context,
-      builder: (_) => _NoteDialog(allowInternal: isStaff),
+      builder: (_) => _NoteDialog(
+        allowInternal: isStaff,
+        templates: templates,
+      ),
     );
     if (result == null || result.body.trim().isEmpty) return;
     await _repo.addNote(widget.ticketId, result.body.trim(),
@@ -398,11 +404,17 @@ class _NoteDialogResult {
 }
 
 class _NoteDialog extends StatefulWidget {
-  const _NoteDialog({this.initial, this.title, this.allowInternal = false});
+  const _NoteDialog({
+    this.initial,
+    this.title,
+    this.allowInternal = false,
+    this.templates = const [],
+  });
 
   final String? initial;
   final String? title;
   final bool allowInternal;
+  final List<TicketTemplate> templates;
 
   @override
   State<_NoteDialog> createState() => _NoteDialogState();
@@ -413,6 +425,42 @@ class _NoteDialogState extends State<_NoteDialog> {
       TextEditingController(text: widget.initial ?? '');
   bool _internal = false;
 
+  Future<void> _insertTemplate() async {
+    final picked = await showModalBottomSheet<TicketTemplate>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              dense: true,
+              title: Text(
+                'Insert template',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            for (final tpl in widget.templates)
+              ListTile(
+                title: Text(tpl.name),
+                subtitle: Text(
+                  tpl.body,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => Navigator.pop(context, tpl),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    final existing = _body.text.trim();
+    _body.text = existing.isEmpty ? picked.body : '$existing\n\n${picked.body}';
+    if (picked.publicDefault) {
+      setState(() => _internal = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -420,6 +468,15 @@ class _NoteDialogState extends State<_NoteDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (widget.templates.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _insertTemplate,
+                icon: const Icon(Icons.text_snippet_outlined, size: 16),
+                label: const Text('Insert template'),
+              ),
+            ),
           TextField(
             controller: _body,
             maxLines: 6,

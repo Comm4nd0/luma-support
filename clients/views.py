@@ -3,8 +3,9 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Client, Contact, ReferralCode, SiteVisit, System
+from .models import Client, ClientDocument, Contact, ReferralCode, SiteVisit, System
 from .serializers import (
+    ClientDocumentSerializer,
     ClientSerializer,
     ContactSerializer,
     ReferralCodeSerializer,
@@ -103,6 +104,52 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user)
+
+
+class ClientDocumentViewSet(viewsets.ModelViewSet):
+    """Per-client document library.
+
+    Clients see their own ``client_visible=True`` docs; staff see and
+    manage every client's library. perform_create stamps
+    ``uploaded_by=request.user`` so the audit story is automatic.
+    """
+
+    queryset = ClientDocument.objects.select_related("client", "uploaded_by")
+    serializer_class = ClientDocumentSerializer
+    filterset_fields = ["client", "kind"]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        if user.can_view_all:
+            return qs
+        if not user.client_id:
+            return qs.none()
+        return qs.filter(client_id=user.client_id, client_visible=True)
+
+    def _require_staff(self):
+        if not self.request.user.can_view_all:
+            from rest_framework.exceptions import PermissionDenied as _PD
+            raise _PD("Staff only.")
+
+    def create(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_staff()
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
 
 
 class SiteVisitViewSet(viewsets.ModelViewSet):

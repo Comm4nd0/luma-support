@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    ClientDocumentViewSet,
     ClientViewSet,
     ContactViewSet,
     SiteVisitViewSet,
@@ -15,6 +16,7 @@ router.register("clients", ClientViewSet, basename="client")
 router.register("systems", SystemViewSet, basename="system")
 router.register("contacts", ContactViewSet, basename="contact")
 router.register("site-visits", SiteVisitViewSet, basename="sitevisit")
+router.register("documents", ClientDocumentViewSet, basename="clientdocument")
 
 urlpatterns = [
     path("referral-code/", my_referral_code, name="my-referral-code"),

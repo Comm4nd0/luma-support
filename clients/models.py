@@ -196,6 +196,52 @@ class ClientOnboardingTask(models.Model):
         return f"{self.client.name} — {self.title}"
 
 
+def _client_document_path(instance, filename):
+    return f"client-docs/{instance.client_id}/{filename}"
+
+
+class ClientDocument(models.Model):
+    """File attached to a client account (warranty PDFs, network
+    diagrams, contracts, welcome packs).
+
+    Client users see their own client-visible documents; staff manage
+    every client's library. ``client_visible=False`` keeps internal
+    docs (switch credential references, supplier logins) engineer-only.
+    """
+
+    class Kind(models.TextChoices):
+        CONTRACT = "contract", "Contract"
+        WARRANTY = "warranty", "Warranty"
+        DIAGRAM = "diagram", "Diagram"
+        WELCOME = "welcome", "Welcome pack"
+        OTHER = "other", "Other"
+
+    client = models.ForeignKey(
+        "Client", on_delete=models.CASCADE, related_name="documents"
+    )
+    title = models.CharField(max_length=200)
+    file = models.FileField(upload_to=_client_document_path)
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.OTHER)
+    client_visible = models.BooleanField(
+        default=True,
+        help_text="Visible to the client's portal users. Disable for internal docs.",
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.client.name} — {self.title}"
+
+
 class SiteVisit(models.Model):
     """GPS-stamped on-site engineer visit.
 

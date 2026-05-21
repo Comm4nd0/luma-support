@@ -1,6 +1,41 @@
 from rest_framework import serializers
 
-from .models import Client, Contact, ReferralCode, SiteVisit, System
+from .models import Client, ClientDocument, Contact, ReferralCode, SiteVisit, System
+
+
+class ClientDocumentSerializer(serializers.ModelSerializer):
+    uploaded_by_email = serializers.CharField(
+        source="uploaded_by.email", read_only=True
+    )
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClientDocument
+        fields = (
+            "id",
+            "client",
+            "title",
+            "file",
+            "file_url",
+            "kind",
+            "client_visible",
+            "uploaded_by",
+            "uploaded_by_email",
+            "uploaded_at",
+        )
+        read_only_fields = (
+            "file_url",
+            "uploaded_by",
+            "uploaded_by_email",
+            "uploaded_at",
+        )
+
+    def get_file_url(self, obj) -> str:
+        request = self.context.get("request")
+        if not obj.file:
+            return ""
+        url = obj.file.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class SiteVisitSerializer(serializers.ModelSerializer):

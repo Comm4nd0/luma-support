@@ -26,6 +26,8 @@ class ApiPaths {
       '/tickets/tickets/$id/draft-reply/';
   static String ticketSummarise(int id) =>
       '/tickets/tickets/$id/summarise/';
+  static String ticketPromoteToKb(int id) =>
+      '/tickets/tickets/$id/promote-to-kb/';
   static String ticketMergeInto(int source, int target) =>
       '/tickets/tickets/$source/merge-into/$target/';
   static const String slaWarnings = '/tickets/tickets/sla-warnings/';

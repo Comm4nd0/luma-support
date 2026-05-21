@@ -42,6 +42,80 @@ def summarise_thread(ticket) -> str:
         return ""
 
 
+def draft_kb_article(ticket) -> dict | None:
+    """Turn a (typically resolved) ticket into a draft KB article.
+
+    Returns ``{"title": str, "content": str}`` (markdown body) so the
+    caller can show the draft for review before publishing. Returns
+    ``None`` when ANTHROPIC_API_KEY is unset or the call fails so the
+    UI can hide the button.
+    """
+    if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+        return None
+    try:
+        return _claude_kb_draft(ticket)
+    except Exception:
+        logger.exception("tickets.ai.draft_kb_article failed for #%s", ticket.pk)
+        return None
+
+
+def _claude_kb_draft(ticket) -> dict | None:
+    import json
+
+    from anthropic import Anthropic
+
+    notes = ticket.notes.select_related("author").order_by("created_at")
+    history_lines = []
+    for note in notes:
+        who = (
+            "Client"
+            if note.author and getattr(note.author, "is_client", False)
+            else "Engineer"
+        )
+        tag = " (internal)" if note.internal else ""
+        history_lines.append(f"{who}{tag}: {note.body.strip()}")
+    history = "\n\n".join(history_lines) or "(no notes)"
+
+    system_prompt = (
+        "You turn a resolved IT support ticket into a draft knowledge-base "
+        "article for future readers (other engineers and, optionally, the "
+        "client). Lift only the steps and facts — strip names, dates, and "
+        "the back-and-forth. Output strict JSON with keys: title (string, "
+        "<= 90 chars, action-oriented, no leading 'How to') and content "
+        "(markdown body, max ~500 words, use ## headings and numbered "
+        "steps where they help). No prose outside the JSON object."
+    )
+    user_prompt = (
+        f"Subject: {ticket.subject}\n\n"
+        f"Description:\n{ticket.description or '(none)'}\n\n"
+        f"Conversation + internal notes:\n{history}"
+    )
+
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    msg = client.messages.create(
+        model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+        max_tokens=1500,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    raw = "".join(getattr(b, "text", "") for b in msg.content).strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("kb-draft: claude returned non-JSON: %r", raw[:200])
+        return None
+    title = (data.get("title") or "").strip()[:300]
+    content = (data.get("content") or "").strip()
+    if not title or not content:
+        return None
+    return {"title": title, "content": content}
+
+
 def triage_ticket(ticket) -> dict | None:
     """Return Claude's triage suggestion for a freshly-opened ticket.
 

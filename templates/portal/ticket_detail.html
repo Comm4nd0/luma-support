@@ -291,6 +291,54 @@
       </form>
     </div>
 
+    {% if user.can_view_all and ticket.status == 'resolved' or user.can_view_all and ticket.status == 'closed' %}
+    <div class="card" style="margin-top: 16px;">
+      <h3>Knowledge base</h3>
+      <button class="btn btn-sm btn-ghost" type="button" id="kb-promote-btn">Draft KB article</button>
+      <div class="muted" style="font-size: 12px; margin-top: 4px;">
+        Claude turns the resolution into a draft you can review before publishing.
+      </div>
+    </div>
+    <script>
+      (function () {
+        var btn = document.getElementById("kb-promote-btn");
+        if (!btn) return;
+        btn.addEventListener("click", async function () {
+          var original = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "Drafting…";
+          try {
+            var csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
+            var resp = await fetch("/api/v1/tickets/tickets/{{ ticket.pk }}/promote-to-kb/", {
+              method: "POST",
+              headers: {"X-CSRFToken": csrf || "", "Content-Type": "application/json"},
+            });
+            var data = await resp.json();
+            var draft = data && data.draft;
+            if (!draft) {
+              alert("KB drafting is unavailable. Set ANTHROPIC_API_KEY to enable.");
+              return;
+            }
+            var title = prompt("Article title", draft.title || "");
+            if (title === null) return;
+            // Hand the user off to the admin add page with the body prefilled
+            // via session/clipboard. Simpler: copy to clipboard + open admin.
+            await navigator.clipboard.writeText(draft.content);
+            alert("Draft body copied to clipboard. Title: " + title +
+                  "\\nOpening the admin add-article page — paste into the Content box.");
+            window.open("/admin/knowledge/article/add/?title=" +
+                        encodeURIComponent(title), "_blank");
+          } catch (e) {
+            alert("Draft failed: " + e);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = original;
+          }
+        });
+      })();
+    </script>
+    {% endif %}
+
     {% if user.can_view_all %}
     <div class="card" style="margin-top: 16px;">
       <h3>Merge</h3>

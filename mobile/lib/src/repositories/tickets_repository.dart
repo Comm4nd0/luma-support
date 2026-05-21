@@ -203,6 +203,25 @@ class TicketsRepository {
     }
   }
 
+  /// Staff-only: ask Claude to draft a KB article from a (typically
+  /// resolved) ticket. Returns null when ANTHROPIC_API_KEY isn't
+  /// configured on the backend; otherwise a map with ``title`` and
+  /// ``content`` keys for the caller to review before publishing.
+  Future<Map<String, String>?> promoteToKb(int id) async {
+    try {
+      final res = await _api.dio.post<dynamic>(ApiPaths.ticketPromoteToKb(id));
+      final data = res.data as Map<String, dynamic>;
+      final draft = data['draft'];
+      if (draft is! Map) return null;
+      return {
+        'title': (draft['title'] ?? '').toString(),
+        'content': (draft['content'] ?? '').toString(),
+      };
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   /// Staff-only: ask Claude for a TL;DR of the ticket thread. Returns
   /// the empty string when ANTHROPIC_API_KEY isn't configured on the
   /// backend. The backend caches per-ticket; pass refresh=true to

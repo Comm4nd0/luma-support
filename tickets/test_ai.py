@@ -8,7 +8,7 @@ import pytest
 from django.test import Client as DjangoClient
 from django.urls import reverse
 
-from tickets.ai import draft_reply, triage_ticket
+from tickets.ai import draft_kb_article, draft_reply, triage_ticket
 from tickets.models import Ticket, TicketNote, TicketTag
 
 pytestmark = pytest.mark.django_db
@@ -207,3 +207,71 @@ def test_triage_task_no_op_when_flag_disabled(client_record, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-test"
     t = _ticket(client_record)
     assert triage_new_ticket(t.pk) == "ai_triage disabled"
+
+
+# ----- draft_kb_article -------------------------------------------------
+
+
+def test_kb_draft_returns_none_when_key_unset(client_record, settings):
+    settings.ANTHROPIC_API_KEY = ""
+    assert draft_kb_article(_ticket(client_record)) is None
+
+
+def test_kb_draft_parses_title_and_content(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    payload = (
+        '{"title": "Restart a UniFi AP", '
+        '"content": "## Steps\\n1. Hold the reset button..."}'
+    )
+    fake_msg = SimpleNamespace(content=[SimpleNamespace(text=payload)])
+    fake_client = SimpleNamespace(
+        messages=SimpleNamespace(create=lambda **kw: fake_msg)
+    )
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        result = draft_kb_article(_ticket(client_record))
+    assert result == {
+        "title": "Restart a UniFi AP",
+        "content": "## Steps\n1. Hold the reset button...",
+    }
+
+
+def test_kb_draft_rejects_missing_fields(client_record, settings):
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    fake_msg = SimpleNamespace(
+        content=[SimpleNamespace(text='{"title": "", "content": "body"}')]
+    )
+    fake_client = SimpleNamespace(
+        messages=SimpleNamespace(create=lambda **kw: fake_msg)
+    )
+    with patch("anthropic.Anthropic", return_value=fake_client):
+        assert draft_kb_article(_ticket(client_record)) is None
+
+
+def test_promote_to_kb_endpoint_requires_staff(client_record, settings):
+    from django.contrib.auth import get_user_model
+    from rest_framework.test import APIClient as DrfClient
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-test"
+    User = get_user_model()
+    cu = User.objects.create_user(
+        email="cu@acme.test", password="x", role=User.Role.CLIENT, client=client_record
+    )
+    t = _ticket(client_record)
+    c = DrfClient()
+    c.force_authenticate(cu)
+    resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/promote-to-kb/")
+    assert resp.status_code == 403
+
+
+def test_promote_to_kb_endpoint_returns_null_draft_when_disabled(
+    engineer_user, client_record, settings
+):
+    from rest_framework.test import APIClient as DrfClient
+
+    settings.ANTHROPIC_API_KEY = ""
+    t = _ticket(client_record)
+    c = DrfClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(f"/api/v1/tickets/tickets/{t.pk}/promote-to-kb/")
+    assert resp.status_code == 200
+    assert resp.json() == {"draft": None}

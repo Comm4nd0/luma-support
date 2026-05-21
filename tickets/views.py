@@ -427,6 +427,24 @@ class TicketViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=True, methods=["post"], url_path="promote-to-kb")
+    def promote_to_kb(self, request, pk=None):
+        """Staff-only: draft a KB article from this ticket via Claude.
+
+        Returns ``{"draft": {"title", "content"}}`` (empty draft when
+        ANTHROPIC_API_KEY isn't set). The caller is expected to review
+        and POST to /api/v1/knowledge/articles/ to actually publish —
+        we don't auto-create so a misfired AI suggestion never lands as
+        a published article.
+        """
+        from .ai import draft_kb_article
+
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+        ticket = self.get_object()
+        draft = draft_kb_article(ticket)
+        return Response({"draft": draft})
+
     @action(detail=True, methods=["post"], url_path="draft-reply")
     def draft_reply(self, request, pk=None):
         """Staff-only: ask Claude for an engineer-side draft reply.

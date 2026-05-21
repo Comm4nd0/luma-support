@@ -1048,8 +1048,14 @@ class ClientDetailView(LoginRequiredMixin, DetailView):
             from clients.health import score_client
 
             ctx["health"] = score_client(self.object)
-            ctx["onboarding_tasks"] = list(
+            tasks = list(
                 self.object.onboarding_tasks.order_by("done", "order", "pk")
+            )
+            ctx["onboarding_tasks"] = tasks
+            done = sum(1 for t in tasks if t.done)
+            ctx["onboarding_done_count"] = done
+            ctx["onboarding_percent"] = (
+                int(round(100 * done / len(tasks))) if tasks else 0
             )
         return ctx
 

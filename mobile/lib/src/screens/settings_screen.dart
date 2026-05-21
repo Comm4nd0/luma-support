@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -37,6 +38,20 @@ class SettingsScreen extends StatelessWidget {
               'Prompt for Face ID / fingerprint when the app comes back '
               'to the foreground.',
             ),
+          ),
+          ListTile(
+            leading: const LumaIcon(PhosphorIconsDuotone.keyhole),
+            title: const Text('Recovery codes'),
+            subtitle: const Text('One-shot codes for when you lose your authenticator'),
+            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+            onTap: () => context.push('/settings/recovery-codes'),
+          ),
+          ListTile(
+            leading: const LumaIcon(PhosphorIconsDuotone.devices),
+            title: const Text('Active sessions'),
+            subtitle: const Text('See where you are signed in and sign out remotely'),
+            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+            onTap: () => context.push('/settings/sessions'),
           ),
 
           const SizedBox(height: 16),

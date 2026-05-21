@@ -30,6 +30,8 @@ import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
 import 'screens/payments_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/recovery_codes_screen.dart';
+import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
@@ -219,6 +221,14 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/settings',
         builder: (_, __) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/recovery-codes',
+        builder: (_, __) => const RecoveryCodesScreen(),
+      ),
+      GoRoute(
+        path: '/settings/sessions',
+        builder: (_, __) => const SessionsScreen(),
       ),
       GoRoute(
         path: '/site-visits',

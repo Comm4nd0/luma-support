@@ -64,6 +64,23 @@ class TicketViewSet(viewsets.ModelViewSet):
             return TicketListSerializer
         return TicketSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        # Stamp the read-receipt when a client user opens the detail.
+        # Staff opens don't move the marker — only clients viewing
+        # signal "your reply has been seen".
+        response = super().retrieve(request, *args, **kwargs)
+        user = request.user
+        if (
+            user.is_authenticated
+            and getattr(user, "is_client", False)
+        ):
+            from django.utils import timezone
+
+            Ticket.objects.filter(pk=self.get_object().pk).update(
+                client_last_viewed_at=timezone.now()
+            )
+        return response
+
     def perform_create(self, serializer):
         user = self.request.user
         if not user.can_view_all:

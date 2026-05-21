@@ -362,6 +362,12 @@
         <dt>Created</dt><dd>{{ ticket.created_at }}</dd>
         {% if ticket.resolved_at %}<dt>Resolved</dt><dd>{{ ticket.resolved_at|naturaltime }}</dd>{% endif %}
         {% if ticket.closed_at %}<dt>Closed</dt><dd>{{ ticket.closed_at|naturaltime }}</dd>{% endif %}
+        {% if user.can_view_all and ticket.client_last_viewed_at %}
+          <dt>Client viewed</dt>
+          <dd title="{{ ticket.client_last_viewed_at }}">
+            {{ ticket.client_last_viewed_at|naturaltime }}
+          </dd>
+        {% endif %}
       </dl>
     </div>
 

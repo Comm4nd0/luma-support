@@ -610,6 +610,19 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
             self.request.user,
         )
 
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        # Stamp the read-receipt only when the viewer is a client user.
+        # Staff opens don't move the marker.
+        if (
+            getattr(self.object, "pk", None)
+            and getattr(request.user, "is_client", False)
+        ):
+            Ticket.objects.filter(pk=self.object.pk).update(
+                client_last_viewed_at=timezone.now()
+            )
+        return response
+
     def get_context_data(self, **kwargs):
         from tickets.models import TicketTemplate
 

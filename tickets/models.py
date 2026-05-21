@@ -242,6 +242,11 @@ class Ticket(models.Model):
     ai_summary = models.TextField(blank=True)
     ai_summary_at = models.DateTimeField(null=True, blank=True)
 
+    # Read-receipt: last time a client user opened the ticket detail.
+    # Engineers see "client viewed N ago" so they can tell whether the
+    # reply has been seen yet.
+    client_last_viewed_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

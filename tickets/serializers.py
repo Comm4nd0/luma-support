@@ -145,6 +145,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "csat",
             "tags",
             "tag_ids",
+            "client_last_viewed_at",
             "created_at",
             "updated_at",
         )

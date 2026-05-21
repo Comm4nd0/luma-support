@@ -1436,6 +1436,54 @@ class SlaAnalyticsView(StaffRequiredMixin, View):
         )
 
 
+class PublicStatusPageView(View):
+    """Public per-client status page — no auth.
+
+    Opted-in clients have a non-null ``status_page_slug``. The page
+    lists each monitored system with its current health status and any
+    recent high-priority tickets. Nothing in the response references
+    other clients' data; the slug acts as a soft access control.
+    """
+
+    template_name = "portal/status_page.html"
+
+    def get(self, request, slug):
+        from datetime import timedelta
+
+        from django.http import HttpResponseNotFound
+        from django.template.response import TemplateResponse
+
+        from tickets.models import Ticket
+
+        client = Client.objects.filter(status_page_slug=slug).first()
+        if client is None:
+            return HttpResponseNotFound("status page not found")
+        systems = client.systems.all().order_by("name")
+        recent_window = timezone.now() - timedelta(days=30)
+        recent_tickets = (
+            Ticket.objects.filter(
+                client=client,
+                priority__in=[
+                    Ticket.Priority.CRITICAL,
+                    Ticket.Priority.HIGH,
+                ],
+                created_at__gte=recent_window,
+            )
+            .select_related("system")
+            .order_by("-created_at")[:10]
+        )
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "client": client,
+                "systems": systems,
+                "recent_tickets": recent_tickets,
+                "active": "status",
+            },
+        )
+
+
 class KbGapsReportView(StaffRequiredMixin, View):
     """Staff-only "topics with no articles" report.
 

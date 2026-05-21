@@ -147,6 +147,12 @@ urlpatterns = [
     ),
     # CSAT (public, tokenized — no auth)
     path("csat/<str:token>/", views.CsatSubmitView.as_view(), name="csat_submit"),
+    # Public per-client status page (opt-in via Client.status_page_slug).
+    path(
+        "status/<slug:slug>/",
+        views.PublicStatusPageView.as_view(),
+        name="status_page",
+    ),
     # Client-facing: your systems with health status
     path("my-services/", views.MyServicesView.as_view(), name="my_services"),
     # Notifications inbox (in-app feed, parity with mobile)

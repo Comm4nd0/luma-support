@@ -57,6 +57,13 @@ class Client(models.Model):
     # Opt-out switch for the Friday-9am client digest email.
     weekly_digest_opt_in = models.BooleanField(default=True)
 
+    # Public per-client uptime page lives at /status/<slug>/. NULL =
+    # disabled (so a freshly-created client doesn't accidentally land
+    # on a public URL).
+    status_page_slug = models.SlugField(
+        max_length=80, blank=True, null=True, unique=True
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

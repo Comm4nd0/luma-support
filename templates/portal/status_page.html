@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ client.name }} — system status{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin: 0;">{{ client.name }} — system status</h1>
+    <div class="muted">Current health of each monitored system + recent incidents.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top: 0;">Systems</h2>
+  {% if not systems %}
+    <p class="muted">No monitored systems registered.</p>
+  {% else %}
+    <table class="table">
+      <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Last checked</th></tr></thead>
+      <tbody>
+        {% for s in systems %}
+          <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.get_type_display }}</td>
+            <td>
+              {% if s.health_status == "ok" %}
+                <span class="pill pill-ok">Operational</span>
+              {% elif s.health_status == "degraded" %}
+                <span class="pill pill-degraded">Degraded</span>
+              {% elif s.health_status == "down" %}
+                <span class="pill pill-down">Down</span>
+              {% else %}
+                <span class="pill pill-ghost">Unknown</span>
+              {% endif %}
+            </td>
+            <td class="muted">
+              {% if s.last_checked_at %}{{ s.last_checked_at|naturaltime }}{% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <h2 style="margin-top: 0;">Recent incidents (30 days)</h2>
+  {% if not recent_tickets %}
+    <p class="muted">No high-priority tickets in the window.</p>
+  {% else %}
+    <table class="table">
+      <thead><tr><th>Subject</th><th>System</th><th>Status</th><th>Opened</th></tr></thead>
+      <tbody>
+        {% for t in recent_tickets %}
+          <tr>
+            <td>{{ t.subject|truncatechars:80 }}</td>
+            <td>{{ t.system.name|default:"—" }}</td>
+            <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td class="muted">{{ t.created_at|naturaltime }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+{% endblock %}

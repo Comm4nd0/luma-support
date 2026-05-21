@@ -61,6 +61,13 @@ class ProfileScreen extends StatelessWidget {
               onTap: () => context.push('/billing/invoices'),
             ),
           ListTile(
+            leading: const LumaIcon(PhosphorIconsDuotone.gear),
+            title: const Text('Settings'),
+            subtitle: const Text('Theme, biometric lock, quiet hours'),
+            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+            onTap: () => context.push('/settings'),
+          ),
+          ListTile(
             leading: const LumaIcon(PhosphorIconsDuotone.bellRinging),
             title: const Text('Push notifications'),
             subtitle: Text(

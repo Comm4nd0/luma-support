@@ -30,6 +30,7 @@ import 'screens/my_services_screen.dart';
 import 'screens/notifications_inbox_screen.dart';
 import 'screens/payments_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
 import 'screens/social_inbox_screen.dart';
@@ -213,6 +214,10 @@ GoRouter buildAppRouter({
               ? const ClientShell(child: ProfileScreen())
               : const EngineerShell(child: ProfileScreen());
         },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (_, __) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/my-services',

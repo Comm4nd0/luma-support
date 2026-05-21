@@ -13,6 +13,7 @@ import 'src/services/auth_service.dart';
 import 'src/services/current_user.dart';
 import 'src/services/push_router.dart';
 import 'src/services/push_service.dart';
+import 'src/services/settings_service.dart';
 import 'src/theme.dart';
 
 Future<void> main() async {
@@ -52,6 +53,7 @@ class LumaSupportApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => CurrentUser()),
+        ChangeNotifierProvider(create: (_) => SettingsService()..load()),
         Provider(create: (ctx) => ApiClient(ctx.read<AuthService>())),
       ],
       child: const _RouterRoot(),
@@ -106,6 +108,17 @@ class _RouterRootState extends State<_RouterRoot> {
     _sessionInitDone = true;
     try {
       await _currentUser.fetch(_api);
+      // Hydrate quiet-hours prefs from the server so a user who set
+      // them on web sees the same window on mobile without having to
+      // reconfigure here.
+      final u = _currentUser.user;
+      if (u != null) {
+        await context.read<SettingsService>().setQuietHours(
+              start: u.quietHoursStart,
+              end: u.quietHoursEnd,
+              criticalOverride: u.quietHoursCriticalOverride,
+            );
+      }
     } catch (e) {
       debugPrint('me fetch failed: $e');
     }
@@ -118,9 +131,12 @@ class _RouterRootState extends State<_RouterRoot> {
 
   @override
   Widget build(BuildContext context) {
+    final mode = context.watch<SettingsService>().themeMode;
     return MaterialApp.router(
       title: 'Luma Tech Solutions',
-      theme: lumaTheme,
+      theme: lumaLightTheme,
+      darkTheme: lumaTheme,
+      themeMode: mode,
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
     );

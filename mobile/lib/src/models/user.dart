@@ -25,6 +25,9 @@ class AppUser {
     required this.clientId,
     required this.isStaff,
     required this.isActive,
+    required this.quietHoursStart,
+    required this.quietHoursEnd,
+    required this.quietHoursCriticalOverride,
   });
 
   final int id;
@@ -36,6 +39,9 @@ class AppUser {
   final int? clientId;
   final bool isStaff;
   final bool isActive;
+  final int? quietHoursStart;
+  final int? quietHoursEnd;
+  final bool quietHoursCriticalOverride;
 
   bool get isClient => role == UserRole.client;
   bool get isEngineer => role == UserRole.engineer || role == UserRole.admin;
@@ -54,5 +60,9 @@ class AppUser {
         clientId: json['client'] as int?,
         isStaff: json['is_staff'] as bool? ?? false,
         isActive: json['is_active'] as bool? ?? true,
+        quietHoursStart: json['quiet_hours_start'] as int?,
+        quietHoursEnd: json['quiet_hours_end'] as int?,
+        quietHoursCriticalOverride:
+            json['quiet_hours_critical_override'] as bool? ?? true,
       );
 }

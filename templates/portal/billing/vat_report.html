@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}VAT report · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <div>
+    <h1 style="margin: 0;">VAT report</h1>
+    <div class="muted">
+      Quarterly roll-up of AUTHORISED + PAID invoices — drop into your
+      Making Tax Digital submission.
+    </div>
+  </div>
+  <form method="get" class="toolbar">
+    <select name="year" onchange="this.form.submit()">
+      {% for y in years %}
+        <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+    <select name="quarter" onchange="this.form.submit()">
+      <option value="1" {% if quarter == 1 %}selected{% endif %}>Q1 (Jan-Mar)</option>
+      <option value="2" {% if quarter == 2 %}selected{% endif %}>Q2 (Apr-Jun)</option>
+      <option value="3" {% if quarter == 3 %}selected{% endif %}>Q3 (Jul-Sep)</option>
+      <option value="4" {% if quarter == 4 %}selected{% endif %}>Q4 (Oct-Dec)</option>
+    </select>
+    <a class="btn btn-ghost btn-sm" href="?year={{ year }}&quarter={{ quarter }}&export=csv">Export CSV</a>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top: 0;">
+    {{ year }} Q{{ quarter }} — {{ summary.period_start|date:"d M Y" }} to {{ summary.period_end|date:"d M Y" }}
+  </h2>
+  <table class="table">
+    <tbody>
+      <tr>
+        <th>Box 6 — Sales (excl. VAT)</th>
+        <td>{{ summary.sales_ex_vat }}</td>
+      </tr>
+      <tr>
+        <th>Box 1 — VAT due on sales</th>
+        <td>{{ summary.vat_on_sales }}</td>
+      </tr>
+      <tr>
+        <th>Sales total (incl. VAT)</th>
+        <td><strong>{{ summary.total_inc_vat }}</strong></td>
+      </tr>
+      <tr>
+        <th>Invoices in window</th>
+        <td>{{ summary.invoice_count }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

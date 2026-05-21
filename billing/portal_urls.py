@@ -54,4 +54,9 @@ urlpatterns = [
         portal_views.XeroDisconnectView.as_view(),
         name="xero_disconnect",
     ),
+    path(
+        "billing/reports/vat/",
+        portal_views.VatReportView.as_view(),
+        name="vat_report",
+    ),
 ]

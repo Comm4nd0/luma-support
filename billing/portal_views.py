@@ -54,6 +54,63 @@ class RevenueDashboardView(AdminPortalMixin, View):
         )
 
 
+class VatReportView(AdminPortalMixin, View):
+    """Quarterly VAT box totals — straightforward Making Tax Digital prep."""
+
+    template_name = "portal/billing/vat_report.html"
+
+    def get(self, request):
+        import csv
+        from datetime import date
+
+        from django.http import HttpResponse
+        from django.template.response import TemplateResponse
+
+        from .vat import vat_summary
+
+        today = date.today()
+        # Default to the previous calendar quarter — current is mid-period.
+        default_quarter = ((today.month - 1) // 3) or 4
+        default_year = today.year if default_quarter != 4 else today.year - 1
+
+        try:
+            year = int(request.GET.get("year", default_year))
+            quarter = int(request.GET.get("quarter", default_quarter))
+        except (TypeError, ValueError):
+            year, quarter = default_year, default_quarter
+        if not (1 <= quarter <= 4):
+            quarter = default_quarter
+
+        summary = vat_summary(year, quarter)
+
+        if request.GET.get("export") == "csv":
+            resp = HttpResponse(content_type="text/csv")
+            resp["Content-Disposition"] = (
+                f'attachment; filename="vat-{year}-Q{quarter}.csv"'
+            )
+            writer = csv.writer(resp)
+            writer.writerow(["period_start", "period_end", "sales_ex_vat",
+                             "vat_on_sales", "total_inc_vat", "invoice_count"])
+            writer.writerow([
+                summary.period_start, summary.period_end,
+                summary.sales_ex_vat, summary.vat_on_sales,
+                summary.total_inc_vat, summary.invoice_count,
+            ])
+            return resp
+
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "billing",
+                "summary": summary,
+                "year": year,
+                "quarter": quarter,
+                "years": [today.year, today.year - 1, today.year - 2],
+            },
+        )
+
+
 class InvoiceListView(CsvExportMixin, AdminPortalMixin, ListView):
     model = Invoice
     template_name = "portal/billing/invoice_list.html"

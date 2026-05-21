@@ -3,7 +3,12 @@
 {% block content %}
 <div class="card-header">
   <h1>Knowledge base</h1>
-  <a class="btn" href="{% url 'admin:knowledge_article_add' %}">+ New article</a>
+  <div style="display:flex; gap:8px;">
+    {% if user.can_view_all %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'portal:kb_gaps' %}">KB gaps</a>
+    {% endif %}
+    <a class="btn" href="{% url 'admin:knowledge_article_add' %}">+ New article</a>
+  </div>
 </div>
 
 <form class="filterbar" method="get">

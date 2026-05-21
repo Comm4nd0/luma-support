@@ -3,8 +3,24 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Article
+from .models import Article, KbSearchLog
 from .serializers import ArticleSerializer
+
+
+def _log_search(query: str, *, user, results_count: int, source: str) -> None:
+    """Best-effort search log — never raises so the user request is safe."""
+    if not query:
+        return
+    try:
+        KbSearchLog.objects.create(
+            query=query[:500],
+            user=user if getattr(user, "is_authenticated", False) else None,
+            results_count=results_count,
+            source=source,
+        )
+    except Exception:
+        # Audit-style: never break the caller on a logging failure.
+        pass
 
 
 class ArticleViewSet(viewsets.ModelViewSet):
@@ -26,7 +42,9 @@ class ArticleViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset()
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(content__icontains=q))
-        return Response(ArticleSerializer(qs[:50], many=True).data)
+        results = list(qs[:50])
+        _log_search(q, user=request.user, results_count=len(results), source="search")
+        return Response(ArticleSerializer(results, many=True).data)
 
     @action(detail=False, methods=["post"])
     def suggest(self, request):
@@ -43,6 +61,12 @@ class ArticleViewSet(viewsets.ModelViewSet):
         )
         suggestions = suggest_articles(
             subject, description, client_visible_only=client_visible_only
+        )
+        _log_search(
+            subject,
+            user=request.user,
+            results_count=len(suggestions),
+            source="suggest",
         )
         return Response(
             {

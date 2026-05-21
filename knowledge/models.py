@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -57,3 +58,38 @@ class Article(models.Model):
             self.published_at is not None
             and self.published_at <= timezone.now()
         )
+
+
+class KbSearchLog(models.Model):
+    """One row per KB search / suggest request.
+
+    Lets us answer "which topics is Marco being asked about that have no
+    article yet?" via a portal report — see the kb-gaps page. Capped
+    text length avoids storing pathological inputs.
+    """
+
+    query = models.CharField(max_length=500)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    results_count = models.PositiveIntegerField(default=0)
+    source = models.CharField(
+        max_length=32,
+        default="search",
+        help_text='"search" for /articles/search/, "suggest" for the AI-ranked draft helper.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["results_count", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.query!r} -> {self.results_count}"

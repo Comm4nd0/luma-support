@@ -1105,8 +1105,66 @@ class ArticleListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["active"] = "kb"
-        ctx["q"] = self.request.GET.get("q", "")
+        q = self.request.GET.get("q", "")
+        ctx["q"] = q
+        if q:
+            from knowledge.views import _log_search
+
+            _log_search(
+                q,
+                user=self.request.user,
+                results_count=self.get_queryset().count(),
+                source="portal",
+            )
         return ctx
+
+
+class KbGapsReportView(StaffRequiredMixin, View):
+    """Staff-only "topics with no articles" report.
+
+    Aggregates KbSearchLog rows from the last N days where
+    results_count == 0 and groups by normalised query, so Marco can see
+    what to write next.
+    """
+
+    template_name = "portal/kb_gaps.html"
+
+    def get(self, request):
+        from datetime import timedelta
+
+        from django.db.models import Count, Max
+        from django.template.response import TemplateResponse
+
+        from knowledge.models import KbSearchLog
+
+        try:
+            window_days = int(request.GET.get("days", 30))
+        except (TypeError, ValueError):
+            window_days = 30
+        window_days = max(1, min(window_days, 365))
+        since = timezone.now() - timedelta(days=window_days)
+
+        rows = (
+            KbSearchLog.objects.filter(created_at__gte=since)
+            .values("query")
+            .annotate(
+                hits=Count("id"),
+                zero=Count("id", filter=Q(results_count=0)),
+                last_seen=Max("created_at"),
+            )
+            .order_by("-zero", "-hits")
+        )
+        gaps = [r for r in rows if r["zero"] > 0]
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "kb",
+                "gaps": gaps[:200],
+                "popular": list(rows[:50]),
+                "window_days": window_days,
+            },
+        )
 
 
 class ArticleDetailView(LoginRequiredMixin, DetailView):

@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 
 import 'src/repositories/devices_repository.dart';
 import 'src/router.dart';
+import 'src/screens/widgets/app_lock_gate.dart';
 import 'src/services/api_client.dart';
+import 'src/services/app_lock_service.dart';
 import 'src/services/auth_service.dart';
 import 'src/services/current_user.dart';
 import 'src/services/push_router.dart';
@@ -54,6 +56,11 @@ class LumaSupportApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => CurrentUser()),
         ChangeNotifierProvider(create: (_) => SettingsService()..load()),
+        ChangeNotifierProxyProvider<SettingsService, AppLockService>(
+          create: (ctx) => AppLockService(ctx.read<SettingsService>()),
+          update: (_, settings, existing) =>
+              existing ?? AppLockService(settings),
+        ),
         Provider(create: (ctx) => ApiClient(ctx.read<AuthService>())),
       ],
       child: const _RouterRoot(),
@@ -139,6 +146,11 @@ class _RouterRootState extends State<_RouterRoot> {
       themeMode: mode,
       debugShowCheckedModeBanner: false,
       routerConfig: _router,
+      // Every route is wrapped in the lock gate so the biometric prompt
+      // can never be skipped via deep linking. The gate is a no-op when
+      // the lock isn't required.
+      builder: (context, child) =>
+          AppLockGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }

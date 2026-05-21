@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter/services.dart';
+
 import '../models/client.dart';
 import '../models/contact.dart';
 import '../models/ticket.dart';
 import '../repositories/clients_repository.dart';
+import '../repositories/invoices_repository.dart';
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
@@ -25,6 +28,40 @@ class ClientDetailScreen extends StatefulWidget {
 
 class _ClientDetailScreenState extends State<ClientDetailScreen> {
   late Future<_ClientDetailData> _future;
+
+  Future<void> _openStripePortal() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = InvoicesRepository(context.read<ApiClient>());
+    try {
+      final url = await repo.stripeCustomerPortal(
+        clientId: widget.clientId,
+        // Mobile has no equivalent of window.location for the return,
+        // so we hand Stripe the canonical web client detail URL.
+        returnUrl: 'https://lumatechsolutions.co.uk/clients/${widget.clientId}/',
+      );
+      if (!mounted) return;
+      if (url == null || url.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Stripe is not configured on this server.'),
+          ),
+        );
+        return;
+      }
+      await Clipboard.setData(ClipboardData(text: url));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Stripe portal URL copied to clipboard — paste into your browser to open.',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to open Stripe portal: $e')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -65,6 +102,12 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
       appBar: AppBar(
         title: const Text('Client'),
         actions: [
+          if (isStaff)
+            IconButton(
+              tooltip: 'Stripe portal',
+              icon: const Icon(Icons.payments_outlined),
+              onPressed: _openStripePortal,
+            ),
           if (isStaff)
             IconButton(
               tooltip: 'Edit',

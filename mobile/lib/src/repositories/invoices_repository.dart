@@ -9,6 +9,25 @@ class InvoicesRepository {
 
   final ApiClient _api;
 
+  /// Request a Stripe Customer Portal URL for ``clientId``. Returns
+  /// ``null`` when Stripe isn't configured on the backend so the caller
+  /// can hide the button.
+  Future<String?> stripeCustomerPortal({
+    required int clientId,
+    required String returnUrl,
+  }) async {
+    try {
+      final res = await _api.dio.post<dynamic>(
+        ApiPaths.stripePortalSession,
+        data: {'client': clientId, 'return_url': returnUrl},
+      );
+      final data = res.data as Map<String, dynamic>;
+      return data['url'] as String?;
+    } on DioException catch (e) {
+      throw ApiException.fromDio(e);
+    }
+  }
+
   Future<List<Invoice>> list({
     int? clientId,
     InvoiceStatus? status,

@@ -56,6 +56,37 @@ def create_payment_link(invoice) -> Optional[str]:
     return link.url
 
 
+def create_customer_portal_session(client, return_url: str) -> Optional[str]:
+    """Create (or re-use) a Stripe billing-portal session URL for ``client``.
+
+    Lazily creates the Stripe Customer on first call, caching the id on
+    ``Client.stripe_customer_id`` so subsequent sessions skip the round
+    trip. Returns ``None`` when Stripe isn't configured so the calling
+    view can hide the button.
+    """
+    if not is_configured():
+        return None
+    _configure()
+    import stripe
+
+    customer_id = client.stripe_customer_id or ""
+    if not customer_id:
+        cust = stripe.Customer.create(
+            email=client.email or "",
+            name=client.name,
+            metadata={"luma_client_id": str(client.pk)},
+        )
+        customer_id = cust.id
+        client.stripe_customer_id = customer_id
+        client.save(update_fields=["stripe_customer_id"])
+
+    session = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=return_url,
+    )
+    return session.url
+
+
 def verify_webhook(payload: bytes, sig_header: str):
     """Validate Stripe webhook signature and return the parsed event.
 

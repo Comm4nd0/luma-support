@@ -48,6 +48,10 @@ class Client(models.Model):
     xero_contact_id = models.CharField(max_length=64, blank=True)
     xero_synced_at = models.DateTimeField(null=True, blank=True)
 
+    # Cached Stripe Customer id — populated lazily the first time we
+    # open a customer-portal session for this client.
+    stripe_customer_id = models.CharField(max_length=64, blank=True)
+
     notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

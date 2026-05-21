@@ -145,3 +145,36 @@ class PaymentViewSet(
     permission_classes = [IsAuthenticated, IsAdmin]
     filterset_fields = ["invoice"]
     ordering_fields = ["paid_at", "amount"]
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def stripe_customer_portal_session(request):
+    """Return a one-shot Stripe Customer Portal URL.
+
+    Body: ``{"client": <id>, "return_url": "<url>"}``. Admins can open
+    any client's portal; non-admin client users can only open their own
+    account's portal. Returns ``{"url": null}`` when Stripe isn't
+    configured so the calling UI can hide the button gracefully.
+    """
+    from .stripe_client import create_customer_portal_session, is_configured
+
+    client_id = request.data.get("client")
+    return_url = request.data.get("return_url") or ""
+    if not client_id or not return_url:
+        raise ValidationError({"detail": "client and return_url are required"})
+
+    try:
+        client = Client.objects.get(pk=client_id)
+    except Client.DoesNotExist:
+        return Response({"detail": "client not found"}, status=404)
+
+    user = request.user
+    if not user.can_view_all and user.client_id != client.pk:
+        return Response({"detail": "forbidden"}, status=403)
+
+    if not is_configured():
+        return Response({"url": None})
+
+    url = create_customer_portal_session(client, return_url)
+    return Response({"url": url})

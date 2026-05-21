@@ -66,6 +66,14 @@ class User(AbstractUser):
     totp_secret_encrypted = models.TextField(blank=True)
     totp_enabled = models.BooleanField(default=False)
 
+    # Push-notification quiet hours — local-time window during which
+    # non-critical push delivery is suppressed (in-app notification
+    # still lands). Critical-priority tickets can override via
+    # ``quiet_hours_critical_override=True``.
+    quiet_hours_start = models.PositiveSmallIntegerField(null=True, blank=True)
+    quiet_hours_end = models.PositiveSmallIntegerField(null=True, blank=True)
+    quiet_hours_critical_override = models.BooleanField(default=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -106,6 +114,28 @@ class User(AbstractUser):
         """Staff (admin/engineer roles) and Django superusers see everything;
         client users are scoped to their own client's data."""
         return self.is_superuser or self.is_engineer
+
+    def is_in_quiet_hours(self, when=None) -> bool:
+        """True when ``when`` falls inside this user's local quiet window.
+
+        Returns False when no window is configured. Window can span
+        midnight (e.g. 22→7 = 22:00 yesterday → 07:00 today is quiet).
+        """
+        if self.quiet_hours_start is None or self.quiet_hours_end is None:
+            return False
+        from django.utils import timezone
+
+        moment = when or timezone.now()
+        if timezone.is_naive(moment):
+            return False
+        hour = timezone.localtime(moment).hour
+        start, end = self.quiet_hours_start, self.quiet_hours_end
+        if start == end:
+            return False
+        if start < end:
+            return start <= hour < end
+        # Wraparound window (e.g. 22 -> 7).
+        return hour >= start or hour < end
 
 
 def _hash_recovery_code(plain: str) -> str:

@@ -296,6 +296,18 @@ def send_push(notification_id: int):
     except Notification.DoesNotExist:
         return "notification missing"
 
+    # Quiet-hours suppression: skip non-critical push during the user's
+    # configured window. Critical SLA / ticket-update can still go
+    # through when ``quiet_hours_critical_override`` is on (default).
+    user = notif.user
+    if user.is_in_quiet_hours():
+        is_critical = (
+            notif.related_ticket is not None
+            and notif.related_ticket.priority == "critical"
+        ) or notif.type == Notification.Type.SLA_WARNING
+        if not (is_critical and user.quiet_hours_critical_override):
+            return "quiet hours — suppressed"
+
     tokens = list(
         DeviceToken.objects.filter(user=notif.user, is_active=True).order_by("pk")
     )

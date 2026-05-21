@@ -18,6 +18,9 @@ class UserSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_active",
             "date_joined",
+            "quiet_hours_start",
+            "quiet_hours_end",
+            "quiet_hours_critical_override",
         )
         read_only_fields = ("id", "is_staff", "date_joined")
 

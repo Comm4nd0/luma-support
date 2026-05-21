@@ -107,6 +107,107 @@ def generate_scheduled_tickets() -> str:
     return f"generate_scheduled_tickets: {created} created"
 
 
+def is_after_hours(when=None) -> bool:
+    """Is ``when`` outside Marco's configured business hours?
+
+    Override the defaults via two settings:
+
+    - ``BUSINESS_HOURS`` = (start_hour, end_hour) — 24h ints, default (9, 18).
+    - ``BUSINESS_DAYS`` = iterable of weekday ints (Mon=0), default Mon-Fri.
+
+    Always returns True (i.e. "after hours") when called with a naive
+    datetime so the caller can't accidentally enable the autoresponder
+    without timezone-aware datetimes.
+    """
+    if when is None:
+        when = timezone.now()
+    if timezone.is_naive(when):
+        return True
+    start, end = getattr(settings, "BUSINESS_HOURS", (9, 18))
+    days = set(getattr(settings, "BUSINESS_DAYS", range(0, 5)))
+    local = timezone.localtime(when)
+    if local.weekday() not in days:
+        return True
+    return not (start <= local.hour < end)
+
+
+@shared_task
+def after_hours_acknowledge(ticket_id: int) -> str:
+    """Send a friendly auto-ack when a ticket lands outside business hours.
+
+    Behaviour:
+    - Adds a public TicketNote with either an AI-drafted message (when
+      ANTHROPIC_API_KEY is set) or a simple canned acknowledgement.
+    - Adds an internal note recording that we treated this as after-hours.
+    - Critical tickets get an immediate Notification fan-out to
+      admins/engineers (regular SLA path is hourly-ish; this is faster).
+
+    No-op when the ``after_hours_oncall`` feature flag is off or the
+    ticket arrived during business hours.
+    """
+    from features import is_enabled
+
+    from .ai import draft_reply
+    from .models import Ticket, TicketNote
+
+    if not is_enabled("after_hours_oncall"):
+        return "after_hours_oncall disabled"
+
+    try:
+        ticket = Ticket.objects.select_related("client").get(pk=ticket_id)
+    except Ticket.DoesNotExist:
+        return "missing"
+
+    if not is_after_hours(ticket.created_at):
+        return "in business hours — no-op"
+
+    # AI-drafted ack if available; otherwise the canned fallback.
+    drafted = draft_reply(ticket)
+    if drafted:
+        ack = drafted
+    else:
+        ack = (
+            "Hi — your ticket landed outside our usual hours (Mon-Fri "
+            "09:00-18:00 UK). We've logged it; an engineer will respond "
+            "as soon as we're back. For genuine emergencies, please mark "
+            "the ticket as Critical and we'll be paged immediately."
+        )
+
+    TicketNote.objects.create(
+        ticket=ticket,
+        author=None,
+        body=ack,
+        internal=False,
+    )
+    TicketNote.objects.create(
+        ticket=ticket,
+        author=None,
+        body="[after-hours auto-acknowledged]",
+        internal=True,
+    )
+
+    # Critical → immediately wake engineers via Notification (the signal
+    # fans out to push + outbound webhooks).
+    if ticket.priority == Ticket.Priority.CRITICAL:
+        from django.contrib.auth import get_user_model
+
+        from notifications.models import Notification
+
+        User = get_user_model()
+        for u in User.objects.filter(
+            role__in=["admin", "engineer"], is_active=True
+        ):
+            Notification.objects.create(
+                user=u,
+                type=Notification.Type.NEW_TICKET,
+                title=f"After-hours critical: #{ticket.pk}",
+                body=f"{ticket.client.name} — {ticket.subject}",
+                related_ticket=ticket,
+            )
+
+    return "acknowledged"
+
+
 @shared_task
 def triage_new_ticket(ticket_id: int) -> str:
     """Ask Claude to suggest priority + tags for a freshly-opened ticket.

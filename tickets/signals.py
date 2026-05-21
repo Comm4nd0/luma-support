@@ -49,9 +49,10 @@ def _notify_on_change(sender, instance, created, **kwargs):
     if created:
         _enqueue("created")
         try:
-            from .tasks import triage_new_ticket
+            from .tasks import after_hours_acknowledge, triage_new_ticket
 
             triage_new_ticket.delay(instance.pk)
+            after_hours_acknowledge.delay(instance.pk)
         except Exception:
             pass
         return

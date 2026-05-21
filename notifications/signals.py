@@ -8,7 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import Notification
-from .tasks import send_push
+from .tasks import send_outbound_webhook, send_push
 
 
 @receiver(post_save, sender=Notification)
@@ -16,3 +16,9 @@ def push_notification_on_create(sender, instance, created, **kwargs):
     if not created:
         return
     send_push.delay(instance.pk)
+    # Outbound webhooks (Slack / Teams / Discord) ride the same
+    # signal — best-effort, the task swallows network errors.
+    try:
+        send_outbound_webhook.delay(instance.pk)
+    except Exception:
+        pass

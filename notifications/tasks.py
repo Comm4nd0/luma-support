@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from .models import DeviceToken, Notification
+from .models import DeviceToken, Notification, OutboundWebhook
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +218,64 @@ def _fcm_send(messages):
         for m in messages
     ]
     return messaging.send_each(fcm_messages)
+
+
+@shared_task
+def send_outbound_webhook(notification_id: int):
+    """Fan out a Notification to the recipient's configured outbound webhooks.
+
+    No-op when the user has no webhooks (or none that match the event
+    filter). Each call updates last_called_at / last_status on the
+    webhook so the user can see the channel is healthy at a glance.
+    The HTTP call is best-effort: a failing webhook is logged + recorded
+    but never raises (that would re-queue the task indefinitely).
+    """
+    import httpx
+
+    try:
+        notif = Notification.objects.select_related(
+            "user", "related_ticket"
+        ).get(pk=notification_id)
+    except Notification.DoesNotExist:
+        return "notification missing"
+
+    qs = OutboundWebhook.objects.filter(user=notif.user, enabled=True)
+    delivered = 0
+    for hook in qs:
+        if hook.event_filter and notif.type not in hook.event_filter:
+            continue
+        payload = _format_webhook_payload(notif, hook)
+        try:
+            resp = httpx.post(hook.url, json=payload, timeout=10)
+            hook.last_status = f"{resp.status_code}"
+        except Exception as exc:  # noqa: BLE001
+            hook.last_status = f"err:{type(exc).__name__}"[:64]
+            logger.warning(
+                "outbound webhook %s failed: %s", hook.pk, exc
+            )
+        hook.last_called_at = timezone.now()
+        hook.save(update_fields=["last_status", "last_called_at"])
+        delivered += 1
+    return f"outbound webhooks: {delivered} attempted"
+
+
+def _format_webhook_payload(notif, hook):
+    """Translate a Notification into the body shape each channel expects."""
+    text = f"*{notif.title}*"
+    if notif.body:
+        text += f"\n{notif.body}"
+    if hook.format == OutboundWebhook.Format.SLACK:
+        return {"text": text}
+    if hook.format == OutboundWebhook.Format.TEAMS:
+        return {"@type": "MessageCard", "text": text}
+    # generic
+    return {
+        "type": notif.type,
+        "title": notif.title,
+        "body": notif.body,
+        "ticket_id": notif.related_ticket_id,
+        "created_at": notif.created_at.isoformat(),
+    }
 
 
 @shared_task

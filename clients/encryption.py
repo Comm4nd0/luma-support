@@ -60,3 +60,27 @@ def rotate(token: str) -> str:
         return _cipher().rotate(token.encode()).decode()
     except InvalidToken:
         return token
+
+
+def encrypted_with_primary(token: str) -> bool | None:
+    """True iff ``token`` decrypts under the primary (first) key only.
+
+    Returns None for empty input or undecryptable rows. Used by the
+    Fernet rotation status report to show how many credential blobs
+    still need rotating.
+    """
+    if not token:
+        return None
+    keys = _keys()
+    if not keys:
+        return None
+    try:
+        Fernet(keys[0]).decrypt(token.encode())
+        return True
+    except InvalidToken:
+        # Decryptable by some other key in the ring, but not the primary.
+        try:
+            _cipher().decrypt(token.encode())
+            return False
+        except InvalidToken:
+            return None

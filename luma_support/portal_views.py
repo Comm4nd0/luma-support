@@ -344,9 +344,11 @@ class DashboardView(LoginRequiredMixin, View):
                 for s in at_risk
                 if s.client_id in risk_clients
             ]
+            from clients.fernet_status import snapshot as _fernet_snapshot
             from system.integrations_health import snapshot as _int_snapshot
 
             integrations = _int_snapshot()
+            fernet = _fernet_snapshot()
             context.update(
                 {
                     "unbilled_hours": (Decimal(unbilled_minutes) / Decimal(60)).quantize(
@@ -362,6 +364,7 @@ class DashboardView(LoginRequiredMixin, View):
                     "integrations_failing": [
                         r for r in integrations if r["configured"] and not r["ok"]
                     ],
+                    "fernet_status": fernet,
                 }
             )
 

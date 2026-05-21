@@ -166,6 +166,27 @@
   </div>
   {% endif %}
 
+  {% if fernet_status and fernet_status.needs_rotation %}
+  <div class="card" style="border-color: rgba(245,158,11,0.45);">
+    <div class="card-header">
+      <h2 style="color: var(--warning);">Credential rotation pending</h2>
+      <span class="muted" style="font-size: 12px;">
+        {{ fernet_status.rotation_pct }}% on primary key
+      </span>
+    </div>
+    <p class="muted" style="margin: 0;">
+      {{ fernet_status.on_old_key }} system credential(s) are still
+      encrypted under an older Fernet key.
+      {% if fernet_status.unreadable %}
+        {{ fernet_status.unreadable }} are unreadable.
+      {% endif %}
+      Run <code>python manage.py rotate_fernet_keys</code> on the
+      Hetzner host to migrate them to the primary key
+      ({{ fernet_status.keys_configured }} keys configured).
+    </p>
+  </div>
+  {% endif %}
+
   {% if at_risk_clients %}
   <div class="card">
     <div class="card-header">

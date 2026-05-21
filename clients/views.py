@@ -67,6 +67,32 @@ class SystemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user)
 
+    @action(detail=True, methods=["post"], url_path="request-credential-rotation")
+    def request_credential_rotation(self, request, pk=None):
+        """Client-facing: open a ticket asking us to rotate stored creds.
+
+        Lets a client say "please change the UniFi admin password" without
+        ever needing to see the current one.
+        """
+        from tickets.models import Ticket
+
+        system = self.get_object()
+        ticket = Ticket.objects.create(
+            client=system.client,
+            system=system,
+            subject=f"Please rotate credentials for {system.name}",
+            description=(
+                f"{request.user.email if request.user.is_authenticated else 'A client'} "
+                f"requested credential rotation for system "
+                f"#{system.pk} ({system.name})."
+            ),
+            priority="medium",
+            created_by=request.user if request.user.is_authenticated else None,
+        )
+        return Response(
+            {"ticket_id": ticket.pk}, status=status.HTTP_201_CREATED
+        )
+
 
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.select_related("client").all()

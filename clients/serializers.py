@@ -25,6 +25,10 @@ class SystemSerializer(serializers.ModelSerializer):
     credentials = serializers.CharField(
         write_only=True, required=False, allow_blank=True
     )
+    # Read-only "we hold credentials for this system" flag — visible to
+    # clients so they can see a padlock icon and request rotation
+    # without ever seeing the plaintext secret.
+    credentials_present = serializers.SerializerMethodField()
 
     class Meta:
         model = System
@@ -36,6 +40,7 @@ class SystemSerializer(serializers.ModelSerializer):
             "description",
             "devices_json",
             "credentials",
+            "credentials_present",
             "monitoring_url",
             "installed_date",
             "last_checked_at",
@@ -67,6 +72,9 @@ class SystemSerializer(serializers.ModelSerializer):
             instance.set_credentials(creds)
         instance.save()
         return instance
+
+    def get_credentials_present(self, obj) -> bool:
+        return bool(getattr(obj, "credentials_encrypted", ""))
 
 
 class ClientSerializer(serializers.ModelSerializer):

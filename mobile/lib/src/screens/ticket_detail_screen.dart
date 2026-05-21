@@ -183,6 +183,33 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               Text('${t.clientName} · ${t.priority.name} · ${t.status.name}'),
+              if (t.isPaused) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.pause_circle_outline, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'SLA paused — waiting on client',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (t.isBreached) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'SLA breached',
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                ),
+              ],
               const SizedBox(height: 12),
               Text(t.description, style: const TextStyle(height: 1.5)),
               if (t.csat != null && t.csat!.hasRating) ...[

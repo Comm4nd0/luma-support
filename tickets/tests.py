@@ -48,6 +48,64 @@ def test_deadline_for_uses_priority_table():
 
 
 @pytest.mark.django_db
+def test_waiting_status_pauses_sla(client_record):
+    t = Ticket.objects.create(
+        client=client_record, subject="x", priority=Ticket.Priority.HIGH
+    )
+    original_deadline = t.sla_deadline
+    # Pretend the ticket was created 1 hour ago so a pause has somewhere to go.
+    Ticket.objects.filter(pk=t.pk).update(
+        sla_deadline=timezone.now() + timedelta(hours=3)
+    )
+    t.refresh_from_db()
+    baseline = t.sla_deadline
+
+    t.transition_to(Ticket.Status.WAITING)
+    assert t.is_paused is True
+    assert t.is_breached is False
+    # Stored deadline doesn't move while paused.
+    assert t.sla_deadline == baseline
+    # Effective deadline tracks wall-clock past pause start, so the visible
+    # countdown stays put (small slop for execution time).
+    eff = t.effective_sla_deadline
+    assert eff is not None
+    assert abs((eff - timezone.now()) - (baseline - t.sla_paused_at)) < timedelta(seconds=2)
+
+    # Simulate 2 hours of waiting on the client.
+    Ticket.objects.filter(pk=t.pk).update(
+        sla_paused_at=timezone.now() - timedelta(hours=2)
+    )
+    t.refresh_from_db()
+    t.transition_to(Ticket.Status.IN_PROGRESS)
+    assert t.is_paused is False
+    # Stored deadline has been pushed forward by ~2h.
+    assert t.sla_deadline > baseline + timedelta(hours=1, minutes=55)
+    assert t.sla_deadline < baseline + timedelta(hours=2, minutes=5)
+    # Original deadline still in the future for a fresh high-priority ticket.
+    assert original_deadline is not None
+
+
+@pytest.mark.django_db
+def test_paused_tickets_excluded_from_sla_warnings(client_record):
+    soon = timezone.now() + timedelta(minutes=5)
+    t = Ticket.objects.create(client=client_record, subject="paused")
+    Ticket.objects.filter(pk=t.pk).update(
+        status=Ticket.Status.WAITING,
+        sla_deadline=soon,
+        sla_paused_at=timezone.now(),
+    )
+    other = Ticket.objects.create(client=client_record, subject="live")
+    Ticket.objects.filter(pk=other.pk).update(
+        status=Ticket.Status.IN_PROGRESS, sla_deadline=soon
+    )
+
+    warnings = list(Ticket.objects.sla_warnings())
+    assert other in warnings
+    paused = Ticket.objects.get(pk=t.pk)
+    assert paused not in warnings
+
+
+@pytest.mark.django_db
 def test_time_entry_cost_uses_client_rate(admin_user, settings):
     settings.DEFAULT_HOURLY_RATE = Decimal("75.00")
     c = Client.objects.create(name="Hi rate", hourly_rate=Decimal("90.00"))

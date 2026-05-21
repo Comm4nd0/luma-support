@@ -46,7 +46,10 @@ class TicketTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(ticket.status.name, style: const TextStyle(fontSize: 12)),
-            if (ticket.isBreached)
+            if (ticket.isPaused)
+              const Text('PAUSED',
+                  style: TextStyle(color: kMuted, fontSize: 11))
+            else if (ticket.isBreached)
               const Text('BREACHED',
                   style: TextStyle(color: Colors.redAccent, fontSize: 11)),
           ],

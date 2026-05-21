@@ -55,12 +55,14 @@
             <td><span class="pill pill-{{ t.status }}">{{ t.get_status_display }}</span></td>
             <td>{{ t.assigned_to.email|default:"—" }}</td>
             <td class="sla
-              {% if t.is_breached %}sla-breach
+              {% if t.is_paused %}sla-paused
+              {% elif t.is_breached %}sla-breach
               {% elif t.sla_deadline and t.time_remaining.total_seconds < 1800 %}sla-warn
               {% else %}sla-ok{% endif %}">
               {% if t.sla_deadline %}
-                {% if t.is_breached %}BREACHED · {{ t.sla_deadline|naturaltime }}
-                {% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
+                {% if t.is_paused %}PAUSED · {{ t.effective_sla_deadline|naturaltime }}
+                {% elif t.is_breached %}BREACHED · {{ t.effective_sla_deadline|naturaltime }}
+                {% else %}{{ t.effective_sla_deadline|naturaltime }}{% endif %}
               {% else %}—{% endif %}
             </td>
           </tr>
@@ -83,9 +85,12 @@
         </div>
         {% if t.sla_deadline %}
           <span class="sla-badge
-            {% if t.is_breached %}sla-breach
+            {% if t.is_paused %}sla-paused
+            {% elif t.is_breached %}sla-breach
             {% elif t.time_remaining.total_seconds < 1800 %}sla-warn{% endif %}">
-            {% if t.is_breached %}breached{% else %}{{ t.sla_deadline|naturaltime }}{% endif %}
+            {% if t.is_paused %}paused
+            {% elif t.is_breached %}breached
+            {% else %}{{ t.effective_sla_deadline|naturaltime }}{% endif %}
           </span>
         {% endif %}
       </div>

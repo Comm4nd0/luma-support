@@ -34,10 +34,19 @@ class TicketQuerySet(models.QuerySet):
         return self.exclude(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
 
     def sla_warnings(self, threshold_minutes: int = 30):
-        """Open tickets within `threshold_minutes` of breaching SLA, or already breached."""
+        """Open tickets within `threshold_minutes` of breaching SLA, or already breached.
+
+        Tickets in WAITING status are paused (see ``Ticket.is_paused``) and
+        are excluded so the engineer isn't punished for client wait time.
+        """
         now = timezone.now()
         cutoff = now + timedelta(minutes=threshold_minutes)
-        return self.open().filter(sla_deadline__lte=cutoff).order_by("sla_deadline")
+        return (
+            self.open()
+            .filter(sla_paused_at__isnull=True)
+            .filter(sla_deadline__lte=cutoff)
+            .order_by("sla_deadline")
+        )
 
 
 class Ticket(models.Model):
@@ -76,6 +85,12 @@ class Ticket(models.Model):
     )
 
     sla_deadline = models.DateTimeField(null=True, blank=True)
+    # When non-null, the ticket is "paused" — typically because we're
+    # waiting on the customer. The displayed deadline freezes and any
+    # SLA warnings stop firing until the ticket leaves WAITING, at
+    # which point ``sla_deadline`` is moved forward by however long the
+    # ticket was paused.
+    sla_paused_at = models.DateTimeField(null=True, blank=True)
 
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -123,6 +138,31 @@ class Ticket(models.Model):
         elif self.priority and self.sla_deadline is None:
             self.sla_deadline = deadline_for(self.created_at, self.priority)
 
+        # SLA pause bookkeeping. Entering WAITING freezes the deadline by
+        # stamping ``sla_paused_at``. Leaving WAITING shifts the stored
+        # deadline forward by the paused interval and clears the stamp.
+        now = timezone.now()
+        if first_save:
+            if self.status == self.Status.WAITING and self.sla_paused_at is None:
+                self.sla_paused_at = now
+        else:
+            old = type(self).objects.only("status", "sla_paused_at").filter(pk=self.pk).first()
+            if old is not None:
+                entering_waiting = (
+                    self.status == self.Status.WAITING
+                    and old.status != self.Status.WAITING
+                )
+                leaving_waiting = (
+                    old.status == self.Status.WAITING
+                    and self.status != self.Status.WAITING
+                )
+                if entering_waiting and self.sla_paused_at is None:
+                    self.sla_paused_at = now
+                elif leaving_waiting and self.sla_paused_at is not None:
+                    if self.sla_deadline is not None:
+                        self.sla_deadline = self.sla_deadline + (now - self.sla_paused_at)
+                    self.sla_paused_at = None
+
         # Status timestamps
         if self.status == self.Status.RESOLVED and self.resolved_at is None:
             self.resolved_at = timezone.now()
@@ -143,18 +183,42 @@ class Ticket(models.Model):
 
     # --- SLA helpers --------------------------------------------------
     @property
+    def is_paused(self) -> bool:
+        return self.sla_paused_at is not None
+
+    @property
+    def effective_sla_deadline(self):
+        """Deadline adjusted for in-progress pause time.
+
+        While paused, the stored ``sla_deadline`` is frozen; the displayed
+        deadline shifts forward by the wall-clock interval since the pause
+        started, which keeps the visible countdown stationary. Once the
+        ticket leaves WAITING, ``save()`` bakes the interval into
+        ``sla_deadline`` and clears ``sla_paused_at``.
+        """
+        if self.sla_deadline is None:
+            return None
+        if self.sla_paused_at is None:
+            return self.sla_deadline
+        return self.sla_deadline + (timezone.now() - self.sla_paused_at)
+
+    @property
     def is_breached(self) -> bool:
+        if self.is_paused:
+            return False
+        eff = self.effective_sla_deadline
         return (
-            self.sla_deadline is not None
+            eff is not None
             and self.status not in (self.Status.RESOLVED, self.Status.CLOSED)
-            and timezone.now() > self.sla_deadline
+            and timezone.now() > eff
         )
 
     @property
     def time_remaining(self):
-        if not self.sla_deadline:
+        eff = self.effective_sla_deadline
+        if not eff:
             return None
-        return self.sla_deadline - timezone.now()
+        return eff - timezone.now()
 
     @property
     def total_minutes_logged(self) -> int:

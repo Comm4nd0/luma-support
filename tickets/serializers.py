@@ -74,6 +74,8 @@ class TicketSerializer(serializers.ModelSerializer):
         source="assigned_to.email", read_only=True
     )
     is_breached = serializers.BooleanField(read_only=True)
+    is_paused = serializers.BooleanField(read_only=True)
+    effective_sla_deadline = serializers.DateTimeField(read_only=True)
     total_minutes_logged = serializers.IntegerField(read_only=True)
     time_entries = TimeEntrySerializer(many=True, read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
@@ -91,7 +93,10 @@ class TicketSerializer(serializers.ModelSerializer):
             "priority",
             "status",
             "sla_deadline",
+            "sla_paused_at",
+            "effective_sla_deadline",
             "is_breached",
+            "is_paused",
             "assigned_to",
             "assigned_to_email",
             "created_by",
@@ -106,11 +111,14 @@ class TicketSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "sla_deadline",
+            "sla_paused_at",
+            "effective_sla_deadline",
             "resolved_at",
             "closed_at",
             "created_at",
             "updated_at",
             "is_breached",
+            "is_paused",
         )
 
 
@@ -122,6 +130,8 @@ class TicketListSerializer(serializers.ModelSerializer):
         source="assigned_to.email", read_only=True
     )
     is_breached = serializers.BooleanField(read_only=True)
+    is_paused = serializers.BooleanField(read_only=True)
+    effective_sla_deadline = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Ticket
@@ -133,7 +143,9 @@ class TicketListSerializer(serializers.ModelSerializer):
             "priority",
             "status",
             "sla_deadline",
+            "effective_sla_deadline",
             "is_breached",
+            "is_paused",
             "assigned_to",
             "assigned_to_email",
             "created_at",

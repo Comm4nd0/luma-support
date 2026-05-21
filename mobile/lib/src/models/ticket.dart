@@ -87,7 +87,10 @@ class Ticket {
     required this.priority,
     required this.status,
     required this.slaDeadline,
+    required this.effectiveSlaDeadline,
+    required this.slaPausedAt,
     required this.isBreached,
+    required this.isPaused,
     required this.assignedToEmail,
     required this.csat,
     required this.createdAt,
@@ -101,27 +104,37 @@ class Ticket {
   final TicketPriority priority;
   final TicketStatus status;
   final DateTime? slaDeadline;
+  final DateTime? effectiveSlaDeadline;
+  final DateTime? slaPausedAt;
   final bool isBreached;
+  final bool isPaused;
   final String? assignedToEmail;
   final CsatResponse? csat;
   final DateTime createdAt;
 
-  factory Ticket.fromJson(Map<String, dynamic> json) => Ticket(
-        id: json['id'] as int,
-        clientId: json['client'] as int? ?? 0,
-        clientName: json['client_name'] as String? ?? '',
-        subject: json['subject'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        priority: priorityFromString(json['priority'] as String?),
-        status: statusFromString(json['status'] as String?),
-        slaDeadline: _parseDate(json['sla_deadline']),
-        isBreached: json['is_breached'] as bool? ?? false,
-        assignedToEmail: json['assigned_to_email'] as String?,
-        csat: json['csat'] is Map
-            ? CsatResponse.fromJson(json['csat'] as Map<String, dynamic>)
-            : null,
-        createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
-      );
+  factory Ticket.fromJson(Map<String, dynamic> json) {
+    final stored = _parseDate(json['sla_deadline']);
+    final effective = _parseDate(json['effective_sla_deadline']) ?? stored;
+    return Ticket(
+      id: json['id'] as int,
+      clientId: json['client'] as int? ?? 0,
+      clientName: json['client_name'] as String? ?? '',
+      subject: json['subject'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      priority: priorityFromString(json['priority'] as String?),
+      status: statusFromString(json['status'] as String?),
+      slaDeadline: stored,
+      effectiveSlaDeadline: effective,
+      slaPausedAt: _parseDate(json['sla_paused_at']),
+      isBreached: json['is_breached'] as bool? ?? false,
+      isPaused: json['is_paused'] as bool? ?? (json['sla_paused_at'] != null),
+      assignedToEmail: json['assigned_to_email'] as String?,
+      csat: json['csat'] is Map
+          ? CsatResponse.fromJson(json['csat'] as Map<String, dynamic>)
+          : null,
+      createdAt: _parseDate(json['created_at']) ?? DateTime.now(),
+    );
+  }
 }
 
 DateTime? _parseDate(dynamic v) {

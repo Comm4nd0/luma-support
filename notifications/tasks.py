@@ -141,6 +141,7 @@ def check_sla_warnings():
     cutoff = now + timedelta(minutes=threshold_minutes)
     qs = (
         Ticket.objects.open()
+        .filter(sla_paused_at__isnull=True)
         .filter(sla_deadline__lte=cutoff)
         .select_related("assigned_to", "client")
     )

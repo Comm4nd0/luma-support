@@ -1307,6 +1307,65 @@ class ArticleListView(LoginRequiredMixin, ListView):
         return ctx
 
 
+class TicketBoardView(LoginRequiredMixin, View):
+    """Kanban-style ticket board grouped by status.
+
+    No drag-and-drop in v1 — each card shows a tiny status form that
+    POSTs to the existing TicketStatusUpdateView, so the round trip
+    matches every other status transition on the system (audit log,
+    SLA recompute, push fan-out all still fire).
+    """
+
+    template_name = "portal/ticket_board.html"
+
+    def get(self, request):
+        from django.template.response import TemplateResponse
+
+        from tickets.models import TicketTag
+
+        qs = _scope_tickets(
+            Ticket.objects.select_related("client", "assigned_to")
+                          .prefetch_related("tags"),
+            request.user,
+        ).exclude(status=Ticket.Status.CLOSED)
+
+        tag_slug = request.GET.get("tag")
+        if tag_slug:
+            qs = qs.filter(tags__slug=tag_slug)
+
+        lanes_order = [
+            Ticket.Status.NEW,
+            Ticket.Status.ASSIGNED,
+            Ticket.Status.IN_PROGRESS,
+            Ticket.Status.WAITING,
+            Ticket.Status.RESOLVED,
+        ]
+        by_status = {s: [] for s in lanes_order}
+        for ticket in qs.order_by("sla_deadline", "-created_at"):
+            if ticket.status in by_status:
+                by_status[ticket.status].append(ticket)
+
+        lanes = [
+            {
+                "value": s,
+                "label": dict(Ticket.Status.choices)[s],
+                "tickets": by_status[s],
+            }
+            for s in lanes_order
+        ]
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "active": "tickets",
+                "lanes": lanes,
+                "status_choices": Ticket.Status.choices,
+                "tags": TicketTag.objects.all(),
+                "tag_slug": tag_slug or "",
+            },
+        )
+
+
 class SlaAnalyticsView(StaffRequiredMixin, View):
     """Staff-only SLA hit-rate report — per priority + worst clients."""
 

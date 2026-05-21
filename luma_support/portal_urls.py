@@ -24,6 +24,11 @@ urlpatterns = [
     # Tickets
     path("tickets/", views.TicketListView.as_view(), name="ticket_list"),
     path(
+        "tickets/board/",
+        views.TicketBoardView.as_view(),
+        name="ticket_board",
+    ),
+    path(
         "tickets/sla-analytics/",
         views.SlaAnalyticsView.as_view(),
         name="sla_analytics",

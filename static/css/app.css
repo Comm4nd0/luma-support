@@ -410,6 +410,53 @@ table.table tbody tr:hover { background: var(--surface-2); }
   color: var(--text);
 }
 
+/* ---------- Kanban ---------- */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+}
+.kanban-lane {
+  background: rgba(148,163,184,0.06);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 60vh;
+}
+.kanban-lane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.kanban-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.kanban-card-title { display: block; color: var(--text); text-decoration: none; font-weight: 600; }
+.kanban-card-title:hover { color: var(--primary); }
+.kanban-card-meta { margin-top: 6px; }
+.kanban-card-move { margin-top: 8px; }
+.kanban-card-move select {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 4px;
+}
+@media (max-width: 900px) {
+  .kanban { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+}
+@media (max-width: 600px) {
+  .kanban { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+}
+
 .bulk-toolbar {
   display: flex;
   flex-wrap: wrap;

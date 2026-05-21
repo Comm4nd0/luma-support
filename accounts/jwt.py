@@ -90,3 +90,72 @@ def regenerate_recovery_codes(request):
     codes = RecoveryCode.regenerate_for(request.user)
     remaining = request.user.recovery_codes.filter(used_at__isnull=True).count()
     return Response({"codes": codes, "remaining": remaining})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_sessions(request):
+    """GET /api/v1/auth/sessions/ — outstanding (non-expired, non-blacklisted)
+    refresh tokens for the current user."""
+    from django.utils import timezone
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    blacklisted = set(
+        BlacklistedToken.objects.values_list("token_id", flat=True)
+    )
+    now = timezone.now()
+    rows = []
+    qs = OutstandingToken.objects.filter(user=request.user).order_by("-created_at")
+    for tok in qs:
+        if tok.id in blacklisted or tok.expires_at < now:
+            continue
+        rows.append(
+            {
+                "id": tok.id,
+                "jti": tok.jti,
+                "created_at": tok.created_at,
+                "expires_at": tok.expires_at,
+            }
+        )
+    return Response({"sessions": rows})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def revoke_session(request, session_id: int):
+    """POST /api/v1/auth/sessions/<id>/revoke/ — blacklist one refresh token."""
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    tok = OutstandingToken.objects.filter(
+        pk=session_id, user=request.user
+    ).first()
+    if tok is None:
+        return Response({"detail": "not found"}, status=404)
+    BlacklistedToken.objects.get_or_create(token=tok)
+    return Response({"revoked": True})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def revoke_all_sessions(request):
+    """POST /api/v1/auth/sessions/revoke-all/ — blacklist every refresh
+    token for the current user except (optionally) the one used to
+    authenticate this call."""
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    qs = OutstandingToken.objects.filter(user=request.user)
+    n = 0
+    for tok in qs:
+        _, created = BlacklistedToken.objects.get_or_create(token=tok)
+        if created:
+            n += 1
+    return Response({"revoked": n})

@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "djoser",
     "corsheaders",
     "django_filters",
@@ -177,6 +178,11 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
+    # Rotate refresh tokens on use and blacklist the old one so a stolen
+    # refresh token has a short useful life. The blacklist also powers
+    # the user-facing "revoke this device" action in /portal/sessions/.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 DJOSER = {

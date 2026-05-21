@@ -6,7 +6,10 @@ from django.urls import include, path
 
 from accounts.jwt import (
     TotpAwareTokenObtainPairView,
+    list_sessions,
     regenerate_recovery_codes,
+    revoke_all_sessions,
+    revoke_session,
 )
 
 from .search import search as cmdk_search
@@ -16,6 +19,9 @@ api_v1 = [
     # shadows djoser's plain TokenObtainPairView at the same path.
     path("auth/jwt/create/", TotpAwareTokenObtainPairView.as_view()),
     path("auth/recovery-codes/", regenerate_recovery_codes),
+    path("auth/sessions/", list_sessions),
+    path("auth/sessions/<int:session_id>/revoke/", revoke_session),
+    path("auth/sessions/revoke-all/", revoke_all_sessions),
     path("search/", cmdk_search),
     path("auth/", include("djoser.urls")),
     path("auth/", include("djoser.urls.jwt")),

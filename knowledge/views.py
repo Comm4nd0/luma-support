@@ -30,10 +30,15 @@ class ArticleViewSet(viewsets.ModelViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
-        # Clients only see published, client-visible articles.
+        # Clients only see published articles scoped to their own
+        # client (all_clients OR specific_clients with them in the
+        # allowlist). Staff see everything.
         user = self.request.user
         if user.is_authenticated and getattr(user, "is_client", False):
-            return Article.objects.visible_to_clients()
+            client = getattr(user, "client", None)
+            if client is None:
+                return Article.objects.none()
+            return Article.objects.for_client(client)
         return Article.objects.all()
 
     @action(detail=False, methods=["get"])

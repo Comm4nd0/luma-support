@@ -13,10 +13,11 @@ class ArticleRevisionAdmin(admin.ModelAdmin):
 
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "client_visible", "published_at", "updated_at")
-    list_filter = ("category", "client_visible")
+    list_display = ("title", "category", "visibility", "published_at", "updated_at")
+    list_filter = ("category", "visibility")
     search_fields = ("title", "content")
     prepopulated_fields = {"slug": ("title",)}
+    filter_horizontal = ("allowed_clients",)
 
 
 @admin.register(KbSearchLog)

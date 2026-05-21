@@ -1216,7 +1216,10 @@ class ContactDeleteView(StaffRequiredMixin, View):
 def _scope_articles(user):
     if user.can_view_all:
         return Article.objects.published()
-    return Article.objects.visible_to_clients()
+    client = getattr(user, "client", None)
+    if client is None:
+        return Article.objects.none()
+    return Article.objects.for_client(client)
 
 
 class ArticleListView(LoginRequiredMixin, ListView):

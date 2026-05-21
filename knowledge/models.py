@@ -9,7 +9,19 @@ class ArticleQuerySet(models.QuerySet):
         return self.filter(published_at__isnull=False, published_at__lte=timezone.now())
 
     def visible_to_clients(self):
-        return self.published().filter(client_visible=True)
+        """All published articles a client user *might* see — i.e. not
+        internal-only. Per-client scoping is applied via ``for_client``."""
+        return self.published().exclude(visibility=Article.Visibility.INTERNAL)
+
+    def for_client(self, client):
+        """Filter to articles visible to a specific Client."""
+        return self.visible_to_clients().filter(
+            models.Q(visibility=Article.Visibility.ALL_CLIENTS)
+            | models.Q(
+                visibility=Article.Visibility.SPECIFIC_CLIENTS,
+                allowed_clients=client,
+            )
+        ).distinct()
 
 
 class Article(models.Model):
@@ -21,13 +33,32 @@ class Article(models.Model):
         APP = "app", "App"
         SECURITY = "security", "Security"
 
+    class Visibility(models.TextChoices):
+        INTERNAL = "internal", "Internal (staff only)"
+        ALL_CLIENTS = "all_clients", "All clients"
+        SPECIFIC_CLIENTS = "specific_clients", "Specific clients"
+
     title = models.CharField(max_length=300)
     slug = models.SlugField(max_length=320, unique=True, blank=True)
     content = models.TextField(help_text="Markdown")
     category = models.CharField(
         max_length=16, choices=Category.choices, default=Category.GENERAL
     )
+    # Legacy: kept in sync with ``visibility`` for backwards compat with
+    # any code/templates that still read it. Source of truth is now the
+    # ``visibility`` enum + ``allowed_clients``.
     client_visible = models.BooleanField(default=False)
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility.choices,
+        default=Visibility.INTERNAL,
+    )
+    allowed_clients = models.ManyToManyField(
+        "clients.Client",
+        blank=True,
+        related_name="visible_articles",
+        help_text="Used when visibility=specific_clients.",
+    )
     published_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -47,6 +78,14 @@ class Article(models.Model):
                 slug = f"{base}-{counter}"
                 counter += 1
             self.slug = slug
+        # Keep the legacy ``client_visible`` boolean in sync with the
+        # richer ``visibility`` enum so any straggling reader stays
+        # honest. Both directions are honoured: edits to either field
+        # are reflected on the other.
+        if self.visibility == self.Visibility.INTERNAL:
+            self.client_visible = False
+        else:
+            self.client_visible = True
         super().save(*args, **kwargs)
 
     def __str__(self):

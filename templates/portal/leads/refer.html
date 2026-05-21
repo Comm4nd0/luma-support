@@ -14,10 +14,39 @@
         account £{{ credit }} every time someone you sent in becomes a client.
       </p>
       <p style="word-break: break-all; font-size: 16px; margin: 12px 0;">
-        <strong>{{ share_link }}</strong>
+        <strong id="refer-link">{{ share_link }}</strong>
       </p>
       <p class="muted" style="font-size: 12px;">Your code: <code>{{ code.code }}</code></p>
+      <div class="toolbar" style="margin-top: 12px;">
+        <button class="btn btn-sm" type="button" id="refer-copy-link">Copy link</button>
+        <a class="btn btn-sm btn-ghost"
+           href="mailto:?subject={{ refer_share_subject|urlencode }}&amp;body={{ refer_share_body|urlencode }}">
+          Email it
+        </a>
+        <a class="btn btn-sm btn-ghost"
+           href="https://wa.me/?text={{ refer_share_body|urlencode }}"
+           target="_blank" rel="noopener">
+          WhatsApp
+        </a>
+      </div>
     </div>
+    <script>
+      (function () {
+        var btn = document.getElementById("refer-copy-link");
+        var link = document.getElementById("refer-link");
+        if (!btn || !link) return;
+        btn.addEventListener("click", async function () {
+          try {
+            await navigator.clipboard.writeText(link.textContent.trim());
+            var original = btn.textContent;
+            btn.textContent = "Copied ✓";
+            setTimeout(function () { btn.textContent = original; }, 1500);
+          } catch (e) {
+            alert("Copy failed: " + e);
+          }
+        });
+      })();
+    </script>
 
     <div class="card" style="margin-top: 20px;">
       <h2>People you've referred</h2>

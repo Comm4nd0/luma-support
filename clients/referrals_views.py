@@ -48,6 +48,18 @@ class ReferralDashboardView(LoginRequiredMixin, View):
                 "-created_at"
             )
         )
+        credit = getattr(settings, "REFERRAL_CREDIT_GBP", "25")
+        # Ready-to-share copy for email + WhatsApp deep links so the
+        # client doesn't have to type a thing.
+        share_subject = (
+            f"{client.name} just recommended Luma Tech Solutions"
+        )
+        share_body = (
+            f"Hey — I use Luma Tech Solutions for my tech (UniFi / "
+            f"smart home / web / CCTV) and they handle everything. "
+            f"They give us both £{credit} credit if you sign up:\n\n"
+            f"{share_link}"
+        )
         return TemplateResponse(
             request,
             self.template,
@@ -56,7 +68,9 @@ class ReferralDashboardView(LoginRequiredMixin, View):
                 "code": code,
                 "share_link": share_link,
                 "referrals": referrals,
-                "credit": getattr(settings, "REFERRAL_CREDIT_GBP", "25"),
+                "credit": credit,
+                "refer_share_subject": share_subject,
+                "refer_share_body": share_body,
                 "active": "refer",
             },
         )

@@ -1,9 +1,11 @@
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import Article, KbSearchLog
+from .models import Article, ArticleAsset, KbSearchLog
 from .serializers import ArticleSerializer
 
 
@@ -40,6 +42,36 @@ class ArticleViewSet(viewsets.ModelViewSet):
                 return Article.objects.none()
             return Article.objects.for_client(client)
         return Article.objects.all()
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="assets",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def upload_asset(self, request, slug=None):
+        """Staff-only: upload an image / file to embed in an article body.
+
+        Multipart with ``file``. Returns ``{url, filename}`` so the
+        editor can drop a markdown image link.
+        """
+        if not request.user.can_view_all:
+            raise PermissionDenied("Staff only.")
+        article = self.get_object()
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"detail": "Missing 'file' field."}, status=400)
+        asset = ArticleAsset.objects.create(
+            article=article, file=f, uploaded_by=request.user
+        )
+        return Response(
+            {
+                "id": asset.pk,
+                "url": request.build_absolute_uri(asset.file.url),
+                "filename": asset.filename,
+            },
+            status=201,
+        )
 
     @action(detail=False, methods=["get"])
     def search(self, request):

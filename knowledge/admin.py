@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Article, ArticleRevision, KbSearchLog
+from .models import Article, ArticleAsset, ArticleRevision, KbSearchLog
 
 
 @admin.register(ArticleRevision)
@@ -9,6 +9,13 @@ class ArticleRevisionAdmin(admin.ModelAdmin):
     list_filter = ("edited_at",)
     search_fields = ("article__title", "content")
     readonly_fields = ("article", "title", "content", "edited_by", "edited_at")
+
+
+@admin.register(ArticleAsset)
+class ArticleAssetAdmin(admin.ModelAdmin):
+    list_display = ("article", "filename", "uploaded_by", "uploaded_at")
+    search_fields = ("article__title", "filename")
+    readonly_fields = ("uploaded_at",)
 
 
 @admin.register(Article)

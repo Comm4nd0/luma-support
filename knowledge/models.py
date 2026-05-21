@@ -99,6 +99,44 @@ class Article(models.Model):
         )
 
 
+def _article_asset_path(instance, filename):
+    return f"kb/{instance.article_id}/{filename}"
+
+
+class ArticleAsset(models.Model):
+    """File asset (typically an image) attached to a KB article.
+
+    Markdown bodies reference the file by URL — the upload endpoint
+    returns the public URL so the editor can drop a ``![](...)`` link
+    in. No image processing here to keep the surface tiny.
+    """
+
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE, related_name="assets"
+    )
+    file = models.FileField(upload_to=_article_asset_path)
+    filename = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.filename and self.file:
+            self.filename = self.file.name.rsplit("/", 1)[-1]
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.filename or f"asset-{self.pk}"
+
+
 class ArticleRevision(models.Model):
     """Frozen snapshot of an Article's body whenever the body changes.
 

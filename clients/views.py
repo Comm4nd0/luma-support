@@ -34,6 +34,65 @@ class ClientViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return _scope_to_user_client(super().get_queryset(), self.request.user, "id")
 
+    @action(detail=True, methods=["get"], url_path="gdpr-export")
+    def gdpr_export(self, request, pk=None):
+        """Admin-only: full JSON dump of everything we hold on a client.
+
+        Streams as ``application/json`` with an attachment header so the
+        browser saves it as a file.
+        """
+        from django.http import JsonResponse
+
+        from audit import log as audit_log
+        from .privacy import export_client
+
+        if not request.user.is_admin_role:
+            from rest_framework.exceptions import PermissionDenied as _PD
+            raise _PD("Admin only.")
+        client = self.get_object()
+        payload = export_client(client)
+        resp = JsonResponse(payload, json_dumps_params={"indent": 2})
+        resp["Content-Disposition"] = (
+            f'attachment; filename="client-{client.pk}-export.json"'
+        )
+        audit_log(
+            "client.gdpr_export",
+            actor=request.user,
+            request=request,
+            target=client,
+        )
+        return resp
+
+    @action(detail=True, methods=["post"], url_path="gdpr-forget")
+    def gdpr_forget(self, request, pk=None):
+        """Admin-only: pseudonymise the client (right-to-be-forgotten).
+
+        Refuses unless ``{"confirm": "<client-id>"}`` matches — the
+        action is destructive and trivial to misclick. Returns the
+        counts of rows touched per category.
+        """
+        from audit import log as audit_log
+        from .privacy import forget_client
+
+        if not request.user.is_admin_role:
+            from rest_framework.exceptions import PermissionDenied as _PD
+            raise _PD("Admin only.")
+        client = self.get_object()
+        if str(request.data.get("confirm")) != str(client.pk):
+            return Response(
+                {"detail": "Pass ``confirm`` matching the client id to proceed."},
+                status=400,
+            )
+        touched = forget_client(client)
+        audit_log(
+            "client.gdpr_forget",
+            actor=request.user,
+            request=request,
+            target=client,
+            touched=touched,
+        )
+        return Response({"touched": touched, "client_id": client.pk})
+
     @action(detail=True, methods=["get"])
     def health(self, request, pk=None):
         """Return the per-component health score breakdown.

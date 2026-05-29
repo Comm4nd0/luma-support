@@ -292,6 +292,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
               actions: [
                 if (isStaff)
                   IconButton(
+                    icon: const LumaIcon(PhosphorIconsDuotone.kanban),
+                    tooltip: 'Board view',
+                    onPressed: () => context.push('/tickets/board'),
+                  ),
+                if (isStaff)
+                  IconButton(
                     icon: const LumaIcon(PhosphorIconsDuotone.bookmarkSimple),
                     tooltip: 'Save current view',
                     onPressed: _saveCurrent,

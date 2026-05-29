@@ -193,6 +193,72 @@ class RecoveryCodesView(LoginRequiredMixin, View):
         return redirect("portal:recovery_codes")
 
 
+class SessionsView(LoginRequiredMixin, View):
+    """Active JWT refresh-token sessions for the signed-in user.
+
+    Web parity with the mobile Sessions screen: lists every outstanding
+    (non-expired, non-blacklisted) refresh token — i.e. mobile / API
+    logins — and lets the user revoke one or all of them. Reuses the same
+    blacklist mechanism as the ``/api/v1/auth/sessions/`` endpoints so the
+    two front-ends stay consistent. The portal itself uses Django session
+    auth, so revoking here never logs the user out of the web portal.
+    """
+
+    template_name = "portal/sessions.html"
+
+    def _outstanding(self, user):
+        from django.utils import timezone
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+            OutstandingToken,
+        )
+
+        blacklisted = set(
+            BlacklistedToken.objects.values_list("token_id", flat=True)
+        )
+        now = timezone.now()
+        return [
+            tok
+            for tok in OutstandingToken.objects.filter(user=user).order_by(
+                "-created_at"
+            )
+            if tok.id not in blacklisted and tok.expires_at >= now
+        ]
+
+    def get(self, request):
+        from django.template.response import TemplateResponse
+
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {"sessions": self._outstanding(request.user), "active": "profile"},
+        )
+
+    def post(self, request):
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+            OutstandingToken,
+        )
+
+        action = request.POST.get("action")
+        if action == "revoke_all":
+            n = 0
+            for tok in OutstandingToken.objects.filter(user=request.user):
+                _, created = BlacklistedToken.objects.get_or_create(token=tok)
+                n += 1 if created else 0
+            messages.success(request, f"Revoked {n} session(s).")
+        else:
+            tok = OutstandingToken.objects.filter(
+                pk=request.POST.get("session_id") or 0, user=request.user
+            ).first()
+            if tok is None:
+                messages.error(request, "Session not found.")
+            else:
+                BlacklistedToken.objects.get_or_create(token=tok)
+                messages.success(request, "Session revoked.")
+        return redirect("portal:sessions")
+
+
 class TotpVerifyView(_PendingUserMixin, View):
     template_name = "portal/totp_verify.html"
 

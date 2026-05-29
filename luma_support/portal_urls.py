@@ -20,6 +20,7 @@ urlpatterns = [
     path("2fa/verify/", views.TotpVerifyView.as_view(), name="totp_verify"),
     path("2fa/qr.svg", views.TotpQrView.as_view(), name="totp_qr"),
     path("2fa/recovery-codes/", views.RecoveryCodesView.as_view(), name="recovery_codes"),
+    path("sessions/", views.SessionsView.as_view(), name="sessions"),
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     # Tickets
     path("tickets/", views.TicketListView.as_view(), name="ticket_list"),

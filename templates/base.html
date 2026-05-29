@@ -51,6 +51,7 @@
     </nav>
     <div class="user-actions">
       <span class="user-email">{{ user.email }}</span>
+      <a class="btn btn-ghost btn-sm" href="{% url 'portal:sessions' %}">Sessions</a>
       <a class="btn btn-ghost btn-sm" href="{% url 'admin:index' %}">Admin</a>
       <form method="post" action="{% url 'portal:logout' %}" class="inline-form">
         {% csrf_token %}

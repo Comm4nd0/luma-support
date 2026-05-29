@@ -56,6 +56,25 @@ String statusToWire(TicketStatus s) {
   }
 }
 
+/// Human label for a status — matches the portal's Ticket.Status choices so
+/// the Kanban lanes read the same on both front-ends.
+String statusLabel(TicketStatus s) {
+  switch (s) {
+    case TicketStatus.newTicket:
+      return 'New';
+    case TicketStatus.assigned:
+      return 'Assigned';
+    case TicketStatus.inProgress:
+      return 'In progress';
+    case TicketStatus.waiting:
+      return 'Waiting on client';
+    case TicketStatus.resolved:
+      return 'Resolved';
+    case TicketStatus.closed:
+      return 'Closed';
+  }
+}
+
 class CsatResponse {
   CsatResponse({
     required this.id,

@@ -91,3 +91,66 @@ def test_other_users_session_cannot_be_revoked():
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {b_tok['access']}")
     resp = c.post(f"/api/v1/auth/sessions/{a_sess.pk}/revoke/")
     assert resp.status_code == 404
+
+
+# ----- portal (server-rendered) sessions page — web/mobile parity ------
+
+
+def test_portal_sessions_page_lists_outstanding_tokens(django_user_model):
+    from django.test import Client as DjangoClient
+
+    u = _user()
+    _login(u)  # mints one outstanding refresh token
+    c = DjangoClient()
+    c.force_login(u)
+    resp = c.get("/sessions/")
+    assert resp.status_code == 200
+    assert len(resp.context["sessions"]) == 1
+
+
+def test_portal_sessions_revoke_blacklists_one_token():
+    from django.test import Client as DjangoClient
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    u = _user()
+    _login(u)
+    sess = OutstandingToken.objects.get(user=u)
+    c = DjangoClient()
+    c.force_login(u)
+    resp = c.post("/sessions/", {"action": "revoke", "session_id": sess.pk})
+    assert resp.status_code == 302
+    assert BlacklistedToken.objects.filter(token=sess).exists()
+
+
+def test_portal_sessions_revoke_all_blacklists_every_token():
+    from django.test import Client as DjangoClient
+    from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+
+    u = _user()
+    _login(u)
+    _login(u)
+    c = DjangoClient()
+    c.force_login(u)
+    resp = c.post("/sessions/", {"action": "revoke_all"})
+    assert resp.status_code == 302
+    assert BlacklistedToken.objects.filter(token__user=u).count() == 2
+
+
+def test_portal_sessions_cannot_revoke_another_users_token():
+    from django.test import Client as DjangoClient
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    a = _user(email="a@luma.test")
+    b = _user(email="b@luma.test")
+    _login(a)
+    a_sess = OutstandingToken.objects.get(user=a)
+    c = DjangoClient()
+    c.force_login(b)
+    c.post("/sessions/", {"action": "revoke", "session_id": a_sess.pk})
+    assert not BlacklistedToken.objects.filter(token=a_sess).exists()

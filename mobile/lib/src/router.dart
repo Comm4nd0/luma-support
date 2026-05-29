@@ -38,6 +38,7 @@ import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
 import 'screens/site_visits_screen.dart';
 import 'screens/social_inbox_screen.dart';
+import 'screens/ticket_board_screen.dart';
 import 'screens/ticket_create_screen.dart';
 import 'screens/ticket_detail_screen.dart';
 import 'screens/ticket_list_screen.dart';
@@ -123,6 +124,10 @@ GoRouter buildAppRouter({
               ? const ClientShell(child: TicketListScreen())
               : const EngineerShell(child: TicketListScreen());
         },
+      ),
+      GoRoute(
+        path: '/tickets/board',
+        builder: (_, __) => const EngineerShell(child: TicketBoardScreen()),
       ),
       GoRoute(
         path: '/tickets/new',

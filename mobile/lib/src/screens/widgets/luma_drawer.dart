@@ -45,6 +45,13 @@ class LumaDrawer extends StatelessWidget {
               ),
             if (isStaff)
               ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.kanban),
+                title: const Text('Board'),
+                subtitle: const Text('Tickets by status'),
+                onTap: () => go('/tickets/board'),
+              ),
+            if (isStaff)
+              ListTile(
                 leading: const LumaIcon(PhosphorIconsDuotone.funnel),
                 title: const Text('Leads'),
                 subtitle: const Text('Sales pipeline and follow-ups'),

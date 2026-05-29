@@ -1,0 +1,8 @@
+# Developer / CI tooling. Not installed in the production image.
+-r requirements.txt
+
+ruff==0.15.15        # linter (see [tool.ruff] in pyproject.toml)
+pytest-cov==5.0.0    # coverage reporting for the test suite
+pip-audit==2.7.3     # dependency CVE scanner
+bandit==1.7.9        # Python security linter
+pre-commit==3.7.1    # local git hooks (see .pre-commit-config.yaml)

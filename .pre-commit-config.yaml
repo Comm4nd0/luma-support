@@ -1,0 +1,22 @@
+# Local git hooks. Install once with: pre-commit install
+# Run against everything with: pre-commit run --all-files
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      # Lint (and auto-fix) per the [tool.ruff] config in pyproject.toml.
+      # `ruff format` is intentionally not wired in yet: the existing tree
+      # isn't ruff-formatted, so enabling it would rewrite ~230 files.
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^mobile/
+      - id: end-of-file-fixer
+        exclude: ^mobile/
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files

@@ -1,0 +1,54 @@
+[tool.ruff]
+# Match the project's hand-written style. Auto-generated migrations are
+# linted for correctness but exempt from line-length (see per-file-ignores).
+line-length = 100
+target-version = "py311"
+extend-exclude = ["mobile"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+]
+# BLE001 (blind-except) is intentionally not selected: the codebase makes
+# deliberate, logged best-effort catches (AI fallbacks, webhook dispatch).
+# Existing `# noqa: BLE001` markers are left in place as documentation.
+
+[tool.ruff.lint.per-file-ignores]
+# Django auto-generates these; don't fight their formatting.
+"*/migrations/*" = ["E501"]
+# Test files lean on long literal fixtures and unused-import side effects.
+"conftest.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "accounts", "audit", "billing", "clients", "features", "knowledge",
+    "leads", "notifications", "quotes", "social", "system", "tickets",
+    "luma_support",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/test_*.py",
+    "*/tests.py",
+    "conftest.py",
+    "manage.py",
+    "deploy.py",
+    ".venv/*",
+    "luma_support/asgi.py",
+    "luma_support/wsgi.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+

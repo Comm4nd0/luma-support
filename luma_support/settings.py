@@ -279,6 +279,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notifications.tasks.check_sla_warnings",
         "schedule": timedelta(minutes=5),
     },
+    "sla-risk-digest": {
+        "task": "notifications.tasks.send_sla_risk_digest",
+        "schedule": crontab(hour=8, minute=0),
+    },
     "generate-contract-invoices": {
         "task": "billing.tasks.generate_contract_invoices",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),

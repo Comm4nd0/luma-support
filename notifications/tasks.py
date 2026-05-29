@@ -195,6 +195,66 @@ def check_sla_warnings():
     return f"sla-warnings: {notified} notifications created"
 
 
+@shared_task
+def send_sla_risk_digest(within_hours: int = 8) -> str:
+    """Daily rollup of breached + approaching-SLA tickets, emailed to admins.
+
+    Complements ``check_sla_warnings`` (which fires per-ticket every 5 min):
+    this is a once-a-day, prioritised "state of the SLAs" summary so Marco
+    gets one actionable list each morning instead of a stream of pings. An
+    in-app Notification is also created per admin, so the same digest shows
+    up in the portal Alerts panel and the mobile notifications inbox
+    (web/mobile parity). No email is sent when nothing is at risk.
+    """
+    from tickets.models import Ticket
+
+    User = get_user_model()
+    tickets = list(
+        Ticket.objects.sla_warnings(threshold_minutes=within_hours * 60)
+        .select_related("client", "assigned_to")
+    )
+    admins = list(User.objects.filter(role="admin", is_active=True))
+    if not tickets or not admins:
+        return f"sla-digest: {len(tickets)} at-risk, {len(admins)} admins — skipped"
+
+    breached = [t for t in tickets if t.is_breached]
+    at_risk = [t for t in tickets if not t.is_breached]
+
+    def _line(t):
+        who = t.assigned_to.email if t.assigned_to else "unassigned"
+        return (
+            f"  #{t.pk} [{t.get_priority_display()}] {t.client.name} — "
+            f"{t.subject} (due {t.sla_deadline:%Y-%m-%d %H:%M}, {who})"
+        )
+
+    parts = []
+    if breached:
+        parts.append("BREACHED:")
+        parts += [_line(t) for t in breached]
+        parts.append("")
+    if at_risk:
+        parts.append(f"APPROACHING (next {within_hours}h):")
+        parts += [_line(t) for t in at_risk]
+    body = "\n".join(parts)
+    subject = f"SLA digest: {len(breached)} breached, {len(at_risk)} at risk"
+
+    send_mail(
+        subject,
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [a.email for a in admins if a.email],
+        fail_silently=False,
+    )
+    for a in admins:
+        Notification.objects.create(
+            user=a,
+            type=Notification.Type.SYSTEM_ALERT,
+            title=subject,
+            body=body[:500],
+        )
+    return f"sla-digest: emailed {len(admins)} admins about {len(tickets)} tickets"
+
+
 # Errors from firebase_admin.messaging that mean a device token is gone for good.
 _DEAD_TOKEN_ERRORS = frozenset(
     {"UNREGISTERED", "INVALID_ARGUMENT", "NOT_FOUND", "InvalidRegistration"}

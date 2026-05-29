@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Clear queue · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1 style="margin: 0;">Clear queue</h1>
+  <a class="btn btn-ghost btn-sm" href="{% url 'portal:ticket_list' %}">All tickets</a>
+</div>
+
+<div class="card">
+  <p class="muted">
+    Claude's suggested next action for each of your open tickets, soonest SLA
+    first. Approve a close inline; reply / ask / defer open the ticket so you
+    can act there. Suggestions refresh on every visit.
+  </p>
+
+  {% if not ai_enabled %}
+    <p>AI suggestions are disabled on this server (no <code>ANTHROPIC_API_KEY</code>).
+       You have <strong>{{ open_count }}</strong> open ticket{{ open_count|pluralize }} assigned to you —
+       <a href="{% url 'portal:ticket_list' %}">open the list</a> to work them.</p>
+  {% elif rows %}
+    <table class="table">
+      <thead><tr><th>#</th><th>Subject</th><th>Client</th><th>Suggested</th><th>Why</th><th></th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td><a href="{% url 'portal:ticket_detail' row.ticket.pk %}">#{{ row.ticket.pk }}</a></td>
+            <td>{{ row.ticket.subject|truncatechars:40 }}</td>
+            <td>{{ row.ticket.client.name }}</td>
+            <td>
+              <span class="pill {% if row.action == 'close' %}pill-low{% elif row.action == 'defer' %}pill-medium{% else %}pill-high{% endif %}">
+                {{ row.action|title }}
+              </span>
+            </td>
+            <td class="muted">{{ row.reason|truncatechars:80 }}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              {% if row.action == 'close' %}
+                <form method="post" style="display: inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="ticket_id" value="{{ row.ticket.pk }}">
+                  <button class="btn btn-ghost btn-sm" type="submit"
+                          onclick="return confirm('Close ticket #{{ row.ticket.pk }}?');">Close now</button>
+                </form>
+              {% else %}
+                <a class="btn btn-ghost btn-sm" href="{% url 'portal:ticket_detail' row.ticket.pk %}">Open</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>Inbox zero — no open tickets assigned to you. 🎉</p>
+  {% endif %}
+</div>
+{% endblock %}

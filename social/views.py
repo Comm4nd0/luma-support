@@ -150,6 +150,66 @@ class SocialSettingsView(View):
         )
 
 
+class SocialInboxView(View):
+    """Server-rendered social inbox triage — parity with the mobile Social
+    inbox screen.
+
+    Lists inbox items (open by default, filterable by status) and lets staff
+    dismiss one or convert it to a ticket. Reuses the same status transition
+    + ``convert_inbox_item_to_ticket`` helper + audit events as the DRF
+    ``/api/v1/social/inbox/`` endpoints, so both front-ends behave identically.
+    """
+
+    template_name = "portal/social/inbox.html"
+
+    def get(self, request):
+        if not getattr(request.user, "can_view_all", False):
+            return redirect("portal:dashboard")
+        status_filter = request.GET.get("status", InboxStatus.OPEN)
+        qs = SocialInboxItem.objects.select_related("account", "converted_ticket")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "items": qs[:100],
+                "status_filter": status_filter,
+                "statuses": InboxStatus.choices,
+                "open_count": SocialInboxItem.objects.filter(
+                    status=InboxStatus.OPEN
+                ).count(),
+                "active": "social",
+            },
+        )
+
+    def post(self, request):
+        if not getattr(request.user, "can_view_all", False):
+            return redirect("portal:dashboard")
+        item = get_object_or_404(
+            SocialInboxItem, pk=request.POST.get("item_id") or 0
+        )
+        action_name = request.POST.get("action")
+        if action_name == "dismiss":
+            if item.status == InboxStatus.OPEN:
+                item.status = InboxStatus.DISMISSED
+                item.save(update_fields=["status"])
+                audit_log("social.inbox_dismiss", request=request, target=item)
+            messages.success(request, "Dismissed.")
+        elif action_name == "convert":
+            from .inbound import convert_inbox_item_to_ticket
+
+            ticket = convert_inbox_item_to_ticket(item, actor=request.user)
+            audit_log(
+                "social.inbox_convert",
+                request=request,
+                target=item,
+                ticket_id=ticket.pk,
+            )
+            messages.success(request, f"Converted to ticket #{ticket.pk}.")
+        return redirect("portal:social_inbox")
+
+
 class SocialConnectView(View):
     """Kick off OAuth: sign state and redirect to the provider."""
 

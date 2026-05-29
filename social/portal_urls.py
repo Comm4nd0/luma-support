@@ -10,6 +10,11 @@ urlpatterns = [
         name="social_settings",
     ),
     path(
+        "social/inbox/",
+        views.SocialInboxView.as_view(),
+        name="social_inbox",
+    ),
+    path(
         "social/connect/<str:platform>/",
         views.SocialConnectView.as_view(),
         name="social_connect",

@@ -122,3 +122,58 @@ def test_inbox_status_filter(account, engineer_user):
     assert resp.status_code == 200
     ids = {r["external_id"] for r in resp.json()["results"]}
     assert ids == {"a"}
+
+
+# ----- portal (server-rendered) inbox triage — web/mobile parity -------
+
+
+@pytest.mark.django_db
+def test_portal_inbox_redirects_non_staff(open_dm):
+    from django.contrib.auth import get_user_model
+    from django.test import Client as DjangoClient
+
+    client_user = get_user_model().objects.create_user(
+        email="cp@example.com", password="pw1!", role="client"
+    )
+    c = DjangoClient()
+    c.force_login(client_user)
+    resp = c.get("/social/inbox/")
+    assert resp.status_code == 302
+
+
+@pytest.mark.django_db
+def test_portal_inbox_lists_open_items(open_dm, engineer_user):
+    from django.test import Client as DjangoClient
+
+    c = DjangoClient()
+    c.force_login(engineer_user)
+    resp = c.get("/social/inbox/")
+    assert resp.status_code == 200
+    assert open_dm in list(resp.context["items"])
+    assert resp.context["open_count"] == 1
+
+
+@pytest.mark.django_db
+def test_portal_inbox_dismiss(open_dm, engineer_user):
+    from django.test import Client as DjangoClient
+
+    c = DjangoClient()
+    c.force_login(engineer_user)
+    resp = c.post("/social/inbox/", {"item_id": open_dm.pk, "action": "dismiss"})
+    assert resp.status_code == 302
+    open_dm.refresh_from_db()
+    assert open_dm.status == InboxStatus.DISMISSED
+    assert AuditLog.objects.filter(action="social.inbox_dismiss").exists()
+
+
+@pytest.mark.django_db
+def test_portal_inbox_convert_creates_ticket(open_dm, engineer_user):
+    from django.test import Client as DjangoClient
+
+    c = DjangoClient()
+    c.force_login(engineer_user)
+    resp = c.post("/social/inbox/", {"item_id": open_dm.pk, "action": "convert"})
+    assert resp.status_code == 302
+    open_dm.refresh_from_db()
+    assert open_dm.converted_ticket_id is not None
+    assert Ticket.objects.filter(pk=open_dm.converted_ticket_id).exists()

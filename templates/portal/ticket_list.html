@@ -7,6 +7,7 @@
   <div style="display:flex; gap:8px;">
     <a class="btn btn-ghost btn-sm" href="{% url 'portal:ticket_board' %}">Board</a>
     {% if user.can_view_all %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'portal:inbox_zero' %}">Clear queue</a>
       <a class="btn btn-ghost btn-sm" href="{% url 'portal:sla_analytics' %}">SLA performance</a>
     {% endif %}
     <a class="btn btn-ghost btn-sm" href="?{{ request.GET.urlencode }}{% if request.GET %}&{% endif %}export=csv">Export CSV</a>

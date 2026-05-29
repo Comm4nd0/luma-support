@@ -737,6 +737,67 @@ class TicketDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
+class InboxZeroView(StaffRequiredMixin, View):
+    """Web "clear my queue" — Claude's suggested next action per open
+    ticket assigned to me.
+
+    Parity with the mobile InboxZeroScreen and the
+    ``/api/v1/tickets/tickets/inbox-zero/`` endpoint: same query (my open
+    tickets, soonest SLA first) and the same ``propose_inbox_actions``
+    ranker, which returns ``[]`` when ANTHROPIC_API_KEY is unset. The
+    "close" action POSTs back here and goes through ``transition_to`` so
+    the audit trail / SLA recompute / push fan-out fire exactly as a
+    normal status change would.
+    """
+
+    template_name = "portal/ticket_inbox_zero.html"
+
+    def _my_open_tickets(self, user):
+        return list(
+            Ticket.objects.open()
+            .filter(assigned_to=user)
+            .select_related("client")
+            .order_by("sla_deadline", "-created_at")[:15]
+        )
+
+    def get(self, request):
+        from django.conf import settings as dj_settings
+        from django.template.response import TemplateResponse
+
+        from tickets.ai import propose_inbox_actions
+
+        tickets = self._my_open_tickets(request.user)
+        by_id = {t.pk: t for t in tickets}
+        rows = [
+            {**s, "ticket": by_id[s["ticket_id"]]}
+            for s in propose_inbox_actions(tickets)
+            if s.get("ticket_id") in by_id
+        ]
+        return TemplateResponse(
+            request,
+            self.template_name,
+            {
+                "rows": rows,
+                "ai_enabled": bool(getattr(dj_settings, "ANTHROPIC_API_KEY", "")),
+                "open_count": len(tickets),
+                "active": "tickets",
+            },
+        )
+
+    def post(self, request):
+        # Only "close" is actioned server-side; reply/ask/defer are links
+        # the engineer follows on the ticket itself (matches mobile).
+        ticket = _scope_tickets(Ticket.objects.all(), request.user).filter(
+            pk=request.POST.get("ticket_id") or 0
+        ).first()
+        if ticket is None:
+            messages.error(request, "Ticket not found.")
+        else:
+            ticket.transition_to(Ticket.Status.CLOSED, by_user=request.user)
+            messages.success(request, f"Ticket #{ticket.pk} closed.")
+        return redirect("portal:inbox_zero")
+
+
 class TicketStatusUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk):
         ticket = get_object_or_404(_scope_tickets(Ticket.objects.all(), request.user), pk=pk)

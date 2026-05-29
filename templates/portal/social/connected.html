@@ -2,7 +2,10 @@
 {% load humanize %}
 {% block title %}Social accounts · Luma Tech Solutions{% endblock %}
 {% block content %}
-<h1>Social accounts</h1>
+<div class="card-header">
+  <h1 style="margin: 0;">Social accounts</h1>
+  <a class="btn btn-ghost btn-sm" href="{% url 'portal:social_inbox' %}">Inbox</a>
+</div>
 
 <div class="grid grid-3" style="margin-bottom: 16px;">
   <div class="card">

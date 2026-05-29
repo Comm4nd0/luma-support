@@ -24,6 +24,7 @@ urlpatterns = [
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     # Tickets
     path("tickets/", views.TicketListView.as_view(), name="ticket_list"),
+    path("tickets/clear-queue/", views.InboxZeroView.as_view(), name="inbox_zero"),
     path(
         "tickets/board/",
         views.TicketBoardView.as_view(),

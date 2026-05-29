@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Site visits · Luma Tech Solutions{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Site visits</h1>
+</div>
+<p class="muted">On-site visit logbook. Start a visit when you arrive and end
+it when you leave — ending optionally bills the time to a ticket.</p>
+
+<div class="card" style="margin-top: 16px;">
+  <h2 style="margin-top: 0;">Start a visit</h2>
+  <form method="post" class="inline-form" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <select name="client" required>
+      <option value="">Select a client…</option>
+      {% for c in clients %}
+        <option value="{{ c.pk }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Start visit</button>
+  </form>
+</div>
+
+{% if open_visits %}
+<div class="card" style="margin-top: 20px;">
+  <h2 style="margin-top: 0;">Open visits</h2>
+  {% for visit in open_visits %}
+    <div class="card" style="margin-bottom: 12px;">
+      <div class="card-header" style="margin-bottom: 8px;">
+        <div>
+          <strong>{{ visit.client.name }}</strong>
+          <div class="muted" style="font-size: 12px;">
+            {{ visit.user.email }} · started {{ visit.started_at|naturaltime }}
+          </div>
+        </div>
+        <span class="pill pill-high">In progress</span>
+      </div>
+      <form method="post" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="end">
+        <input type="hidden" name="visit" value="{{ visit.pk }}">
+        <input type="text" name="notes" placeholder="Notes (optional)" style="flex:1; min-width:180px;">
+        <input type="number" name="ticket" placeholder="Bill to ticket # (optional)" style="width:200px;">
+        <button class="btn" type="submit">End visit</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card list-table" style="margin-top: 20px;">
+  <h2 style="margin-top: 0;">Recent visits</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Client</th>
+        <th>Engineer</th>
+        <th>Started</th>
+        <th>Ended</th>
+        <th>Duration</th>
+        <th>Billed</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for visit in visits %}
+        <tr>
+          <td>{{ visit.client.name }}</td>
+          <td>{{ visit.user.email }}</td>
+          <td>{{ visit.started_at|naturaltime }}</td>
+          <td>
+            {% if visit.ended_at %}{{ visit.ended_at|naturaltime }}
+            {% else %}<span class="pill pill-high">Open</span>{% endif %}
+          </td>
+          <td>{% if visit.duration_minutes is not None %}{{ visit.duration_minutes }} min{% else %}—{% endif %}</td>
+          <td>{% if visit.time_entry_id %}Yes{% else %}—{% endif %}</td>
+          <td>{{ visit.notes|truncatechars:60|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="muted">No site visits logged yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -38,6 +38,7 @@
       <a href="{% url 'portal:kb_list' %}" class="{% if active == 'kb' %}active{% endif %}">Knowledge</a>
       {% if user.can_view_all %}
         <a href="{% url 'portal:schedule_list' %}" class="{% if active == 'schedules' %}active{% endif %}">Maintenance</a>
+        <a href="{% url 'portal:site_visit_list' %}" class="{% if active == 'site_visits' %}active{% endif %}">Site visits</a>
       {% endif %}
       {% if user.is_admin_role %}
         <a href="{% url 'portal:invoice_list' %}" class="{% if active == 'billing' %}active{% endif %}">Billing</a>

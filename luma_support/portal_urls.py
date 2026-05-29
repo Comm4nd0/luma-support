@@ -124,6 +124,12 @@ urlpatterns = [
         views.ArticleHistoryView.as_view(),
         name="kb_history",
     ),
+    # Site visits (staff only)
+    path(
+        "site-visits/",
+        views.SiteVisitListView.as_view(),
+        name="site_visit_list",
+    ),
     # Maintenance schedules (staff only)
     path(
         "schedules/",

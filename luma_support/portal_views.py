@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
@@ -876,6 +876,103 @@ class TimeEntryCreateView(StaffRequiredMixin, View):
         else:
             messages.error(request, "Invalid time entry.")
         return redirect("portal:ticket_detail", pk=pk)
+
+
+class SiteVisitListView(StaffRequiredMixin, View):
+    """Staff-only site-visit logbook for the web portal.
+
+    Web parity for mobile/lib/src/screens/site_visits_screen.dart: list
+    recent visits, start a visit for a client, and end an open visit
+    (optionally billing its minutes to a ticket). Reuses the existing
+    SiteVisit model + audit log; no new backend.
+    """
+
+    template_name = "portal/site_visit_list.html"
+
+    def get(self, request):
+        from clients.models import SiteVisit
+
+        visits = list(
+            SiteVisit.objects.select_related("client", "user")[:100]
+        )
+        return render(
+            request,
+            self.template_name,
+            {
+                "visits": visits,
+                "open_visits": [v for v in visits if v.is_open],
+                "clients": Client.objects.order_by("name"),
+                "active": "site_visits",
+            },
+        )
+
+    def post(self, request):
+        from audit import log as audit_log
+        from clients.models import SiteVisit
+        from tickets.models import Ticket, TimeEntry
+
+        action = request.POST.get("action")
+        if action == "start":
+            client = get_object_or_404(Client, pk=request.POST.get("client"))
+            visit = SiteVisit.objects.create(client=client, user=request.user)
+            audit_log(
+                "site_visit.start",
+                actor=request.user,
+                request=request,
+                target=client,
+                visit_id=visit.pk,
+            )
+            messages.success(request, f"Started a visit at {client.name}.")
+            return redirect("portal:site_visit_list")
+
+        if action == "end":
+            visit = get_object_or_404(SiteVisit, pk=request.POST.get("visit"))
+            if visit.ended_at is not None:
+                messages.error(request, "That visit is already closed.")
+                return redirect("portal:site_visit_list")
+            # Engineers can only close their own visits; admins can close any.
+            if visit.user_id != request.user.pk and not request.user.is_admin_role:
+                messages.error(request, "You can only end your own visits.")
+                return redirect("portal:site_visit_list")
+
+            visit.ended_at = timezone.now()
+            notes = (request.POST.get("notes") or "").strip()
+            if notes:
+                visit.notes = visit.notes + ("\n" if visit.notes else "") + notes
+            # Optionally bill the visit's minutes against a ticket for the client.
+            ticket_id = request.POST.get("ticket") or ""
+            if ticket_id.isdigit() and visit.duration_minutes:
+                ticket = Ticket.objects.filter(
+                    pk=int(ticket_id), client=visit.client
+                ).first()
+                if ticket is None:
+                    messages.warning(
+                        request,
+                        "Ticket not found for that client — visit closed "
+                        "without billing.",
+                    )
+                else:
+                    visit.time_entry = TimeEntry.objects.create(
+                        ticket=ticket,
+                        user=visit.user,
+                        minutes=visit.duration_minutes,
+                        description=f"Site visit at {visit.client.name}",
+                        billable=True,
+                    )
+            visit.save()
+            audit_log(
+                "site_visit.end",
+                actor=request.user,
+                request=request,
+                target=visit.client,
+                visit_id=visit.pk,
+                minutes=visit.duration_minutes,
+            )
+            messages.success(request, "Visit ended.")
+            return redirect("portal:site_visit_list")
+
+        messages.error(request, "Unknown action.")
+        return redirect("portal:site_visit_list")
 
 
 class TicketNoteCreateView(LoginRequiredMixin, View):

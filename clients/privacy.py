@@ -99,7 +99,9 @@ def export_client(client: Client) -> dict[str, Any]:
                 ],
             }
             for t in Ticket.objects.filter(client=client)
-                                   .prefetch_related("notes", "time_entries")
+                                   .prefetch_related(
+                                       "notes__author", "time_entries__user"
+                                   )
         ],
         "csat_responses": [
             {
@@ -134,7 +136,7 @@ def export_client(client: Client) -> dict[str, Any]:
                 "uploaded_at": _ts(d.uploaded_at),
                 "uploaded_by_email": getattr(d.uploaded_by, "email", None),
             }
-            for d in client.documents.all()
+            for d in client.documents.select_related("uploaded_by")
         ],
         "site_visits": [
             {
@@ -149,7 +151,7 @@ def export_client(client: Client) -> dict[str, Any]:
                 "notes": v.notes,
                 "duration_minutes": v.duration_minutes,
             }
-            for v in client.site_visits.all()
+            for v in client.site_visits.select_related("user")
         ],
         "notifications": [
             {

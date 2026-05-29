@@ -223,11 +223,10 @@ class TotpQrView(_PendingUserMixin, View):
     """Inline SVG QR for the pending enrolment secret. Same-origin only."""
 
     def get(self, request):
-        from django.http import HttpResponse, HttpResponseNotFound
-
         import pyotp
         import qrcode
         import qrcode.image.svg as qrsvg
+        from django.http import HttpResponse, HttpResponseNotFound
 
         user = self._pending_user(request)
         secret = request.session.get("pending_totp_secret")
@@ -1132,8 +1131,9 @@ class OnboardingToggleView(StaffRequiredMixin, View):
     """Tick / untick a single onboarding task."""
 
     def post(self, request, pk):
-        from clients.models import ClientOnboardingTask
         from django.utils import timezone as _tz
+
+        from clients.models import ClientOnboardingTask
 
         task = get_object_or_404(ClientOnboardingTask, pk=pk)
         task.done = not task.done

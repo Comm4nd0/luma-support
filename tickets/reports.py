@@ -7,14 +7,11 @@ EmailMessage without writing to disk.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone as _tz
+from datetime import UTC, datetime
 from decimal import Decimal
 from io import BytesIO
-from typing import Optional
 
 from django.db.models import Avg, Q, Sum
-from django.utils import timezone
-
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -33,11 +30,11 @@ _BRAND_TEAL_DARK = colors.HexColor("#0f766e")
 
 
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
-    start = datetime(year, month, 1, tzinfo=_tz.utc)
+    start = datetime(year, month, 1, tzinfo=UTC)
     if month == 12:
-        end = datetime(year + 1, 1, 1, tzinfo=_tz.utc)
+        end = datetime(year + 1, 1, 1, tzinfo=UTC)
     else:
-        end = datetime(year, month + 1, 1, tzinfo=_tz.utc)
+        end = datetime(year, month + 1, 1, tzinfo=UTC)
     return start, end
 
 
@@ -58,7 +55,7 @@ def build_monthly_report_pdf(client, year: int, month: int) -> bytes:
         for t in resolved_qs
         if t.sla_deadline and t.resolved_at and t.resolved_at <= t.sla_deadline
     )
-    sla_pct: Optional[float] = (on_time / resolved * 100) if resolved else None
+    sla_pct: float | None = (on_time / resolved * 100) if resolved else None
 
     total_minutes = (
         TimeEntry.objects.filter(

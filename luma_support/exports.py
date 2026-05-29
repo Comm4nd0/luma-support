@@ -15,7 +15,8 @@ every row matching the active filters.
 from __future__ import annotations
 
 import csv
-from typing import Any, Callable, Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 from django.http import HttpResponse
 from django.utils import timezone

@@ -35,7 +35,7 @@ def test_user_without_client_is_redirected_to_dashboard(engineer_user):
 
 def test_client_user_sees_only_own_systems(client_record):
     other = Client.objects.create(name="Other Co", care_plan_tier=CarePlanTier.NONE)
-    mine = System.objects.create(
+    System.objects.create(
         client=client_record, type=SystemType.NETWORK, name="My WiFi",
         health_status="ok", last_checked_at=timezone.now(),
     )
@@ -58,10 +58,10 @@ def test_open_tickets_for_own_systems_are_listed(client_record):
     sys_ = System.objects.create(
         client=client_record, type=SystemType.NETWORK, name="WiFi",
     )
-    open_ticket = Ticket.objects.create(
+    Ticket.objects.create(
         client=client_record, system=sys_, subject="Speed slow",
     )
-    closed_ticket = Ticket.objects.create(
+    Ticket.objects.create(
         client=client_record, system=sys_, subject="Old issue",
         status=Ticket.Status.CLOSED,
     )

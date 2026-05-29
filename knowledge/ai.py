@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 from django.conf import settings
 from django.db.models import Q

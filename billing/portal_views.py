@@ -377,6 +377,7 @@ class XeroConnectView(AdminPortalMixin, View):
 
     def get(self, request):
         from audit import log as audit_log
+
         from .xero import oauth
 
         state = secrets.token_urlsafe(32)
@@ -456,6 +457,7 @@ class InvoiceSendView(AdminPortalMixin, View):
 
     def post(self, request, pk):
         from audit import log as audit_log
+
         from .tasks import push_invoice_to_xero
 
         invoice = get_object_or_404(Invoice, pk=pk)

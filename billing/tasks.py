@@ -18,7 +18,6 @@ def chase_overdue_invoices():
     Marco. Deduped per-invoice per-bucket via the audit log so the
     daily beat doesn't double-alert.
     """
-    from datetime import timedelta as _td
 
     from django.conf import settings as _settings
     from django.contrib.auth import get_user_model
@@ -163,7 +162,7 @@ def push_invoice_to_xero(self, invoice_id: int, status: str = "AUTHORISED"):
     try:
         api.create_invoice(invoice, status=status)
     except Exception as exc:  # network/auth failures only — let Celery retry.
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
     if status == "AUTHORISED":
         create_stripe_payment_link.delay(invoice.pk)
@@ -176,8 +175,8 @@ def create_stripe_payment_link(self, invoice_id: int):
 
     No-op when STRIPE_API_KEY is empty or the invoice already has a link.
     """
-    from .models import Invoice
     from . import stripe_client
+    from .models import Invoice
 
     if not stripe_client.is_configured():
         return "stripe-disabled"
@@ -192,7 +191,7 @@ def create_stripe_payment_link(self, invoice_id: int):
     try:
         url = stripe_client.create_payment_link(invoice)
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
     if not url:
         return "skipped"
 
@@ -217,7 +216,7 @@ def sync_xero_payments(self):
     try:
         payments = api.list_payments(since=since)
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
     updated = 0
     for raw in payments:

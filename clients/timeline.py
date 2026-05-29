@@ -9,9 +9,9 @@ template can route on `kind` without isinstance() checks.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
 
 
 @dataclass
@@ -37,7 +37,6 @@ def for_client(client) -> list[TimelineEvent]:
 
 
 def _tickets(client) -> Iterable[TimelineEvent]:
-    from tickets.models import Ticket
 
     qs = client.tickets.all().only(
         "pk", "subject", "status", "priority", "created_at"

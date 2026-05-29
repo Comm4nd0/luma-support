@@ -41,8 +41,9 @@ def test_invoice_recalculate_totals_sums_lines(client_record):
 
 @pytest.mark.django_db
 def test_xero_connection_singleton(admin_user):
-    from django.utils import timezone
     from datetime import timedelta
+
+    from django.utils import timezone
 
     from billing.models import XeroConnection
 

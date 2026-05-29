@@ -7,7 +7,7 @@ the timeline without each call site re-deriving the query.
 """
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from django.contrib.contenttypes.models import ContentType
 

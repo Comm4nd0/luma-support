@@ -187,9 +187,7 @@ def test_status_action_rejects_unknown_status(api, admin_user, invoice):
 def test_generate_from_time_creates_time_invoice(
     api, admin_user, client_record
 ):
-    from datetime import timedelta
     from decimal import Decimal
-    from django.utils import timezone
 
     from tickets.models import Ticket, TimeEntry
 

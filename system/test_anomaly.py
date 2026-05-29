@@ -46,7 +46,6 @@ def test_anomaly_flagged_on_spike(client_record):
 
 
 def test_open_ticket_creates_low_priority_draft(client_record):
-    from dataclasses import asdict
 
     from system.anomaly import Anomaly
 

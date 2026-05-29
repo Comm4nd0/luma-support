@@ -340,7 +340,7 @@ def send_push(notification_id: int):
     response = _fcm_send(messages)
 
     dead_tokens = []
-    for token_obj, resp in zip(tokens, response.responses):
+    for token_obj, resp in zip(tokens, response.responses, strict=False):
         if resp.success:
             continue
         code = getattr(resp.exception, "code", None) or getattr(

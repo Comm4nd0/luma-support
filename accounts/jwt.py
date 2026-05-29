@@ -19,6 +19,8 @@ verify view). Client-role users have no TOTP and skip the second factor.
 from __future__ import annotations
 
 from rest_framework import exceptions
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -70,11 +72,6 @@ class TotpAwareTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class TotpAwareTokenObtainPairView(TokenObtainPairView):
     serializer_class = TotpAwareTokenObtainPairSerializer
-
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 
 @api_view(["POST"])

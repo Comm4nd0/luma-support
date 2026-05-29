@@ -2,7 +2,6 @@
 from decimal import Decimal
 
 import pytest
-from django.utils import timezone
 
 from billing.models import Invoice
 from leads.models import ActivityKind, Lead, LeadActivity
@@ -65,8 +64,8 @@ def test_pre_conversion_lead_activity_appears(engineer_user):
 
 @pytest.mark.django_db
 def test_events_sorted_newest_first(client_record):
-    t1 = Ticket.objects.create(client=client_record, subject="A", description="x")
-    t2 = Ticket.objects.create(client=client_record, subject="B", description="x")
+    Ticket.objects.create(client=client_record, subject="A", description="x")
+    Ticket.objects.create(client=client_record, subject="B", description="x")
     events = [e for e in for_client(client_record) if e.kind == "ticket"]
     # The newer ticket sorts before the older one.
     assert events[0].title.endswith("B")

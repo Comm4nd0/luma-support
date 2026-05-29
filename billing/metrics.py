@@ -10,9 +10,8 @@ credits applied to the invoice).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-from typing import Iterable
 
 from django.db.models import Sum
 from django.utils import timezone
@@ -20,7 +19,6 @@ from django.utils import timezone
 from clients.models import CarePlanTier, Client
 
 from .models import Invoice
-
 
 # -----------------------------------------------------------------
 # Current state
@@ -166,7 +164,6 @@ def gross_churn_rate(window_days: int = 90) -> Decimal:
 
     Computed against the MRR at the start of the window.
     """
-    today = _first_of_month(timezone.localdate())
     months = max(1, (window_days // 30))
     history = mrr_history(months=months + 1)
     if len(history) < 2:

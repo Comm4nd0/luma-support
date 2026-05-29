@@ -1,5 +1,5 @@
 """Quiet-hours suppression on push notifications."""
-from datetime import datetime, timezone as _utc
+from datetime import UTC, datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -29,16 +29,16 @@ def test_no_window_means_not_in_quiet_hours():
 def test_simple_window_classifies_local_time():
     u = _user(quiet_hours_start=22, quiet_hours_end=7)
     # 23:00 London = 22:00 UTC (BST in May).
-    quiet = datetime(2026, 5, 20, 23, tzinfo=_LON).astimezone(_utc.utc)
-    daytime = datetime(2026, 5, 20, 14, tzinfo=_LON).astimezone(_utc.utc)
+    quiet = datetime(2026, 5, 20, 23, tzinfo=_LON).astimezone(UTC)
+    daytime = datetime(2026, 5, 20, 14, tzinfo=_LON).astimezone(UTC)
     assert u.is_in_quiet_hours(quiet) is True
     assert u.is_in_quiet_hours(daytime) is False
 
 
 def test_simple_non_wraparound_window():
     u = _user(quiet_hours_start=12, quiet_hours_end=14)
-    inside = datetime(2026, 5, 20, 13, tzinfo=_LON).astimezone(_utc.utc)
-    outside = datetime(2026, 5, 20, 15, tzinfo=_LON).astimezone(_utc.utc)
+    inside = datetime(2026, 5, 20, 13, tzinfo=_LON).astimezone(UTC)
+    outside = datetime(2026, 5, 20, 15, tzinfo=_LON).astimezone(UTC)
     assert u.is_in_quiet_hours(inside) is True
     assert u.is_in_quiet_hours(outside) is False
 

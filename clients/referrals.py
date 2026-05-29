@@ -39,8 +39,9 @@ def credit_referrer(lead) -> ReferralCode | None:
 
     # Idempotency: the audit log is the source of truth for "have we
     # already credited this lead?".
-    from audit.models import AuditLog
     from django.contrib.contenttypes.models import ContentType
+
+    from audit.models import AuditLog
 
     lead_ct = ContentType.objects.get_for_model(lead.__class__)
     already = AuditLog.objects.filter(

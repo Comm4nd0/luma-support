@@ -20,7 +20,6 @@ from notifications.tasks import send_push
 
 from .models import CarePlanTier, Client
 
-
 # Days before renewal where we send a reminder.
 _REMIND_AT_DAYS = (30, 14, 7, 1)
 

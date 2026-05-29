@@ -5,12 +5,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.test import Client as DjangoClient
 from django.urls import reverse
 from django.utils import timezone
 
-from knowledge.ai import Suggestion, suggest_articles
+from knowledge.ai import suggest_articles
 from knowledge.models import Article
 
 pytestmark = pytest.mark.django_db
@@ -81,7 +80,10 @@ def test_claude_suggest_happy_path(kb, settings):
     fake_msg = SimpleNamespace(
         content=[
             SimpleNamespace(
-                text='{"suggestions":[{"slug":"resetting-your-wifi-router","reason":"router reset"}]}'
+                text=(
+                    '{"suggestions":[{"slug":"resetting-your-wifi-router",'
+                    '"reason":"router reset"}]}'
+                )
             )
         ]
     )

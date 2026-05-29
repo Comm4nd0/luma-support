@@ -7,7 +7,7 @@ for DMs and surface `partial_reason` when that's the case.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -86,7 +86,7 @@ def _recent_posts(client: httpx.Client, org_urn: str):
             urns.append(urn)
     latest = max(timestamps) if timestamps else None
     return (
-        datetime.fromtimestamp(latest / 1000, tz=timezone.utc) if latest else None,
+        datetime.fromtimestamp(latest / 1000, tz=UTC) if latest else None,
         urns,
     )
 
@@ -112,7 +112,7 @@ def _mentions_from_comments(client: httpx.Client, post_urns: list[str]):
                     preview=(c.get("message") or {}).get("text", "")[:500],
                     permalink=f"https://www.linkedin.com/feed/update/{urn}/",
                     received_at=(
-                        datetime.fromtimestamp(created / 1000, tz=timezone.utc)
+                        datetime.fromtimestamp(created / 1000, tz=UTC)
                         if created
                         else None
                     ),

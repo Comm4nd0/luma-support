@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def is_enabled(name: str, *, user: Optional[Any] = None) -> bool:
+def is_enabled(name: str, *, user: Any | None = None) -> bool:
     """Return True when feature ``name`` is on for ``user``.
 
     - Missing row -> False (features default off).

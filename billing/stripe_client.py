@@ -6,8 +6,6 @@ on the SDK directly.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from django.conf import settings
 
 
@@ -21,7 +19,7 @@ def _configure() -> None:
     stripe.api_key = settings.STRIPE_API_KEY
 
 
-def create_payment_link(invoice) -> Optional[str]:
+def create_payment_link(invoice) -> str | None:
     """Create (or re-use) a Stripe Payment Link for `invoice`.
 
     Returns the link URL, or None when Stripe isn't configured or the
@@ -56,7 +54,7 @@ def create_payment_link(invoice) -> Optional[str]:
     return link.url
 
 
-def create_customer_portal_session(client, return_url: str) -> Optional[str]:
+def create_customer_portal_session(client, return_url: str) -> str | None:
     """Create (or re-use) a Stripe billing-portal session URL for ``client``.
 
     Lazily creates the Stripe Customer on first call, caching the id on

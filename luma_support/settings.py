@@ -510,11 +510,12 @@ LOGGING = {
 #     op. Opt in by setting SENTRY_TRACES_SAMPLE_RATE > 0.
 SENTRY_DSN = config("SENTRY_DSN", default="")
 if SENTRY_DSN:
+    import logging as _logging
+
     import sentry_sdk
     from sentry_sdk.integrations.celery import CeleryIntegration
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.logging import LoggingIntegration
-    import logging as _logging
 
     _SECRET_KEY_RE = __import__("re").compile(
         r"(?i)(password|secret|token|api[-_]?key|authori[sz]ation|cookie|csrf|fernet)"
@@ -559,7 +560,9 @@ if SENTRY_DSN:
                 event_level=_logging.ERROR,   # event threshold
             ),
         ],
-        environment=config("SENTRY_ENVIRONMENT", default="production" if not DEBUG else "development"),
+        environment=config(
+            "SENTRY_ENVIRONMENT", default="development" if DEBUG else "production"
+        ),
         release=config("SENTRY_RELEASE", default=""),
         send_default_pii=False,
         traces_sample_rate=float(config("SENTRY_TRACES_SAMPLE_RATE", default="0")),

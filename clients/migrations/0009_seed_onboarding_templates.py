@@ -6,7 +6,6 @@ seed function checks for an existing row by title.
 """
 from django.db import migrations
 
-
 _DEFAULTS = [
     ("Send welcome email", 0, 1),
     ("Schedule kickoff call", 1, 3),

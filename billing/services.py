@@ -8,7 +8,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal
 from itertools import groupby
-from typing import Optional
 
 from django.conf import settings
 from django.db import transaction
@@ -33,7 +32,7 @@ def _last_day_of_month(first: date) -> date:
 
 def generate_contract_invoice(
     client: Client, today: date
-) -> tuple[Optional[Invoice], bool]:
+) -> tuple[Invoice | None, bool]:
     """Create this month's contract invoice for `client` if it doesn't exist.
 
     Returns ``(invoice, created)``. ``invoice`` is ``None`` when the client
@@ -92,7 +91,7 @@ def generate_contract_invoice(
 
 
 @transaction.atomic
-def generate_time_invoice(client: Client) -> Optional[Invoice]:
+def generate_time_invoice(client: Client) -> Invoice | None:
     """Bundle unbilled billable time for `client` into a new draft invoice."""
     qs = list(
         TimeEntry.objects.filter(
@@ -112,7 +111,7 @@ def generate_time_invoice(client: Client) -> Optional[Invoice]:
         status=Invoice.Status.DRAFT,
     )
 
-    for ticket_id, group in groupby(qs, key=lambda e: e.ticket_id):
+    for _ticket_id, group in groupby(qs, key=lambda e: e.ticket_id):
         entries = list(group)
         ticket = entries[0].ticket
         total_minutes = sum(e.minutes for e in entries)

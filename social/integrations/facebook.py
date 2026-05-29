@@ -1,7 +1,7 @@
 """Facebook Page integration via Meta Graph API."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import httpx
 
@@ -99,7 +99,7 @@ def _post_comments(client: httpx.Client, page_id: str, token: str):
         f"/{page_id}/posts",
         params={
             "access_token": token,
-            "fields": "id,permalink_url,comments.limit(10){id,from,message,created_time,permalink_url}",
+            "fields": "id,permalink_url,comments.limit(10){id,from,message,created_time,permalink_url}",  # noqa: E501
             "limit": 5,
         },
     )

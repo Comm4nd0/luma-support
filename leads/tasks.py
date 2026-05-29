@@ -20,7 +20,6 @@ from notifications.tasks import send_push
 
 from .models import ACTIVE_STAGES, Lead
 
-
 # Don't re-remind for the same lead within this window.
 _DEDUP_HOURS = 20
 

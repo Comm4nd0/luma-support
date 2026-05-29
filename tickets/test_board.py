@@ -25,7 +25,7 @@ def test_board_groups_open_tickets_by_status(engineer_user, client_record):
 
 def test_board_filters_by_tag(engineer_user, client_record):
     a = Ticket.objects.create(client=client_record, subject="alpha")
-    b = Ticket.objects.create(client=client_record, subject="beta")
+    Ticket.objects.create(client=client_record, subject="beta")
     tag = TicketTag.objects.create(name="UniFi", slug="unifi")
     a.tags.add(tag)
     web = DjangoClient()

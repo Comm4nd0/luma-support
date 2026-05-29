@@ -1,7 +1,7 @@
 """Thin Xero Accounting API wrapper around httpx."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone as dt_tz
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import httpx
@@ -129,7 +129,7 @@ class XeroClient:
         self._ensure_fresh_token()
         # Xero "If-Modified-Since" header is the standard way to filter.
         headers = self._headers()
-        headers["If-Modified-Since"] = since.astimezone(dt_tz.utc).strftime(
+        headers["If-Modified-Since"] = since.astimezone(UTC).strftime(
             "%a, %d %b %Y %H:%M:%S GMT"
         )
         resp = httpx.get(
@@ -151,6 +151,6 @@ def parse_xero_datetime(raw: str) -> datetime:
             if idx > 0:
                 inner = inner[:idx]
                 break
-        return datetime.fromtimestamp(int(inner) / 1000, tz=dt_tz.utc)
+        return datetime.fromtimestamp(int(inner) / 1000, tz=UTC)
     # ISO-8601 fallback.
     return datetime.fromisoformat(raw.replace("Z", "+00:00"))

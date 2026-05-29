@@ -15,11 +15,11 @@ from __future__ import annotations
 import email
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from email.message import Message
 from email.policy import default as default_policy
 from email.utils import getaddresses
-from typing import Iterable, Optional
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -39,10 +39,11 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 @dataclass
 class InboundResult:
-    ticket: Optional[Ticket]
-    note: Optional[TicketNote]
+    ticket: Ticket | None
+    note: TicketNote | None
     created_new_ticket: bool
-    lead: Optional[object] = None  # leads.Lead — typed as object to keep this module free of the leads import
+    # leads.Lead — typed as object to keep this module free of the leads import.
+    lead: object | None = None
 
 
 def parse_message(raw_bytes: bytes) -> Message:
@@ -54,7 +55,7 @@ def _addr_list(msg: Message, header: str) -> list[str]:
     return [a for _, a in getaddresses(raw) if a]
 
 
-def extract_ticket_id(addrs: Iterable[str]) -> Optional[int]:
+def extract_ticket_id(addrs: Iterable[str]) -> int | None:
     for addr in addrs:
         m = _PLUS_ADDRESS_RE.search(addr or "")
         if m:

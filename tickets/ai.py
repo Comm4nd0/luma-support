@@ -73,7 +73,10 @@ def _claude_inbox_zero(tickets) -> list[dict]:
     lines = []
     for t in tickets:
         last_note = t.notes.order_by("-created_at").first()
-        last = (last_note.body[:200] + "…") if last_note and len(last_note.body) > 200 else (last_note.body if last_note else "")
+        if last_note:
+            last = last_note.body[:200] + "…" if len(last_note.body) > 200 else last_note.body
+        else:
+            last = ""
         lines.append(
             f"- id={t.pk} priority={t.priority} status={t.status} "
             f"subject={t.subject!r} last_note={last!r}"

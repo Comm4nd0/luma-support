@@ -1,5 +1,6 @@
-import tickets.models
 from django.db import migrations, models
+
+import tickets.models
 
 
 class Migration(migrations.Migration):

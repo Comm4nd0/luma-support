@@ -1,7 +1,7 @@
 """Instagram Business integration via Meta Graph API (linked Page token)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import httpx
 

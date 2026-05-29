@@ -10,9 +10,8 @@ from rest_framework.test import APIClient
 from billing.models import Invoice
 from leads.models import ActivityKind, Lead, LeadActivity, LeadStage
 
-from .models import Quote, QuoteLine, QuoteStatus, _next_quote_number
+from .models import Quote, QuoteLine, QuoteStatus
 from .services import accept_quote, reject_quote, send_quote
-
 
 # -----------------------------------------------------------------
 # Numbering / totals
@@ -362,7 +361,9 @@ def test_expire_stale_quotes(client_record):
     from .tasks import expire_stale_quotes
 
     expire_stale_quotes()
-    q1.refresh_from_db(); q2.refresh_from_db(); q3.refresh_from_db()
+    q1.refresh_from_db()
+    q2.refresh_from_db()
+    q3.refresh_from_db()
     assert q1.status == QuoteStatus.EXPIRED
     assert q2.status == QuoteStatus.EXPIRED
     assert q3.status == QuoteStatus.SENT

@@ -25,7 +25,6 @@ from django.views import View
 
 from .models import Lead, LeadSource
 
-
 _HONEYPOT_FIELD = "website"
 _COOLDOWN_SECONDS = 60
 

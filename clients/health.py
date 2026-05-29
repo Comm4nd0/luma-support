@@ -20,10 +20,10 @@ to batch the trailing-window queries.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
-from typing import Iterable
 
 from django.db.models import Avg, Count, Q
 from django.utils import timezone

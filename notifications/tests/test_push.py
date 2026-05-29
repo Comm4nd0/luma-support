@@ -16,7 +16,7 @@ def _fake_response(success_count, failures=None):
     """Build an object shaped like firebase_admin.messaging.BatchResponse."""
     failures = failures or []
     responses = []
-    for ok in [True] * success_count:
+    for _ in [True] * success_count:
         responses.append(MagicMock(success=True, exception=None))
     for exc in failures:
         responses.append(MagicMock(success=False, exception=exc))

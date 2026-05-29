@@ -76,7 +76,6 @@ def test_current_mrr_excludes_lapsed_plans():
 @pytest.mark.django_db
 def test_mrr_history_classifies_new_expansion_contraction_churn():
     today = date.today().replace(day=1)
-    two_ago = (today.replace(day=1) - timedelta(days=2)).replace(day=1)
     one_ago = (today - timedelta(days=2)).replace(day=1)
 
     c1 = Client.objects.create(

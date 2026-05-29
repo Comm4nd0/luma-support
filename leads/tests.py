@@ -10,7 +10,6 @@ from notifications.models import Notification
 
 from .models import ActivityKind, Lead, LeadActivity, LeadSource, LeadStage
 
-
 # -----------------------------------------------------------------
 # Model behaviour
 # -----------------------------------------------------------------

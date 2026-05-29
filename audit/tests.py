@@ -4,7 +4,8 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from django.test import Client as DjangoClient, RequestFactory
+from django.test import Client as DjangoClient
+from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
@@ -88,9 +89,10 @@ def test_xero_disconnect_writes_audit_row(admin_user):
 
 
 def test_invoice_send_writes_audit_row(admin_user, monkeypatch):
+    from decimal import Decimal
+
     from billing.models import Invoice, InvoiceLine, XeroConnection
     from clients.models import CarePlanTier, Client
-    from decimal import Decimal
 
     c = Client.objects.create(name="Acme", care_plan_tier=CarePlanTier.PROFESSIONAL)
     inv = Invoice.objects.create(client=c, kind=Invoice.Kind.ONE_OFF, total=Decimal("75.00"))

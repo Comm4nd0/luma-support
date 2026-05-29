@@ -21,7 +21,7 @@ Meta (Facebook Page + Instagram Business):
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 import httpx
@@ -197,4 +197,4 @@ def exchange_code_meta(code: str) -> dict:
 def _expires_at(seconds: int):
     if not seconds:
         return None
-    return datetime.now(tz=timezone.utc) + timedelta(seconds=seconds)
+    return datetime.now(tz=UTC) + timedelta(seconds=seconds)

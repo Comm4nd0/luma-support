@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 from django.core.management import call_command
 from django.utils import timezone
 
-from clients.encryption import _cipher, decrypt, encrypt, rotate
+from clients.encryption import decrypt, encrypt, rotate
 from clients.models import System
 
 pytestmark = pytest.mark.django_db

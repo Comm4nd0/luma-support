@@ -1,9 +1,8 @@
 """Tests for the after-hours autoresponder."""
-from datetime import datetime, timezone as _utc_tz
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-from django.utils import timezone
 
 from features.models import FeatureFlag
 from tickets.models import Ticket
@@ -52,7 +51,7 @@ def test_task_acknowledges_after_hours_ticket(client_record, settings):
     # then enable the flag and invoke the task explicitly to assert behaviour.
     t = Ticket.objects.create(client=client_record, subject="x")
     Ticket.objects.filter(pk=t.pk).update(
-        created_at=_at(5, 23, 23, 0).astimezone(_utc_tz.utc)
+        created_at=_at(5, 23, 23, 0).astimezone(UTC)
     )
     FeatureFlag.objects.create(name="after_hours_oncall", enabled=True)
     assert after_hours_acknowledge(t.pk) == "acknowledged"
@@ -67,7 +66,7 @@ def test_task_acknowledges_after_hours_ticket(client_record, settings):
 def test_in_business_hours_ticket_is_skipped(client_record):
     t = Ticket.objects.create(client=client_record, subject="x")
     Ticket.objects.filter(pk=t.pk).update(
-        created_at=_at(5, 20, 14, 0).astimezone(_utc_tz.utc)
+        created_at=_at(5, 20, 14, 0).astimezone(UTC)
     )
     FeatureFlag.objects.create(name="after_hours_oncall", enabled=True)
     assert after_hours_acknowledge(t.pk) == "in business hours — no-op"
@@ -82,7 +81,7 @@ def test_critical_after_hours_wakes_engineers(
         client=client_record, subject="DOWN", priority=Ticket.Priority.CRITICAL
     )
     Ticket.objects.filter(pk=t.pk).update(
-        created_at=_at(5, 23, 22, 0).astimezone(_utc_tz.utc)
+        created_at=_at(5, 23, 22, 0).astimezone(UTC)
     )
     FeatureFlag.objects.create(name="after_hours_oncall", enabled=True)
     # Clear any notifications produced by the create-time signal (CRITICAL

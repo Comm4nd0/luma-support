@@ -3,17 +3,14 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
-from billing.models import Invoice
 from billing.services import generate_contract_invoice
-from leads.models import Lead, LeadSource, LeadStage
+from leads.models import Lead, LeadSource
 from notifications.models import Notification
 
 from .models import CarePlanTier, Client, ReferralCode
 from .referrals import (
-    apply_credit_to_invoice,
     credit_referrer,
 )
-
 
 # -----------------------------------------------------------------
 # ReferralCode model

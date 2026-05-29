@@ -9,8 +9,7 @@ from django.utils import timezone
 from notifications.models import Notification
 
 from .models import Invoice
-from .tasks import chase_overdue_invoices, _dunning_bucket
-
+from .tasks import _dunning_bucket, chase_overdue_invoices
 
 # -----------------------------------------------------------------
 # Bucket maths
@@ -114,8 +113,9 @@ def test_invoice_within_due_date_not_chased(client_record):
 
 @pytest.mark.django_db
 def test_dunning_events_for_returns_audit_rows(client_record):
-    from .dunning import dunning_events_for
     from audit import log as audit_log
+
+    from .dunning import dunning_events_for
 
     inv = Invoice.objects.create(
         client=client_record,

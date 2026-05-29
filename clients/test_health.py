@@ -73,7 +73,9 @@ def test_systems_down_penalises(client_record):
 @pytest.mark.django_db
 def test_score_clients_is_batched():
     cs = [
-        Client.objects.create(name=f"C{i}", care_plan_tier=CarePlanTier.ESSENTIAL, monthly_fee=Decimal("30"))
+        Client.objects.create(
+            name=f"C{i}", care_plan_tier=CarePlanTier.ESSENTIAL, monthly_fee=Decimal("30")
+        )
         for i in range(5)
     ]
     scores = score_clients(cs)

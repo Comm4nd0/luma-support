@@ -7,7 +7,6 @@ from django.test import Client as DjangoClient
 
 from billing.models import Invoice
 from billing.profitability import client_profitability
-from clients.models import Client
 from tickets.models import Ticket, TimeEntry
 
 pytestmark = pytest.mark.django_db

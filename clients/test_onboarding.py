@@ -4,7 +4,6 @@ import pytest
 from leads.models import Lead, LeadStage
 
 from .models import (
-    Client,
     ClientOnboardingTask,
     OnboardingTaskTemplate,
     seed_onboarding_tasks,

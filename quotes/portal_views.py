@@ -6,11 +6,9 @@ from decimal import Decimal, InvalidOperation
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, ListView
 
@@ -332,7 +330,7 @@ def _parse_line_rows(post) -> list[dict]:
     quantities = post.getlist("line-quantity") or post.getlist("line-quantity[]")
     units = post.getlist("line-unit_amount") or post.getlist("line-unit_amount[]")
     out: list[dict] = []
-    for d, q, u in zip(descriptions, quantities, units):
+    for d, q, u in zip(descriptions, quantities, units, strict=False):
         d = (d or "").strip()
         if not d:
             continue

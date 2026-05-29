@@ -4,7 +4,6 @@ These don't actually contact Sentry — they just verify that the SDK is
 initialised when SENTRY_DSN is set and not when it's empty.
 """
 
-import importlib
 
 import pytest
 

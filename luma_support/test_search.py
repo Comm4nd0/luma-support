@@ -55,5 +55,5 @@ def test_client_user_only_sees_own_tickets(client_record):
     c.force_authenticate(cu)
     resp = c.get("/api/v1/search/?q=wifi")
     labels = [r["label"] for r in resp.json()["results"]]
-    assert any("mine" in l for l in labels)
-    assert not any("other" in l for l in labels)
+    assert any("mine" in lbl for lbl in labels)
+    assert not any("other" in lbl for lbl in labels)

@@ -6,7 +6,7 @@ audit-write failures never break the real flow. Failures are logged.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 def log(
     action: str,
     *,
-    actor: Optional[Any] = None,
-    target: Optional[Any] = None,
-    request: Optional[Any] = None,
+    actor: Any | None = None,
+    target: Any | None = None,
+    request: Any | None = None,
     **metadata: Any,
 ):
     """Drop an AuditLog row and return it (or None on failure).
@@ -30,8 +30,9 @@ def log(
         **metadata: arbitrary JSON-serialisable extras.
     """
     try:
-        from .models import AuditLog
         from django.contrib.contenttypes.models import ContentType
+
+        from .models import AuditLog
 
         kwargs: dict[str, Any] = {"action": action, "metadata": metadata}
         if request is not None:
@@ -53,7 +54,7 @@ def log(
         return None
 
 
-def _client_ip(request) -> Optional[str]:
+def _client_ip(request) -> str | None:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
         return forwarded.split(",")[0].strip()

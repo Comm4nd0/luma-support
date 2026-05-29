@@ -6,7 +6,6 @@ from rest_framework.response import Response
 
 from .models import (
     Attachment,
-    IngestEndpoint,
     MaintenanceSchedule,
     SavedTicketFilter,
     Ticket,
@@ -186,7 +185,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         try:
             target = Ticket.objects.get(pk=target_pk)
         except Ticket.DoesNotExist:
-            raise ValidationError({"target": "no such ticket"})
+            raise ValidationError({"target": "no such ticket"}) from None
         if source.pk == target.pk:
             raise ValidationError({"target": "cannot merge a ticket into itself"})
         if source.client_id != target.client_id:
@@ -200,7 +199,6 @@ class TicketViewSet(viewsets.ModelViewSet):
         for tag in source.tags.all():
             target.tags.add(tag)
 
-        from .models import TicketNote
 
         TicketNote.objects.create(
             ticket=target,
@@ -300,11 +298,11 @@ class TicketViewSet(viewsets.ModelViewSet):
             try:
                 return TicketTag.objects.get(pk=int(value))
             except TicketTag.DoesNotExist:
-                raise ValidationError({"value": "unknown tag id"})
+                raise ValidationError({"value": "unknown tag id"}) from None
         try:
             return TicketTag.objects.get(slug=value)
         except TicketTag.DoesNotExist:
-            raise ValidationError({"value": "unknown tag slug"})
+            raise ValidationError({"value": "unknown tag slug"}) from None
 
     @action(detail=False, methods=["get"], url_path="time-analytics")
     def time_analytics(self, request):
@@ -321,7 +319,6 @@ class TicketViewSet(viewsets.ModelViewSet):
         """
         from datetime import datetime, timedelta
 
-        from django.db.models import Count, Q, Sum
 
         if not request.user.can_view_all:
             raise PermissionDenied("Staff only.")
@@ -337,7 +334,7 @@ class TicketViewSet(viewsets.ModelViewSet):
                 request.query_params.get("to") or today.isoformat()
             ).date()
         except (TypeError, ValueError):
-            raise ValidationError({"detail": "invalid from/to date"})
+            raise ValidationError({"detail": "invalid from/to date"}) from None
         group_by = request.query_params.get("group_by", "client")
         if group_by not in ("client", "user"):
             raise ValidationError({"detail": "group_by must be 'client' or 'user'"})

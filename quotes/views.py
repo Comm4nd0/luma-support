@@ -1,7 +1,7 @@
 """DRF API for quotes — staff-only."""
 from __future__ import annotations
 
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 

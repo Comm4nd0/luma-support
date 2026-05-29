@@ -44,6 +44,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         from django.http import JsonResponse
 
         from audit import log as audit_log
+
         from .privacy import export_client
 
         if not request.user.is_admin_role:
@@ -72,6 +73,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         counts of rows touched per category.
         """
         from audit import log as audit_log
+
         from .privacy import forget_client
 
         if not request.user.is_admin_role:

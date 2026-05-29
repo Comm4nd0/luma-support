@@ -42,6 +42,7 @@ def test_engineer_starts_visit_with_coords(engineer_user, client_record):
 
 def test_end_creates_time_entry(engineer_user, client_record):
     from datetime import timedelta
+
     from django.utils import timezone
 
     visit = SiteVisit.objects.create(client=client_record, user=engineer_user)

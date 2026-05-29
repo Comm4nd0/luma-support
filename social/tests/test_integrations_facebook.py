@@ -1,8 +1,6 @@
 """Facebook Page integration — respx mocks of Graph API responses."""
 from __future__ import annotations
 
-import re
-
 import httpx
 import pytest
 import respx

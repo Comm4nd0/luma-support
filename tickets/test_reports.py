@@ -1,14 +1,14 @@
 """Monthly client PDF report — PDF builder + send_monthly_reports task."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone as _tz
+from datetime import UTC, datetime
 
 import pytest
 from django.core import mail
 from django.utils import timezone
 
 from clients.models import CarePlanTier, Client, Contact
-from tickets.models import CsatResponse, Ticket, TimeEntry
+from tickets.models import Ticket
 from tickets.reports import build_monthly_report_pdf
 from tickets.tasks import send_monthly_reports
 
@@ -25,7 +25,7 @@ def acme(db):
 
 
 def _mid_of(year, month):
-    return datetime(year, month, 15, tzinfo=_tz.utc)
+    return datetime(year, month, 15, tzinfo=UTC)
 
 
 # ----- PDF builder -----------------------------------------------------
@@ -57,8 +57,8 @@ def test_pdf_counts_only_period_tickets(acme):
     from django.db.models import Q
 
     qs = acme.tickets.filter(
-        Q(created_at__gte=datetime(2026, 1, 1, tzinfo=_tz.utc))
-        & Q(created_at__lt=datetime(2026, 2, 1, tzinfo=_tz.utc))
+        Q(created_at__gte=datetime(2026, 1, 1, tzinfo=UTC))
+        & Q(created_at__lt=datetime(2026, 2, 1, tzinfo=UTC))
     )
     assert qs.count() == 1
 

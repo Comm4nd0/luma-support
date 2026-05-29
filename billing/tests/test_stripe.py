@@ -7,12 +7,10 @@ from unittest.mock import patch
 import pytest
 from django.test import Client as DjangoClient
 from django.urls import reverse
-from django.utils import timezone
 
 from billing import stripe_client
 from billing.models import Invoice, Payment
 from billing.tasks import create_stripe_payment_link, push_invoice_to_xero
-
 
 # ----- task -------------------------------------------------------------
 

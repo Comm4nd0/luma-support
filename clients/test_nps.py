@@ -1,7 +1,6 @@
 """Tests for the quarterly NPS survey + Promoter → referral nudge."""
 import pytest
 from django.core import mail
-from django.utils import timezone
 
 from .models import CarePlanTier, Client, Contact, NpsResponse
 from .tasks import send_nps_survey

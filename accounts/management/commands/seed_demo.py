@@ -218,4 +218,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Demo data seeded."))
         self.stdout.write("  Admin login: marco@lumatechsolutions.co.uk / luma_admin_password")
-        self.stdout.write("  Engineer login: engineer@lumatechsolutions.co.uk / luma_engineer_password")
+        self.stdout.write(
+            "  Engineer login: engineer@lumatechsolutions.co.uk / luma_engineer_password"
+        )

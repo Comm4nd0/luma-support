@@ -1,17 +1,38 @@
 """Django settings for luma_support project."""
+import sys
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-insecure-change-me")
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+# DEBUG must be resolved first: several settings below relax their
+# production requirements when DEBUG is on so that a bare `runserver` works
+# without a populated .env. Default to False — opt into local dev with
+# DJANGO_DEBUG=1.
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
+
+# True while the pytest suite is running. The production-only guards below
+# (a required real SECRET_KEY / FERNET key) are relaxed under tests so the
+# suite runs without a populated .env, the same way it relaxes under DEBUG.
+# pytest-django imports this module before any conftest can set env vars, so
+# detect the runner via sys.modules rather than an environment variable.
+TESTING = "pytest" in sys.modules
+_RELAXED = DEBUG or TESTING
+
+_INSECURE_SECRET_KEY = "dev-insecure-change-me"
+SECRET_KEY = config("DJANGO_SECRET_KEY", default=_INSECURE_SECRET_KEY)
+if SECRET_KEY == _INSECURE_SECRET_KEY and not _RELAXED:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a unique secret when DEBUG is off."
+    )
+
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS",
-    default="localhost,127.0.0.1,0.0.0.0",
+    default="localhost,127.0.0.1",
     cast=Csv(),
 )
 
@@ -210,6 +231,28 @@ CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
 )
 
+# --- Security headers ---------------------------------------------------
+# Hardened defaults apply only in a real deployment (DEBUG off and not under
+# the test suite) so local dev / pytest over plain HTTP keep working — an
+# enabled SECURE_SSL_REDIRECT would otherwise 301 every test request. Each
+# value stays individually overridable via env for staging or unusual
+# deployments. Production runs behind Caddy (TLS terminated at the proxy),
+# so trust its X-Forwarded-Proto header.
+_HARDEN = not _RELAXED
+SESSION_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=_HARDEN, cast=bool)
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=_HARDEN, cast=bool)
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=_HARDEN, cast=bool)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_HSTS_SECONDS = config(
+    "SECURE_HSTS_SECONDS", default=31536000 if _HARDEN else 0, cast=int
+)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
+    "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=_HARDEN, cast=bool
+)
+SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=_HARDEN, cast=bool)
+
 # --- Channels / Redis ---------------------------------------------------
 REDIS_URL = config("REDIS_URL", default="redis://redis:6379/0")
 CHANNEL_LAYERS = {
@@ -343,9 +386,22 @@ INBOUND_IMAP_MAILBOX = config("INBOUND_IMAP_MAILBOX", default="INBOX")
 # ciphertexts, then drop the old key. FERNET_KEY is the legacy single-
 # key alias and is honoured when FERNET_KEYS is empty.
 FERNET_KEYS = config("FERNET_KEYS", default="")
-FERNET_KEY = config(
-    "FERNET_KEY", default="aXzDcRGfQa8H_wK3UZ4xG4LnkZbNz7q6uhZWqXoJZ5o="
-)
+FERNET_KEY = config("FERNET_KEY", default="")
+if not FERNET_KEYS and not FERNET_KEY:
+    if _RELAXED:
+        # Local dev / tests: generate an ephemeral key so encrypt/decrypt
+        # round trips work in-process. Anything persisted under it is
+        # unreadable after a restart — which is the point: never store real
+        # credentials without a real key.
+        from cryptography.fernet import Fernet
+
+        FERNET_KEY = Fernet.generate_key().decode()
+    else:
+        raise ImproperlyConfigured(
+            "FERNET_KEYS (preferred) or FERNET_KEY must be set when DEBUG is "
+            "off. Generate one with: python -c \"from cryptography.fernet "
+            "import Fernet; print(Fernet.generate_key().decode())\""
+        )
 
 # --- Push notifications --------------------------------------------------
 # Mobile app push goes through Firebase Cloud Messaging (FCM HTTP v1).

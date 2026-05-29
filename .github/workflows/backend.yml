@@ -25,6 +25,7 @@ jobs:
       - name: Collect static files (needed by some portal tests)
         env:
           DJANGO_SECRET_KEY: ci-secret
+          DJANGO_DEBUG: "1"
           POSTGRES_HOST: ""
         run: python manage.py collectstatic --noinput
 

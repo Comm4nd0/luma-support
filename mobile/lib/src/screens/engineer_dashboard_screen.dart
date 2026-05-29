@@ -102,6 +102,11 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                   _KpiGrid(stats: data.stats!),
                   const SizedBox(height: 8),
                 ],
+                if (data.stats != null &&
+                    (data.stats!.slaDigestBreached +
+                            data.stats!.slaDigestApproaching) >
+                        0)
+                  _SlaDigestBanner(stats: data.stats!),
                 if (data.sla != null) _SlaCard(payload: data.sla!),
                 if (data.stats != null &&
                     data.stats!.socialAccounts.isNotEmpty) ...[
@@ -375,6 +380,76 @@ class _SocialKpiCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Current-state SLA digest — the same breached/approaching split the daily
+/// send_sla_risk_digest email reports, mirroring the portal dashboard's SLA
+/// panel summary. Complements [_SlaCard], which is the 30-day hit-rate view.
+class _SlaDigestBanner extends StatelessWidget {
+  const _SlaDigestBanner({required this.stats});
+  final DashboardStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final breached = stats.slaDigestBreached;
+    final approaching = stats.slaDigestApproaching;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: breached > 0
+          ? Colors.red.withValues(alpha: 0.08)
+          : Colors.amber.withValues(alpha: 0.08),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              'SLA digest',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (breached > 0)
+              _DigestPill(
+                label: '$breached breached',
+                color: Colors.redAccent,
+              ),
+            if (approaching > 0)
+              _DigestPill(
+                label:
+                    '$approaching due in ${stats.slaDigestWithinHours}h',
+                color: Colors.amber.shade800,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DigestPill extends StatelessWidget {
+  const _DigestPill({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
         ),
       ),
     );

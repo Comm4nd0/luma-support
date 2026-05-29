@@ -131,7 +131,51 @@ def test_dashboard_stats_returns_expected_keys(engineer_user, client_record):
         "overdue_invoices",
         "maintenance_due_7d",
         "currency",
+        "sla_digest",
     } <= set(body.keys())
+    assert {"within_hours", "breached", "approaching", "total"} <= set(
+        body["sla_digest"].keys()
+    )
+
+
+def test_dashboard_stats_sla_digest_counts_breached_and_approaching(
+    engineer_user, client_record
+):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from tickets.models import Ticket
+
+    now = timezone.now()
+    # One already breached, one approaching within the 8h window, one safely
+    # outside it (should not be counted).
+    breached = Ticket.objects.create(
+        client=client_record, subject="down", priority="high"
+    )
+    Ticket.objects.filter(pk=breached.pk).update(
+        sla_deadline=now - timedelta(hours=1)
+    )
+    approaching = Ticket.objects.create(
+        client=client_record, subject="soon", priority="high"
+    )
+    Ticket.objects.filter(pk=approaching.pk).update(
+        sla_deadline=now + timedelta(hours=2)
+    )
+    far = Ticket.objects.create(
+        client=client_record, subject="later", priority="low"
+    )
+    Ticket.objects.filter(pk=far.pk).update(
+        sla_deadline=now + timedelta(hours=48)
+    )
+
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    digest = c.get("/api/v1/tickets/tickets/dashboard-stats/").json()["sla_digest"]
+    assert digest["within_hours"] == 8
+    assert digest["breached"] >= 1
+    assert digest["approaching"] >= 1
+    assert digest["total"] == digest["breached"] + digest["approaching"]
 
 
 # ----- /tickets/<id>/merge-into/<target_id>/ ----------------------------

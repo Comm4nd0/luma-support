@@ -355,6 +355,9 @@ class DashboardStats {
     required this.currency,
     required this.socialAccounts,
     required this.socialInboxUnread,
+    required this.slaDigestWithinHours,
+    required this.slaDigestBreached,
+    required this.slaDigestApproaching,
   });
 
   final double unbilledHours;
@@ -366,19 +369,30 @@ class DashboardStats {
   final List<SocialAccountSummary> socialAccounts;
   final int socialInboxUnread;
 
-  factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
-        unbilledHours: (json['unbilled_hours'] as num?)?.toDouble() ?? 0,
-        mtdInvoiced:
-            double.tryParse((json['mtd_invoiced'] ?? '0').toString()) ?? 0,
-        mtdPaid: double.tryParse((json['mtd_paid'] ?? '0').toString()) ?? 0,
-        overdueInvoices: (json['overdue_invoices'] as num?)?.toInt() ?? 0,
-        maintenanceDue7d:
-            (json['maintenance_due_7d'] as num?)?.toInt() ?? 0,
-        currency: json['currency'] as String? ?? 'GBP',
-        socialAccounts: ((json['social_accounts'] as List?) ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map(SocialAccountSummary.fromJson)
-            .toList(),
-        socialInboxUnread: (json['social_inbox_unread'] as num?)?.toInt() ?? 0,
-      );
+  /// SLA digest rollup — mirrors the daily send_sla_risk_digest email and the
+  /// portal dashboard's SLA panel summary.
+  final int slaDigestWithinHours;
+  final int slaDigestBreached;
+  final int slaDigestApproaching;
+
+  factory DashboardStats.fromJson(Map<String, dynamic> json) {
+    final digest = (json['sla_digest'] as Map?) ?? const {};
+    return DashboardStats(
+      unbilledHours: (json['unbilled_hours'] as num?)?.toDouble() ?? 0,
+      mtdInvoiced:
+          double.tryParse((json['mtd_invoiced'] ?? '0').toString()) ?? 0,
+      mtdPaid: double.tryParse((json['mtd_paid'] ?? '0').toString()) ?? 0,
+      overdueInvoices: (json['overdue_invoices'] as num?)?.toInt() ?? 0,
+      maintenanceDue7d: (json['maintenance_due_7d'] as num?)?.toInt() ?? 0,
+      currency: json['currency'] as String? ?? 'GBP',
+      socialAccounts: ((json['social_accounts'] as List?) ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(SocialAccountSummary.fromJson)
+          .toList(),
+      socialInboxUnread: (json['social_inbox_unread'] as num?)?.toInt() ?? 0,
+      slaDigestWithinHours: (digest['within_hours'] as num?)?.toInt() ?? 8,
+      slaDigestBreached: (digest['breached'] as num?)?.toInt() ?? 0,
+      slaDigestApproaching: (digest['approaching'] as num?)?.toInt() ?? 0,
+    );
+  }
 }

@@ -129,6 +129,16 @@
       <h2>SLA warnings</h2>
       <a class="btn btn-sm btn-ghost" href="{% url 'portal:ticket_list' %}">All tickets</a>
     </div>
+    {% if sla_digest.total %}
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        {% if sla_digest.breached %}
+          <span class="pill pill-critical">{{ sla_digest.breached }} breached</span>
+        {% endif %}
+        {% if sla_digest.approaching %}
+          <span class="pill pill-high">{{ sla_digest.approaching }} due in {{ sla_digest.within_hours }}h</span>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if sla_warnings %}
       <table class="table">
         <thead><tr><th>#</th><th>Subject</th><th>Client</th><th>Priority</th><th>Deadline</th></tr></thead>

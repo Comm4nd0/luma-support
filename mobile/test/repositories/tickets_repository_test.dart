@@ -76,6 +76,56 @@ void main() {
     });
   });
 
+  group('TicketsRepository.dashboardStats', () {
+    test('parses KPI bundle including the SLA digest', () async {
+      final ctx = buildApi();
+      when(() => ctx.dio.get<dynamic>(any())).thenAnswer(
+        (_) async => okResponse(ApiPaths.dashboardStats, {
+          'unbilled_hours': 3.5,
+          'mtd_invoiced': '1200.00',
+          'mtd_paid': '800.00',
+          'overdue_invoices': 2,
+          'maintenance_due_7d': 1,
+          'currency': 'GBP',
+          'social_accounts': [],
+          'social_inbox_unread': 0,
+          'sla_digest': {
+            'within_hours': 8,
+            'breached': 1,
+            'approaching': 3,
+            'total': 4,
+          },
+        }),
+      );
+      final stats = await TicketsRepository(ctx.api).dashboardStats();
+      expect(stats.unbilledHours, 3.5);
+      expect(stats.overdueInvoices, 2);
+      expect(stats.slaDigestWithinHours, 8);
+      expect(stats.slaDigestBreached, 1);
+      expect(stats.slaDigestApproaching, 3);
+    });
+
+    test('defaults the SLA digest when the key is absent', () async {
+      final ctx = buildApi();
+      when(() => ctx.dio.get<dynamic>(any())).thenAnswer(
+        (_) async => okResponse(ApiPaths.dashboardStats, {
+          'unbilled_hours': 0,
+          'mtd_invoiced': '0',
+          'mtd_paid': '0',
+          'overdue_invoices': 0,
+          'maintenance_due_7d': 0,
+          'currency': 'GBP',
+          'social_accounts': [],
+          'social_inbox_unread': 0,
+        }),
+      );
+      final stats = await TicketsRepository(ctx.api).dashboardStats();
+      expect(stats.slaDigestWithinHours, 8);
+      expect(stats.slaDigestBreached, 0);
+      expect(stats.slaDigestApproaching, 0);
+    });
+  });
+
   group('TicketsRepository.get', () {
     test('returns a single ticket', () async {
       final ctx = buildApi();

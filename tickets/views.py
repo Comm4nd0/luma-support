@@ -673,6 +673,17 @@ class TicketViewSet(viewsets.ModelViewSet):
             status=InboxStatus.OPEN
         ).count()
 
+        # SLA digest rollup — the breached/approaching split reported by the
+        # daily send_sla_risk_digest email, so the mobile dashboard shows the
+        # same "state of the SLAs" the portal dashboard does.
+        digest_within_hours = 8
+        digest_tickets = list(
+            Ticket.objects.sla_warnings(
+                threshold_minutes=digest_within_hours * 60
+            )
+        )
+        digest_breached = sum(1 for t in digest_tickets if t.is_breached)
+
         return Response(
             {
                 "unbilled_hours": float(
@@ -685,6 +696,12 @@ class TicketViewSet(viewsets.ModelViewSet):
                 "currency": getattr(dj_settings, "DEFAULT_CURRENCY", "GBP"),
                 "social_accounts": social_accounts,
                 "social_inbox_unread": social_inbox_unread,
+                "sla_digest": {
+                    "within_hours": digest_within_hours,
+                    "breached": digest_breached,
+                    "approaching": len(digest_tickets) - digest_breached,
+                    "total": len(digest_tickets),
+                },
             }
         )
 

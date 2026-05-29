@@ -273,6 +273,27 @@ class DashboardView(LoginRequiredMixin, View):
             "-created_at"
         )[:10]
 
+        # SLA digest rollup — the same breached/approaching split that the
+        # daily ``send_sla_risk_digest`` email reports, surfaced on the
+        # dashboard so the state of the SLAs is visible without waiting for
+        # the morning mail. Scoped per user (clients see only their own).
+        digest_window_hours = 8
+        digest_tickets = list(
+            _scope_tickets(
+                Ticket.objects.sla_warnings(
+                    threshold_minutes=digest_window_hours * 60
+                ),
+                request.user,
+            )
+        )
+        digest_breached = sum(1 for t in digest_tickets if t.is_breached)
+        sla_digest = {
+            "within_hours": digest_window_hours,
+            "breached": digest_breached,
+            "approaching": len(digest_tickets) - digest_breached,
+            "total": len(digest_tickets),
+        }
+
         # 30-day CSAT roll-up. Scoped to the user's tickets so client
         # users only see their own response history.
         csat_since = timezone.now() - timedelta(days=30)
@@ -285,6 +306,7 @@ class DashboardView(LoginRequiredMixin, View):
         context = {
             "by_priority": list(by_priority),
             "sla_warnings": sla_warnings,
+            "sla_digest": sla_digest,
             "recent": recent,
             "open_count": tickets.filter(open_q).count(),
             "client_count": clients.count(),

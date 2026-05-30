@@ -45,6 +45,10 @@ AppUser _engineer() => AppUser(
       clientId: null,
       isStaff: true,
       isActive: true,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+      quietHoursCriticalOverride: true,
+      totpEnabled: false,
     );
 
 AppUser _client() => AppUser(
@@ -57,6 +61,10 @@ AppUser _client() => AppUser(
       clientId: 5,
       isStaff: false,
       isActive: true,
+      quietHoursStart: null,
+      quietHoursEnd: null,
+      quietHoursCriticalOverride: true,
+      totpEnabled: false,
     );
 
 void main() {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/client.dart';
@@ -157,12 +158,10 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     try {
       final path = await repo.downloadMonthlyReport(widget.clientId);
       if (!mounted) return;
-      final opened = await launchUrl(Uri.file(path));
-      if (!opened) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Saved report to $path')),
-        );
-      }
+      await Share.shareXFiles(
+        [XFile(path, mimeType: 'application/pdf')],
+        subject: 'Monthly support report',
+      );
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Report failed: $e')),

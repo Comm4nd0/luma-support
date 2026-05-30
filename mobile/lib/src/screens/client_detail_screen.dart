@@ -148,6 +148,28 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     }
   }
 
+  Future<void> _downloadMonthlyReport() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = ClientsRepository(context.read<ApiClient>());
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Building this month’s report…')),
+    );
+    try {
+      final path = await repo.downloadMonthlyReport(widget.clientId);
+      if (!mounted) return;
+      final opened = await launchUrl(Uri.file(path));
+      if (!opened) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Saved report to $path')),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Report failed: $e')),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -187,6 +209,19 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
       appBar: AppBar(
         title: const Text('Client'),
         actions: [
+          if (isStaff)
+            IconButton(
+              tooltip: 'Timeline',
+              icon: const Icon(Icons.history),
+              onPressed: () =>
+                  context.push('/clients/${widget.clientId}/timeline'),
+            ),
+          if (isStaff)
+            IconButton(
+              tooltip: 'Monthly report (PDF)',
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              onPressed: _downloadMonthlyReport,
+            ),
           if (isStaff)
             IconButton(
               tooltip: 'Start site visit',

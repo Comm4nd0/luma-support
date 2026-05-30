@@ -96,6 +96,64 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Response({"touched": touched, "client_id": client.pk})
 
     @action(detail=True, methods=["get"])
+    def timeline(self, request, pk=None):
+        """Staff-only unified communication log — tickets, notes, quotes,
+        invoices, lead activity. Same ``for_client`` builder the portal
+        ClientTimelineView renders, serialised for the mobile screen."""
+        from rest_framework.exceptions import PermissionDenied as _PD
+
+        from .timeline import for_client
+
+        if not request.user.can_view_all:
+            raise _PD("Staff only.")
+        client = self.get_object()
+        return Response(
+            [
+                {
+                    "kind": e.kind,
+                    "occurred_at": e.occurred_at,
+                    "title": e.title,
+                    "body": e.body,
+                    "url": e.url,
+                    "pill": e.pill,
+                }
+                for e in for_client(client)
+            ]
+        )
+
+    @action(detail=True, methods=["get"], url_path="monthly-report")
+    def monthly_report(self, request, pk=None):
+        """Staff-only: stream the monthly support PDF for a client.
+
+        Wraps the same ``build_monthly_report_pdf`` the portal download and
+        the Celery monthly-send task use, so all three render identically.
+        Accepts ``?year=&month=`` (defaults to the current month).
+        """
+        from django.http import HttpResponse
+        from django.utils import timezone
+        from rest_framework.exceptions import PermissionDenied as _PD
+
+        from tickets.reports import build_monthly_report_pdf
+
+        if not request.user.can_view_all:
+            raise _PD("Staff only.")
+        client = self.get_object()
+        today = timezone.localdate()
+        try:
+            year = int(request.query_params.get("year", today.year))
+            month = int(request.query_params.get("month", today.month))
+        except (TypeError, ValueError):
+            return Response({"detail": "Invalid year/month."}, status=400)
+        if not (1 <= month <= 12) or year < 2000 or year > 2100:
+            return Response({"detail": "year/month out of range."}, status=400)
+        pdf = build_monthly_report_pdf(client, year, month)
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = (
+            f'attachment; filename="client-{client.pk}-{year}-{month:02d}.pdf"'
+        )
+        return resp
+
+    @action(detail=True, methods=["get"])
     def health(self, request, pk=None):
         """Return the per-component health score breakdown.
 

@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
+import '../services/current_user.dart';
 import '../services/settings_service.dart';
 import '../../src/widgets/luma_icon.dart';
 
@@ -38,6 +39,17 @@ class SettingsScreen extends StatelessWidget {
               'Prompt for Face ID / fingerprint when the app comes back '
               'to the foreground.',
             ),
+          ),
+          ListTile(
+            leading: const LumaIcon(PhosphorIconsDuotone.lockKey),
+            title: const Text('Two-factor authentication'),
+            subtitle: Text(
+              (context.watch<CurrentUser>().user?.totpEnabled ?? false)
+                  ? 'On — authenticator app required at sign-in'
+                  : 'Off — add an authenticator app',
+            ),
+            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+            onTap: () => context.push('/settings/totp'),
           ),
           ListTile(
             leading: const LumaIcon(PhosphorIconsDuotone.keyhole),

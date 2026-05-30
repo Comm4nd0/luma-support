@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'screens/client_dashboard_screen.dart';
 import 'screens/client_detail_screen.dart';
 import 'screens/client_form_screen.dart';
+import 'screens/client_timeline_screen.dart';
 import 'screens/client_list_screen.dart';
 import 'screens/engineer_dashboard_screen.dart';
 import 'screens/invoice_create_screen.dart';
@@ -34,6 +35,7 @@ import 'screens/profile_screen.dart';
 import 'screens/recovery_codes_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/totp_setup_screen.dart';
 import 'screens/shells/client_shell.dart';
 import 'screens/shells/engineer_shell.dart';
 import 'screens/site_visits_screen.dart';
@@ -159,6 +161,12 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/clients/:id/timeline',
+        builder: (_, state) => ClientTimelineScreen(
+          clientId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
         path: '/clients/:id/edit',
         builder: (_, state) {
           final extra = state.extra;
@@ -235,6 +243,10 @@ GoRouter buildAppRouter({
       GoRoute(
         path: '/settings/sessions',
         builder: (_, __) => const SessionsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/totp',
+        builder: (_, __) => const TotpSetupScreen(),
       ),
       GoRoute(
         path: '/site-visits',

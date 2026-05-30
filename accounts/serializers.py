@@ -18,11 +18,12 @@ class UserSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_active",
             "date_joined",
+            "totp_enabled",
             "quiet_hours_start",
             "quiet_hours_end",
             "quiet_hours_critical_override",
         )
-        read_only_fields = ("id", "is_staff", "date_joined")
+        read_only_fields = ("id", "is_staff", "date_joined", "totp_enabled")
 
 
 class UserCreateSerializer(BaseUserCreateSerializer):

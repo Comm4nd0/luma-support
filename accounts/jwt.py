@@ -89,6 +89,60 @@ def regenerate_recovery_codes(request):
     return Response({"codes": codes, "remaining": remaining})
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def totp_setup(request):
+    """POST /api/v1/auth/totp/setup/ — begin TOTP enrolment (mobile).
+
+    Web parity for the portal's session-based TotpSetupView/TotpQrView.
+    Generates a fresh secret, stores it encrypted (``totp_enabled`` stays
+    False until confirmed) and returns the secret + otpauth provisioning
+    URI so the app can render a QR / manual key. Refuses if TOTP is
+    already enabled so an attacker with a live session can't silently
+    rotate the second factor.
+    """
+    import pyotp
+
+    user = request.user
+    if user.totp_enabled:
+        return Response({"detail": "totp_already_enabled"}, status=400)
+    secret = pyotp.random_base32()
+    user.set_totp_secret(secret)
+    user.save(update_fields=["totp_secret_encrypted"])
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=user.email, issuer_name="Luma Tech Solutions"
+    )
+    return Response({"secret": secret, "otpauth_uri": uri})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def totp_confirm(request):
+    """POST /api/v1/auth/totp/confirm/ — finish TOTP enrolment (mobile).
+
+    Body ``{"code": "123456"}``. Verifies against the pending secret from
+    ``totp_setup``; on success enables TOTP and returns a fresh set of
+    recovery codes (shown once). Mirrors the portal's TotpVerifyView.
+    """
+    import pyotp
+
+    from .models import RecoveryCode
+
+    user = request.user
+    if user.totp_enabled:
+        return Response({"detail": "totp_already_enabled"}, status=400)
+    secret = user.get_totp_secret()
+    if not secret:
+        return Response({"detail": "totp_not_started"}, status=400)
+    code = (request.data.get("code") or "").strip().replace(" ", "")
+    if not pyotp.TOTP(secret).verify(code, valid_window=1):
+        return Response({"detail": "invalid_totp"}, status=400)
+    user.totp_enabled = True
+    user.save(update_fields=["totp_enabled"])
+    codes = RecoveryCode.regenerate_for(user)
+    return Response({"enabled": True, "recovery_codes": codes})
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_sessions(request):

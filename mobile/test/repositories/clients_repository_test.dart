@@ -2,12 +2,54 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:luma_support_mobile/src/repositories/clients_repository.dart';
+import 'package:luma_support_mobile/src/services/api_client.dart';
 import 'package:luma_support_mobile/src/services/api_paths.dart';
 
 import '../helpers/mock_dio.dart';
 
 void main() {
   setUpAll(registerMockFallbacks);
+
+  group('ClientsRepository.timeline', () {
+    test('parses the event list into TimelineEvents', () async {
+      final ctx = buildApi();
+      when(() => ctx.dio.get<dynamic>(any())).thenAnswer(
+        (_) async => okResponse(ApiPaths.clientTimeline(7), [
+          {
+            'kind': 'ticket',
+            'occurred_at': '2026-05-20T09:00:00Z',
+            'title': 'Ticket #3: Wi-Fi down',
+            'body': 'High · Open',
+            'url': '/tickets/3/',
+            'pill': 'open',
+          },
+          {
+            'kind': 'invoice',
+            'occurred_at': '2026-05-19T09:00:00Z',
+            'title': 'Invoice INV-2',
+            'body': '',
+            'url': '/billing/invoices/2/',
+            'pill': 'paid',
+          },
+        ]),
+      );
+      final events = await ClientsRepository(ctx.api).timeline(7);
+      expect(events, hasLength(2));
+      expect(events.first.kind, 'ticket');
+      expect(events.first.url, '/tickets/3/');
+      expect(events[1].pill, 'paid');
+    });
+
+    test('wraps DioException as ApiException', () async {
+      final ctx = buildApi();
+      when(() => ctx.dio.get<dynamic>(any()))
+          .thenThrow(dioError(ApiPaths.clientTimeline(7), statusCode: 403));
+      await expectLater(
+        ClientsRepository(ctx.api).timeline(7),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+      );
+    });
+  });
 
   group('ClientsRepository.create', () {
     test('POSTs to /clients/clients/ and returns parsed Client', () async {

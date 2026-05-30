@@ -28,6 +28,7 @@ class AppUser {
     required this.quietHoursStart,
     required this.quietHoursEnd,
     required this.quietHoursCriticalOverride,
+    required this.totpEnabled,
   });
 
   final int id;
@@ -42,6 +43,7 @@ class AppUser {
   final int? quietHoursStart;
   final int? quietHoursEnd;
   final bool quietHoursCriticalOverride;
+  final bool totpEnabled;
 
   bool get isClient => role == UserRole.client;
   bool get isEngineer => role == UserRole.engineer || role == UserRole.admin;
@@ -64,5 +66,6 @@ class AppUser {
         quietHoursEnd: json['quiet_hours_end'] as int?,
         quietHoursCriticalOverride:
             json['quiet_hours_critical_override'] as bool? ?? true,
+        totpEnabled: json['totp_enabled'] as bool? ?? false,
       );
 }

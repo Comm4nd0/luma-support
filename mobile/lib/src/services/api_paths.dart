@@ -13,6 +13,8 @@ class ApiPaths {
   static const String refresh = '/auth/jwt/refresh/';
   static const String me = '/auth/users/me/';
   static const String recoveryCodes = '/auth/recovery-codes/';
+  static const String totpSetup = '/auth/totp/setup/';
+  static const String totpConfirm = '/auth/totp/confirm/';
 
   // Tickets
   static const String tickets = '/tickets/tickets/';
@@ -52,6 +54,9 @@ class ApiPaths {
   static const String clients = '/clients/clients/';
   static String client(int id) => '/clients/clients/$id/';
   static String clientHealth(int id) => '/clients/clients/$id/health/';
+  static String clientTimeline(int id) => '/clients/clients/$id/timeline/';
+  static String clientMonthlyReport(int id) =>
+      '/clients/clients/$id/monthly-report/';
   static const String systems = '/clients/systems/';
   static const String contacts = '/clients/contacts/';
   static const String myReferralCode = '/clients/referral-code/';

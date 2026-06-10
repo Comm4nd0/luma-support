@@ -33,7 +33,10 @@ class Client(models.Model):
     billing_address = models.TextField(blank=True)
 
     care_plan_tier = models.CharField(
-        max_length=16, choices=CarePlanTier.choices, default=CarePlanTier.NONE
+        max_length=16,
+        choices=CarePlanTier.choices,
+        default=CarePlanTier.NONE,
+        db_index=True,
     )
     care_plan_start = models.DateField(null=True, blank=True)
     care_plan_renewal = models.DateField(null=True, blank=True)

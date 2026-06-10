@@ -101,6 +101,11 @@ class Invoice(models.Model):
                 name="uniq_contract_invoice_per_period",
             ),
         ]
+        indexes = [
+            # Dashboard + Xero payment sync filter on status (and the
+            # overdue card adds due_date), so cover both in one index.
+            models.Index(fields=["status", "due_date"]),
+        ]
 
     def __str__(self) -> str:
         return f"Invoice #{self.pk} — {self.client.name}"

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../services/api_client.dart';
 import '../services/current_user.dart';
 import '../services/settings_service.dart';
+import '../../src/widgets/adaptive.dart';
 import '../../src/widgets/luma_icon.dart';
 
 /// User-tweakable mobile preferences: theme, push quiet hours, biometric
@@ -23,70 +25,90 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const _SectionHeader('Appearance'),
-          _ThemeModeTile(current: settings.themeMode, onChanged: (m) {
-            settings.setThemeMode(m);
-          }),
-
-          const SizedBox(height: 16),
-          const _SectionHeader('Security'),
-          SwitchListTile(
-            value: settings.biometricRequired,
-            onChanged: (v) => settings.setBiometricRequired(v),
-            secondary: const LumaIcon(PhosphorIconsDuotone.fingerprint),
-            title: const Text('Require biometric on open'),
-            subtitle: const Text(
-              'Prompt for Face ID / fingerprint when the app comes back '
-              'to the foreground.',
-            ),
-          ),
-          ListTile(
-            leading: const LumaIcon(PhosphorIconsDuotone.lockKey),
-            title: const Text('Two-factor authentication'),
-            subtitle: Text(
-              (context.watch<CurrentUser>().user?.totpEnabled ?? false)
-                  ? 'On — authenticator app required at sign-in'
-                  : 'Off — add an authenticator app',
-            ),
-            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-            onTap: () => context.push('/settings/totp'),
-          ),
-          ListTile(
-            leading: const LumaIcon(PhosphorIconsDuotone.keyhole),
-            title: const Text('Recovery codes'),
-            subtitle: const Text('One-shot codes for when you lose your authenticator'),
-            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-            onTap: () => context.push('/settings/recovery-codes'),
-          ),
-          ListTile(
-            leading: const LumaIcon(PhosphorIconsDuotone.devices),
-            title: const Text('Active sessions'),
-            subtitle: const Text('See where you are signed in and sign out remotely'),
-            trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
-            onTap: () => context.push('/settings/sessions'),
+          LumaGroupedSection(
+            header: 'Appearance',
+            children: [
+              _ThemeModeTile(current: settings.themeMode, onChanged: (m) {
+                settings.setThemeMode(m);
+              }),
+            ],
           ),
 
-          const SizedBox(height: 16),
-          const _SectionHeader('Push notifications'),
-          _QuietHoursTile(settings: settings),
-          SwitchListTile(
-            value: settings.quietHoursCriticalOverride,
-            onChanged: settings.hasQuietHours
-                ? (v) {
-                    settings.setQuietHours(
-                      start: settings.quietHoursStart,
-                      end: settings.quietHoursEnd,
-                      criticalOverride: v,
-                    );
-                    _pushQuietHours(context);
-                  }
-                : null,
-            secondary: const LumaIcon(PhosphorIconsDuotone.warningCircle),
-            title: const Text('Let critical tickets through'),
-            subtitle: const Text(
-              'Wake me for critical tickets and SLA warnings even during '
-              'quiet hours. Strongly recommended.',
-            ),
+          const SizedBox(height: 24),
+          LumaGroupedSection(
+            header: 'Security',
+            children: [
+              ListTile(
+                onTap: () => settings
+                    .setBiometricRequired(!settings.biometricRequired),
+                leading: const LumaIcon(PhosphorIconsDuotone.fingerprint),
+                title: const Text('Require biometric on open'),
+                subtitle: const Text(
+                  'Prompt for Face ID / fingerprint when the app comes back '
+                  'to the foreground.',
+                ),
+                trailing: CupertinoSwitch(
+                  value: settings.biometricRequired,
+                  onChanged: (v) => settings.setBiometricRequired(v),
+                ),
+              ),
+              ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.lockKey),
+                title: const Text('Two-factor authentication'),
+                subtitle: Text(
+                  (context.watch<CurrentUser>().user?.totpEnabled ?? false)
+                      ? 'On — authenticator app required at sign-in'
+                      : 'Off — add an authenticator app',
+                ),
+                trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                onTap: () => context.push('/settings/totp'),
+              ),
+              ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.keyhole),
+                title: const Text('Recovery codes'),
+                subtitle: const Text(
+                    'One-shot codes for when you lose your authenticator'),
+                trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                onTap: () => context.push('/settings/recovery-codes'),
+              ),
+              ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.devices),
+                title: const Text('Active sessions'),
+                subtitle: const Text(
+                    'See where you are signed in and sign out remotely'),
+                trailing: const LumaIcon(PhosphorIconsDuotone.caretRight),
+                onTap: () => context.push('/settings/sessions'),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          LumaGroupedSection(
+            header: 'Push notifications',
+            children: [
+              _QuietHoursTile(settings: settings),
+              ListTile(
+                leading: const LumaIcon(PhosphorIconsDuotone.warningCircle),
+                title: const Text('Let critical tickets through'),
+                subtitle: const Text(
+                  'Wake me for critical tickets and SLA warnings even during '
+                  'quiet hours. Strongly recommended.',
+                ),
+                trailing: CupertinoSwitch(
+                  value: settings.quietHoursCriticalOverride,
+                  onChanged: settings.hasQuietHours
+                      ? (v) {
+                          settings.setQuietHours(
+                            start: settings.quietHoursStart,
+                            end: settings.quietHoursEnd,
+                            criticalOverride: v,
+                          );
+                          _pushQuietHours(context);
+                        }
+                      : null,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -115,27 +137,6 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 4),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
 class _ThemeModeTile extends StatelessWidget {
   const _ThemeModeTile({required this.current, required this.onChanged});
   final ThemeMode current;
@@ -143,29 +144,29 @@ class _ThemeModeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: SegmentedButton<ThemeMode>(
-          segments: const [
-            ButtonSegment(
-              value: ThemeMode.system,
-              label: Text('System'),
-              icon: Icon(Icons.settings_outlined),
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: SizedBox(
+        width: double.infinity,
+        child: CupertinoSlidingSegmentedControl<ThemeMode>(
+          groupValue: current,
+          onValueChanged: (m) {
+            if (m != null) onChanged(m);
+          },
+          children: const {
+            ThemeMode.system: Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text('System'),
             ),
-            ButtonSegment(
-              value: ThemeMode.dark,
-              label: Text('Dark'),
-              icon: Icon(Icons.dark_mode_outlined),
+            ThemeMode.dark: Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text('Dark'),
             ),
-            ButtonSegment(
-              value: ThemeMode.light,
-              label: Text('Light'),
-              icon: Icon(Icons.light_mode_outlined),
+            ThemeMode.light: Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text('Light'),
             ),
-          ],
-          selected: {current},
-          onSelectionChanged: (set) => onChanged(set.first),
+          },
         ),
       ),
     );

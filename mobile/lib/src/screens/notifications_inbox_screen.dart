@@ -55,38 +55,65 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
   Widget build(BuildContext context) {
     final isStaff = context.watch<CurrentUser>().isStaff;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alerts'),
-        actions: [
-          IconButton(
-            tooltip: 'Mark all read',
-            icon: const LumaIcon(PhosphorIconsDuotone.checks),
-            onPressed: _markAllRead,
-          ),
-        ],
-      ),
       drawer: isStaff ? const LumaDrawer() : null,
-      body: RefreshIndicator(
+      body: RefreshIndicator.adaptive(
         onRefresh: _refresh,
+        // The bar offset keeps the spinner clear of the large title.
+        edgeOffset: 120,
         child: FutureBuilder<List<AppNotification>>(
           future: _future,
           builder: (context, snap) {
+            // iOS-style collapsing large title; shared by every state so
+            // the bar never flickers between loading/error/data.
+            final appBar = SliverAppBar.large(
+              title: const Text('Alerts'),
+              actions: [
+                IconButton(
+                  tooltip: 'Mark all read',
+                  icon: const LumaIcon(PhosphorIconsDuotone.checks),
+                  onPressed: _markAllRead,
+                ),
+              ],
+            );
             if (snap.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
+              return CustomScrollView(slivers: [
+                appBar,
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                ),
+              ]);
             }
             if (snap.hasError) {
-              return Center(child: Text('Error: ${snap.error}'));
+              return CustomScrollView(slivers: [
+                appBar,
+                SliverFillRemaining(
+                  child: Center(child: Text('Error: ${snap.error}')),
+                ),
+              ]);
             }
             final items = snap.data ?? const <AppNotification>[];
             if (items.isEmpty) {
-              return const Center(child: Text('No notifications.'));
+              return CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  appBar,
+                  const SliverFillRemaining(
+                    child: Center(child: Text('No notifications.')),
+                  ),
+                ],
+              );
             }
             final fmt = DateFormat.MMMd().add_jm();
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final n = items[i];
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                appBar,
+                SliverPadding(
+                  padding: const EdgeInsets.all(12),
+                  sliver: SliverList.builder(
+                    itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final n = items[i];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
@@ -120,7 +147,10 @@ class _NotificationsInboxScreenState extends State<NotificationsInboxScreen> {
                     ),
                   ),
                 );
-              },
+                    },
+                  ),
+                ),
+              ],
             );
           },
         ),

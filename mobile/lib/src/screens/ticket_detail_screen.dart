@@ -13,6 +13,8 @@ import '../services/api_client.dart';
 import '../services/current_user.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
+import '../widgets/adaptive.dart';
+import '../services/haptics.dart';
 import 'signature_screen.dart';
 import 'ticket_timer_screen.dart';
 
@@ -43,6 +45,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   Future<void> _setStatus(TicketStatus status) async {
+    Haptics.success();
     await _repo.setStatus(widget.ticketId, status);
     _refresh();
   }
@@ -162,27 +165,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   Future<void> _mergeIntoPrompt() async {
     final messenger = ScaffoldMessenger.of(context);
-    final controller = TextEditingController();
-    final targetIdStr = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Merge into ticket'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Target ticket #'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Merge'),
-          ),
-        ],
-      ),
+    final targetIdStr = await promptText(
+      context,
+      title: 'Merge into ticket',
+      placeholder: 'Target ticket #',
+      saveLabel: 'Merge',
+      keyboardType: TextInputType.number,
     );
     if (targetIdStr == null) return;
     final targetId = int.tryParse(targetIdStr.trim());
@@ -209,19 +197,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         );
         return;
       }
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('TL;DR'),
-          content: SingleChildScrollView(child: Text(summary)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
+      await showAppInfo(context, title: 'TL;DR', message: summary,
+          okLabel: 'Close');
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Summarise failed: $e')));
     }

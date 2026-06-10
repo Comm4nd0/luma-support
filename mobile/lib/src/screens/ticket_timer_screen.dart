@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../repositories/tickets_repository.dart';
 import '../services/api_client.dart';
+import '../services/haptics.dart';
 
 /// Per-ticket running timer.
 ///
@@ -63,6 +65,7 @@ class _TicketTimerScreenState extends State<TicketTimerScreen> {
   }
 
   Future<void> _start() async {
+    Haptics.light();
     final now = DateTime.now();
     setState(() {
       _startedAt = now;
@@ -74,6 +77,7 @@ class _TicketTimerScreenState extends State<TicketTimerScreen> {
   }
 
   Future<void> _stop() async {
+    Haptics.success();
     _tick?.cancel();
     final minutes = _elapsed.inSeconds ~/ 60;
     final prefs = await SharedPreferences.getInstance();
@@ -156,10 +160,16 @@ class _TicketTimerScreenState extends State<TicketTimerScreen> {
               onChanged: (v) => _description = v,
             ),
             const SizedBox(height: 12),
-            SwitchListTile.adaptive(
+            ListTile(
+              onTap: running
+                  ? null
+                  : () => setState(() => _billable = !_billable),
               title: const Text('Billable'),
-              value: _billable,
-              onChanged: running ? null : (v) => setState(() => _billable = v),
+              trailing: CupertinoSwitch(
+                value: _billable,
+                onChanged:
+                    running ? null : (v) => setState(() => _billable = v),
+              ),
             ),
             const Spacer(),
             if (!running)

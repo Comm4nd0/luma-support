@@ -73,31 +73,51 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
     final currentUser = context.watch<CurrentUser>();
     final user = currentUser.user;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(user == null ? 'Dashboard' : 'Hi ${user.firstName.isEmpty ? user.email : user.firstName}'),
-        actions: [
-          IconButton(
-            icon: const LumaIcon(PhosphorIconsDuotone.plus),
-            onPressed: () => context.push('/tickets/new'),
-          ),
-        ],
-      ),
       drawer: const LumaDrawer(),
-      body: RefreshIndicator(
+      body: RefreshIndicator.adaptive(
         onRefresh: _refresh,
+        // The bar offset keeps the spinner clear of the large title.
+        edgeOffset: 120,
         child: FutureBuilder<_DashboardData>(
           future: _future,
           builder: (context, snap) {
+            // iOS-style collapsing large title; shared by every state so
+            // the bar never flickers between loading/error/data.
+            final appBar = SliverAppBar.large(
+              title: Text(user == null
+                  ? 'Dashboard'
+                  : 'Hi ${user.firstName.isEmpty ? user.email : user.firstName}'),
+              actions: [
+                IconButton(
+                  icon: const LumaIcon(PhosphorIconsDuotone.plus),
+                  onPressed: () => context.push('/tickets/new'),
+                ),
+              ],
+            );
             if (snap.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
+              return CustomScrollView(slivers: [
+                appBar,
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                ),
+              ]);
             }
             if (snap.hasError) {
-              return Center(child: Text('Error: ${snap.error}'));
+              return CustomScrollView(slivers: [
+                appBar,
+                SliverFillRemaining(
+                  child: Center(child: Text('Error: ${snap.error}')),
+                ),
+              ]);
             }
             final data = snap.data!;
-            return ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                appBar,
+                SliverPadding(
+                  padding: const EdgeInsets.all(12),
+                  sliver: SliverList.list(children: [
                 if (data.stats != null) ...[
                   _KpiGrid(stats: data.stats!),
                   const SizedBox(height: 8),
@@ -141,6 +161,8 @@ class _EngineerDashboardScreenState extends State<EngineerDashboardScreen> {
                 else
                   for (final t in data.open.take(20))
                     TicketTile(ticket: t, onTap: () => context.push('/tickets/${t.id}')),
+                  ]),
+                ),
               ],
             );
           },

@@ -1,9 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/contact.dart';
 import '../repositories/contacts_repository.dart';
 import '../services/api_client.dart';
+import '../widgets/adaptive.dart';
 
 /// Staff-only form for creating/editing a Contact under a Client.
 /// Parity with the portal's /clients/<id>/contacts/new/ and
@@ -105,24 +107,14 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       );
       return;
     }
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete contact?'),
-        content: Text('Remove ${widget.contact!.name} from this client?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await confirmDialog(
+      context,
+      title: 'Delete contact?',
+      message: 'Remove ${widget.contact!.name} from this client?',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ContactsRepository(context.read<ApiClient>())
@@ -179,12 +171,15 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
               decoration: const InputDecoration(labelText: 'Phone'),
             ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              value: _isPrimary,
-              onChanged: (v) => setState(() => _isPrimary = v),
+            ListTile(
+              onTap: () => setState(() => _isPrimary = !_isPrimary),
               title: const Text('Primary contact'),
               subtitle: const Text(
                 'The primary contact mirrors the client name/email/phone.',
+              ),
+              trailing: CupertinoSwitch(
+                value: _isPrimary,
+                onChanged: (v) => setState(() => _isPrimary = v),
               ),
             ),
             const SizedBox(height: 24),

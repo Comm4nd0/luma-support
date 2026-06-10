@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -206,12 +207,15 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              value: _active,
-              onChanged: (v) => setState(() => _active = v),
+            ListTile(
+              onTap: () => setState(() => _active = !_active),
               title: const Text('Active'),
               subtitle: const Text(
                 'Paused schedules stop generating tickets on their cadence.',
+              ),
+              trailing: CupertinoSwitch(
+                value: _active,
+                onChanged: (v) => setState(() => _active = v),
               ),
             ),
             const SizedBox(height: 24),

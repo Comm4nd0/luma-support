@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../repositories/sessions_repository.dart';
 import '../services/api_client.dart';
+import '../widgets/adaptive.dart';
 
 /// Active JWT refresh-token sessions for the current user, with
 /// per-session and revoke-all controls.
@@ -42,27 +43,16 @@ class _SessionsScreenState extends State<SessionsScreen> {
   }
 
   Future<void> _revokeAll() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Sign out everywhere?'),
-        content: const Text(
-          'This will revoke every refresh token tied to your account — '
+    final confirm = await confirmDialog(
+      context,
+      title: 'Sign out everywhere?',
+      message: 'This will revoke every refresh token tied to your account — '
           'including the one this app is using. You will be signed out on '
           'every device, including this one.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Revoke all'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Revoke all',
+      destructive: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       final n = await _repo.revokeAll();

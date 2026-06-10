@@ -7,6 +7,7 @@ import '../models/maintenance_schedule.dart';
 import '../repositories/maintenance_repository.dart';
 import '../services/api_client.dart';
 import 'widgets/luma_drawer.dart';
+import '../widgets/adaptive.dart';
 
 /// Staff-only list of recurring maintenance schedules.
 /// Parity with the portal's /schedules/ page.
@@ -34,24 +35,14 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
   }
 
   Future<void> _delete(MaintenanceSchedule s) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete schedule?'),
-        content: Text('Remove "${s.templateSubject}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await confirmDialog(
+      context,
+      title: 'Delete schedule?',
+      message: 'Remove "${s.templateSubject}"?',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       await _repo.delete(s.id);

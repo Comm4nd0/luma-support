@@ -12,6 +12,7 @@ import 'widgets/luma_drawer.dart';
 import 'widgets/ticket_tile.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
+import '../widgets/adaptive.dart';
 
 class _BulkChoice {
   const _BulkChoice({required this.action, this.value});
@@ -187,27 +188,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
   Future<void> _saveCurrent() async {
     final messenger = ScaffoldMessenger.of(context);
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Save view'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Name'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+    final name = (await promptText(
+      context,
+      title: 'Save view',
+      placeholder: 'Name',
+    ))
+        ?.trim();
     if (name == null || name.isEmpty) return;
     // Encode whatever filter is currently active.
     final params = _activeSaved?.toParams() ??

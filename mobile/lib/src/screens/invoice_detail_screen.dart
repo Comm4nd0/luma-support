@@ -11,6 +11,7 @@ import '../theme.dart';
 import 'widgets/invoice_line_editor.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../src/widgets/luma_icon.dart';
+import '../widgets/adaptive.dart';
 
 class InvoiceDetailScreen extends StatefulWidget {
   const InvoiceDetailScreen({super.key, required this.invoiceId});
@@ -93,25 +94,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     });
   }
 
-  Future<bool> _confirm(String message) async {
-    final res = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-    return res ?? false;
-  }
+  Future<bool> _confirm(String message) =>
+      confirmDialog(context, message: message);
 
   Future<void> _editDueDate(Invoice inv) async {
     final picked = await showDatePicker(
@@ -127,27 +111,11 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
   Future<void> _clearDueDate() => _patch({'clearDueDate': true});
 
   Future<void> _editNotes(Invoice inv) async {
-    final controller = TextEditingController(text: inv.notes);
-    final result = await showDialog<String?>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Notes'),
-        content: TextField(
-          controller: controller,
-          maxLines: 5,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final result = await promptText(
+      context,
+      title: 'Notes',
+      initial: inv.notes,
+      maxLines: 5,
     );
     if (result == null) return;
     await _patch({'notes': result});

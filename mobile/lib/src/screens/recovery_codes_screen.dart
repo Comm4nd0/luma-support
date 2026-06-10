@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../repositories/me_repository.dart';
 import '../services/api_client.dart';
+import '../widgets/adaptive.dart';
 
 /// Generate (and display once) a fresh set of 2FA recovery codes.
 ///
@@ -22,26 +23,15 @@ class _RecoveryCodesScreenState extends State<RecoveryCodesScreen> {
   bool _busy = false;
 
   Future<void> _generate() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Regenerate codes?'),
-        content: const Text(
-          'Any existing recovery codes will be invalidated immediately. '
+    final confirm = await confirmDialog(
+      context,
+      title: 'Regenerate codes?',
+      message: 'Any existing recovery codes will be invalidated immediately. '
           'Save the new codes somewhere safe — they are only shown once.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Regenerate'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Regenerate',
+      destructive: true,
     );
-    if (confirm != true) return;
+    if (!confirm) return;
     setState(() => _busy = true);
     try {
       final codes = await MeRepository(context.read<ApiClient>())

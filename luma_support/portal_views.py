@@ -209,21 +209,19 @@ class SessionsView(LoginRequiredMixin, View):
     def _outstanding(self, user):
         from django.utils import timezone
         from rest_framework_simplejwt.token_blacklist.models import (
-            BlacklistedToken,
             OutstandingToken,
         )
 
-        blacklisted = set(
-            BlacklistedToken.objects.values_list("token_id", flat=True)
+        # BlacklistedToken.token is a OneToOne, so the reverse isnull
+        # lookup filters the blacklist in SQL instead of loading every
+        # token ever issued.
+        return list(
+            OutstandingToken.objects.filter(
+                user=user,
+                expires_at__gte=timezone.now(),
+                blacklistedtoken__isnull=True,
+            ).order_by("-created_at")
         )
-        now = timezone.now()
-        return [
-            tok
-            for tok in OutstandingToken.objects.filter(user=user).order_by(
-                "-created_at"
-            )
-            if tok.id not in blacklisted and tok.expires_at >= now
-        ]
 
     def get(self, request):
         from django.template.response import TemplateResponse
@@ -243,7 +241,9 @@ class SessionsView(LoginRequiredMixin, View):
         action = request.POST.get("action")
         if action == "revoke_all":
             n = 0
-            for tok in OutstandingToken.objects.filter(user=request.user):
+            for tok in OutstandingToken.objects.filter(
+                user=request.user, blacklistedtoken__isnull=True
+            ):
                 _, created = BlacklistedToken.objects.get_or_create(token=tok)
                 n += 1 if created else 0
             messages.success(request, f"Revoked {n} session(s).")
@@ -344,20 +344,24 @@ class DashboardView(LoginRequiredMixin, View):
         # dashboard so the state of the SLAs is visible without waiting for
         # the morning mail. Scoped per user (clients see only their own).
         digest_window_hours = 8
-        digest_tickets = list(
-            _scope_tickets(
-                Ticket.objects.sla_warnings(
-                    threshold_minutes=digest_window_hours * 60
-                ),
-                request.user,
-            )
+        digest_qs = _scope_tickets(
+            Ticket.objects.sla_warnings(
+                threshold_minutes=digest_window_hours * 60
+            ),
+            request.user,
         )
-        digest_breached = sum(1 for t in digest_tickets if t.is_breached)
+        # sla_warnings() already excludes paused tickets, so "breached"
+        # reduces to a deadline-in-the-past count — two COUNTs instead of
+        # materialising every at-risk ticket.
+        digest_total = digest_qs.count()
+        digest_breached = digest_qs.filter(
+            sla_deadline__lt=timezone.now()
+        ).count()
         sla_digest = {
             "within_hours": digest_window_hours,
             "breached": digest_breached,
-            "approaching": len(digest_tickets) - digest_breached,
-            "total": len(digest_tickets),
+            "approaching": digest_total - digest_breached,
+            "total": digest_total,
         }
 
         # 30-day CSAT roll-up. Scoped to the user's tickets so client

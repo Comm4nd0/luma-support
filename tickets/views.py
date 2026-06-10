@@ -680,12 +680,15 @@ class TicketViewSet(viewsets.ModelViewSet):
         # daily send_sla_risk_digest email, so the mobile dashboard shows the
         # same "state of the SLAs" the portal dashboard does.
         digest_within_hours = 8
-        digest_tickets = list(
-            Ticket.objects.sla_warnings(
-                threshold_minutes=digest_within_hours * 60
-            )
+        digest_qs = Ticket.objects.sla_warnings(
+            threshold_minutes=digest_within_hours * 60
         )
-        digest_breached = sum(1 for t in digest_tickets if t.is_breached)
+        # sla_warnings() excludes paused tickets, so "breached" reduces
+        # to a deadline-in-the-past count — no need to materialise rows.
+        digest_total = digest_qs.count()
+        digest_breached = digest_qs.filter(
+            sla_deadline__lt=timezone.now()
+        ).count()
 
         return Response(
             {
@@ -702,8 +705,8 @@ class TicketViewSet(viewsets.ModelViewSet):
                 "sla_digest": {
                     "within_hours": digest_within_hours,
                     "breached": digest_breached,
-                    "approaching": len(digest_tickets) - digest_breached,
-                    "total": len(digest_tickets),
+                    "approaching": digest_total - digest_breached,
+                    "total": digest_total,
                 },
             }
         )

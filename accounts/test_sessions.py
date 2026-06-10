@@ -28,6 +28,40 @@ def _user(**kwargs):
     )
 
 
+def test_portal_sessions_excludes_blacklisted_and_expired():
+    """The portal sessions page lists only live, non-revoked tokens."""
+    from datetime import timedelta
+
+    from django.test import Client as DjangoClient
+    from django.utils import timezone
+    from rest_framework_simplejwt.token_blacklist.models import (
+        BlacklistedToken,
+        OutstandingToken,
+    )
+
+    u = _user()
+    now = timezone.now()
+    live = OutstandingToken.objects.create(
+        user=u, jti="live", token="t1",
+        created_at=now, expires_at=now + timedelta(days=1),
+    )
+    revoked = OutstandingToken.objects.create(
+        user=u, jti="revoked", token="t2",
+        created_at=now, expires_at=now + timedelta(days=1),
+    )
+    BlacklistedToken.objects.create(token=revoked)
+    OutstandingToken.objects.create(
+        user=u, jti="expired", token="t3",
+        created_at=now - timedelta(days=8), expires_at=now - timedelta(days=1),
+    )
+
+    client = DjangoClient()
+    client.force_login(u)
+    resp = client.get("/sessions/")
+    assert resp.status_code == 200
+    assert [t.pk for t in resp.context["sessions"]] == [live.pk]
+
+
 def test_login_creates_outstanding_token():
     from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 

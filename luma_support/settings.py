@@ -290,6 +290,10 @@ else:
         }
     }
 
+# Requests per minute allowed on the token-auth webhook ingest endpoint
+# (per token + caller IP). 0 disables the limiter.
+WEBHOOK_RATE_LIMIT = config("WEBHOOK_RATE_LIMIT", default=30, cast=int)
+
 # --- Celery -------------------------------------------------------------
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://redis:6379/1")
 CELERY_RESULT_BACKEND = config(

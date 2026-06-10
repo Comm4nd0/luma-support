@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -17,10 +19,41 @@ from django.views.decorators.http import require_POST
 
 from .models import IngestEndpoint, Ticket
 
+# Alert payloads are small; anything bigger is abuse or misconfiguration.
+MAX_WEBHOOK_BODY_BYTES = 64 * 1024
+
+
+def _rate_limited(request, token: str) -> bool:
+    """Fixed-window limiter — this is a plain Django view, so the DRF
+    throttles don't apply. Keyed per token-prefix + caller IP so one noisy
+    integration can't starve the others."""
+    limit = getattr(settings, "WEBHOOK_RATE_LIMIT", 30)
+    if limit <= 0:
+        return False
+    window = timezone.now().strftime("%Y%m%d%H%M")
+    key = (
+        f"webhook-rl:{token[:12]}:"
+        f"{request.META.get('REMOTE_ADDR', '')}:{window}"
+    )
+    count = cache.get_or_set(key, 0, timeout=90)
+    if count >= limit:
+        return True
+    try:
+        cache.incr(key)
+    except ValueError:
+        # Key evicted between get_or_set and incr — treat as first hit.
+        cache.set(key, 1, timeout=90)
+    return False
+
 
 @csrf_exempt
 @require_POST
 def webhook_ingest(request, token):
+    if _rate_limited(request, token):
+        return JsonResponse({"detail": "rate limited"}, status=429)
+    if len(request.body) > MAX_WEBHOOK_BODY_BYTES:
+        return JsonResponse({"detail": "payload too large"}, status=413)
+
     endpoint = IngestEndpoint.objects.filter(token=token, enabled=True).first()
     if endpoint is None:
         # 404 to leak as little as possible about whether the token

@@ -108,3 +108,53 @@ def test_bad_json_returns_400_and_stamps_status(client_record):
     ep.refresh_from_db()
     assert ep.last_status == "bad-json"
     assert ep.last_called_at is not None
+
+
+# ----- rate limiting / size caps ----------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
+def test_rate_limit_returns_429(client_record, settings):
+    settings.WEBHOOK_RATE_LIMIT = 3
+    ep = _endpoint(client_record)
+    web = DjangoClient()
+    url = f"/api/v1/tickets/webhook/{ep.token}/"
+    body = json.dumps({"title": "x"})
+    for _ in range(3):
+        assert web.post(
+            url, data=body, content_type="application/json"
+        ).status_code == 201
+    resp = web.post(url, data=body, content_type="application/json")
+    assert resp.status_code == 429
+
+
+def test_rate_limit_disabled_when_zero(client_record, settings):
+    settings.WEBHOOK_RATE_LIMIT = 0
+    ep = _endpoint(client_record)
+    web = DjangoClient()
+    url = f"/api/v1/tickets/webhook/{ep.token}/"
+    body = json.dumps({"title": "x"})
+    for _ in range(5):
+        assert web.post(
+            url, data=body, content_type="application/json"
+        ).status_code == 201
+
+
+def test_oversized_body_returns_413(client_record):
+    ep = _endpoint(client_record)
+    web = DjangoClient()
+    resp = web.post(
+        f"/api/v1/tickets/webhook/{ep.token}/",
+        data=json.dumps({"title": "x", "blob": "y" * (65 * 1024)}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 413
+    assert Ticket.objects.count() == 0

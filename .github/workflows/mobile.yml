@@ -15,7 +15,9 @@ defaults:
     working-directory: mobile
 
 env:
-  FLUTTER_VERSION: "3.22.x"
+  # Track latest 3.x stable — Xcode Cloud clones the stable channel, and
+  # pubspec's `flutter.config` key needs a modern SDK (3.22 rejects it).
+  FLUTTER_VERSION: "3.x"
 
 jobs:
   analyze-and-test:

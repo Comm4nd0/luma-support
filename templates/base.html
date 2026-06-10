@@ -61,14 +61,15 @@
   </div>
 </header>
 {% endif %}
+<div class="toasts" id="toasts">
+  {% for message in messages %}
+    <div class="toast toast-{{ message.tags }}" role="status">
+      <span>{{ message }}</span>
+      <button type="button" class="toast-close" aria-label="Dismiss">&times;</button>
+    </div>
+  {% endfor %}
+</div>
 <main class="page">
-  {% if messages %}
-  <div class="messages">
-    {% for message in messages %}
-      <div class="msg msg-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  </div>
-  {% endif %}
   {% block content %}{% endblock %}
 </main>
 <footer class="footer">
@@ -201,6 +202,7 @@
     async function fetchResults(q) {
       if (inflight) inflight.abort();
       inflight = new AbortController();
+      results.innerHTML = '<li class="cmdk-loading">Searching…</li>';
       try {
         var resp = await fetch("/api/v1/search/?q=" + encodeURIComponent(q),
                                {signal: inflight.signal, credentials: "same-origin"});
@@ -208,6 +210,12 @@
         rows = data.results || [];
         cursor = 0;
         render();
+        if (!rows.length) {
+          var li = document.createElement("li");
+          li.className = "cmdk-loading";
+          li.textContent = "No results for “" + q + "”";
+          results.appendChild(li);
+        }
       } catch (e) { /* aborted or network */ }
     }
 
@@ -236,5 +244,64 @@
   })();
 </script>
 {% endif %}
+<script>
+  (function () {
+    // ----- Toasts: auto-dismiss with hover-pause + close button, and a
+    // window.lumaToast(text, kind) hook for page scripts.
+    var stack = document.getElementById("toasts");
+    function arm(toast) {
+      var timer = setTimeout(function () { dismiss(toast); }, 6000);
+      toast.addEventListener("mouseenter", function () { clearTimeout(timer); });
+      toast.addEventListener("mouseleave", function () {
+        timer = setTimeout(function () { dismiss(toast); }, 2500);
+      });
+      var btn = toast.querySelector(".toast-close");
+      if (btn) btn.addEventListener("click", function () { dismiss(toast); });
+    }
+    function dismiss(toast) {
+      toast.classList.add("toast-leaving");
+      setTimeout(function () { toast.remove(); }, 220);
+    }
+    if (stack) {
+      Array.prototype.forEach.call(stack.children, arm);
+    }
+    window.lumaToast = function (text, kind) {
+      if (!stack) return;
+      var toast = document.createElement("div");
+      toast.className = "toast toast-" + (kind || "info");
+      toast.setAttribute("role", "status");
+      var span = document.createElement("span");
+      span.textContent = text;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "toast-close";
+      btn.setAttribute("aria-label", "Dismiss");
+      btn.innerHTML = "&times;";
+      toast.appendChild(span);
+      toast.appendChild(btn);
+      stack.appendChild(toast);
+      arm(toast);
+    };
+
+    // ----- Scroll the first server-side form error into view.
+    var firstError = document.querySelector(".errorlist, .field-error");
+    if (firstError && firstError.scrollIntoView) {
+      firstError.scrollIntoView({behavior: "smooth", block: "center"});
+    }
+
+    // ----- Double-submit guard: spin + disable the submit button.
+    document.addEventListener("submit", function (e) {
+      var form = e.target;
+      if (!form || form.method.toLowerCase() !== "post") return;
+      var btn = form.querySelector('button[type="submit"], button:not([type])');
+      if (!btn || btn.classList.contains("btn-loading")) return;
+      // Disable after the current tick so the button's value still posts.
+      setTimeout(function () {
+        btn.classList.add("btn-loading");
+        btn.disabled = true;
+      }, 0);
+    });
+  })();
+</script>
 </body>
 </html>

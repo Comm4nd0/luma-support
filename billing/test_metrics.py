@@ -11,6 +11,20 @@ from . import metrics
 from .models import Invoice, InvoiceLine
 
 
+def _months_ago(anchor: date, n: int) -> date:
+    """First of the month `n` calendar months before `anchor`.
+
+    Subtracting fixed day counts and snapping to day 1 can land two
+    offsets in the same month (e.g. 1 June − 62d and − 92d are both
+    March), so use real month arithmetic.
+    """
+    year, month = anchor.year, anchor.month - n
+    while month < 1:
+        month += 12
+        year -= 1
+    return date(year, month, 1)
+
+
 def _make_contract_invoice(client: Client, period_start: date, total: Decimal):
     inv = Invoice.objects.create(
         client=client,
@@ -122,12 +136,10 @@ def test_mrr_history_classifies_new_expansion_contraction_churn():
 @pytest.mark.django_db
 def test_gross_churn_rate_returns_fraction():
     today = date.today().replace(day=1)
-    # Build a 4-month history with a client paying for 3 months then churning.
-    months_back = [
-        (today - timedelta(days=92)).replace(day=1),
-        (today - timedelta(days=62)).replace(day=1),
-        (today - timedelta(days=32)).replace(day=1),
-    ]
+    # window_days=120 → a 5-bucket history anchored 4 months back, and the
+    # rate divides by the first bucket's MRR — so pay from the window start
+    # (4 months ago) through last month, then churn this month.
+    months_back = [_months_ago(today, n) for n in (4, 3, 2, 1)]
     c = Client.objects.create(
         name="A",
         care_plan_tier=CarePlanTier.ESSENTIAL,

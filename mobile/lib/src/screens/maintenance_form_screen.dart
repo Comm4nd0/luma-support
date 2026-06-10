@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/client.dart';
 import '../models/maintenance_schedule.dart';
 import '../repositories/maintenance_repository.dart';
 import '../services/api_client.dart';
@@ -27,7 +26,6 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
   final _form = GlobalKey<FormState>();
   final _subject = TextEditingController();
   final _description = TextEditingController();
-  Client? _client;
   int? _clientId;
   String _clientLabel = '';
   MaintenanceCadence _cadence = MaintenanceCadence.monthly;
@@ -63,7 +61,6 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     final picked = await showClientPicker(context, context.read<ApiClient>());
     if (picked != null && mounted) {
       setState(() {
-        _client = picked;
         _clientId = picked.id;
         _clientLabel = picked.name.isEmpty ? picked.company : picked.name;
       });

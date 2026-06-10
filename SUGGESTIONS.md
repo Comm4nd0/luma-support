@@ -91,3 +91,9 @@ worth doing and where it would land.
   2.1.0; if it stalls against future Flutter releases, SF-Symbols-like
   alternatives (`cupertino_icons` full set, `lucide_icons`) are the
   natural swap.
+- **Clear remaining Flutter info-level lints** — `flutter analyze` on
+  current stable reports ~48 info diagnostics (mostly `withOpacity` →
+  `withValues`, `DropdownButtonFormField.value` → `initialValue`,
+  `prefer_const_constructors`, and a few `use_build_context_synchronously`
+  guards). CI passes with `--no-fatal-infos`; a mechanical sweep would
+  let us drop that flag.

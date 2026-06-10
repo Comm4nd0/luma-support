@@ -27,7 +27,7 @@
       </div>
     </a>
   {% empty %}
-    <p class="muted">No articles yet.</p>
+    {% include "portal/_empty_state.html" with title="No articles yet" hint="Knowledge base articles you write will appear here." %}
   {% endfor %}
 </div>
 {% endblock %}

@@ -42,7 +42,7 @@
             btn.textContent = "Copied ✓";
             setTimeout(function () { btn.textContent = original; }, 1500);
           } catch (e) {
-            alert("Copy failed: " + e);
+            lumaToast("Copy failed: " + e, "error");
           }
         });
       })();
@@ -50,6 +50,7 @@
 
     <div class="card" style="margin-top: 20px;">
       <h2>People you've referred</h2>
+      <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Name</th><th>Stage</th><th>Joined</th></tr></thead>
         <tbody>
@@ -64,6 +65,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 

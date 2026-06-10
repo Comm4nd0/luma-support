@@ -33,6 +33,7 @@
   <div>
     <div class="card">
       <h2>Lines</h2>
+      <div class="table-wrap">
       <table class="table">
         <thead>
           <tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr>
@@ -55,6 +56,7 @@
           <tr><td colspan="3" style="text-align: right;"><strong>Total</strong></td><td><strong>{{ quote.currency }} {{ quote.total }}</strong></td></tr>
         </tfoot>
       </table>
+      </div>
     </div>
 
     {% if quote.notes %}

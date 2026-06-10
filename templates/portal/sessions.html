@@ -23,6 +23,7 @@
     web portal.
   </p>
   {% if sessions %}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Token</th><th>Signed in</th><th>Expires</th><th></th></tr></thead>
       <tbody>
@@ -44,6 +45,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>No active mobile or API sessions.</p>
   {% endif %}

@@ -16,6 +16,7 @@
 
 <div class="card">
   {% if items %}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Platform</th><th>Kind</th><th>From</th><th>Preview</th><th>Age</th><th></th></tr></thead>
       <tbody>
@@ -52,6 +53,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p class="muted">Nothing here. Inbox zero on every connected account.</p>
   {% endif %}

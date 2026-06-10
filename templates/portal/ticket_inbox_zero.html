@@ -19,6 +19,7 @@
        You have <strong>{{ open_count }}</strong> open ticket{{ open_count|pluralize }} assigned to you —
        <a href="{% url 'portal:ticket_list' %}">open the list</a> to work them.</p>
   {% elif rows %}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>#</th><th>Subject</th><th>Client</th><th>Suggested</th><th>Why</th><th></th></tr></thead>
       <tbody>
@@ -49,6 +50,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p>Inbox zero — no open tickets assigned to you. 🎉</p>
   {% endif %}

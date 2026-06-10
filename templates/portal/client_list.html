@@ -40,7 +40,10 @@
             <td>{{ c.email|default:"—" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" class="muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</td></tr>
+          <tr><td colspan="7">
+            {% url 'portal:client_create' as create_url %}
+            {% include "portal/_empty_state.html" with title="No clients yet" hint="Add your first client to start tracking systems and tickets." cta_url=create_url cta_label="Add client" %}
+          </td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -68,7 +71,10 @@
       </div>
     </a>
   {% empty %}
-    <div class="card muted">No clients yet. <a href="{% url 'portal:client_create' %}">Add one</a>.</div>
+    <div class="card">
+      {% url 'portal:client_create' as create_url %}
+      {% include "portal/_empty_state.html" with title="No clients yet" hint="Add your first client to start tracking systems and tickets." cta_url=create_url cta_label="Add client" %}
+    </div>
   {% endfor %}
 </div>
 {% endblock %}

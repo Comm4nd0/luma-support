@@ -23,6 +23,7 @@
 
     <div class="card" style="margin-top: 20px;">
       <h2>Month-by-month detail</h2>
+      <div class="table-wrap">
       <table class="table">
         <thead>
           <tr>
@@ -51,6 +52,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -65,6 +67,7 @@
 
     <div class="card" style="margin-top: 16px;">
       <h3>MRR by tier</h3>
+      <div class="table-wrap">
       <table class="table">
         <tbody>
           {% for tier, total in mrr_by_tier.items %}
@@ -72,6 +75,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     <div class="card" style="margin-top: 16px;">

@@ -137,7 +137,10 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="{% if user.can_view_all %}8{% else %}7{% endif %}" class="muted">No tickets match these filters.</td></tr>
+          <tr><td colspan="{% if user.can_view_all %}8{% else %}7{% endif %}">
+            {% url 'portal:ticket_create' as create_url %}
+            {% include "portal/_empty_state.html" with title="No tickets match these filters" hint="Try clearing the filters, or raise a new ticket." cta_url=create_url cta_label="New ticket" %}
+          </td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -214,7 +217,10 @@
       </div>
     </a>
   {% empty %}
-    <div class="card muted">No tickets match these filters.</div>
+    <div class="card">
+      {% url 'portal:ticket_create' as create_url %}
+      {% include "portal/_empty_state.html" with title="No tickets match these filters" hint="Try clearing the filters, or raise a new ticket." cta_url=create_url cta_label="New ticket" %}
+    </div>
   {% endfor %}
 </div>
 

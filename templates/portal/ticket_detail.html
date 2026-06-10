@@ -69,11 +69,11 @@
               }
               btn.textContent = "Hide";
             } else {
-              alert("AI summarisation is unavailable. Set ANTHROPIC_API_KEY to enable.");
+              lumaToast("AI summarisation is unavailable. Set ANTHROPIC_API_KEY to enable.", "warning");
               btn.textContent = original;
             }
           } catch (e) {
-            alert("Summarise failed: " + e);
+            lumaToast("Summarise failed: " + e, "error");
             btn.textContent = original;
           } finally {
             btn.disabled = refresh.disabled = false;
@@ -190,10 +190,10 @@
                 ta.value = data.draft;
                 document.querySelector('#ticket-note-form [name=internal]').checked = false;
               } else {
-                alert("AI drafting is unavailable. Set ANTHROPIC_API_KEY to enable.");
+                lumaToast("AI drafting is unavailable. Set ANTHROPIC_API_KEY to enable.", "warning");
               }
             } catch (e) {
-              alert("Draft failed: " + e);
+              lumaToast("Draft failed: " + e, "error");
             } finally {
               btn.disabled = false;
               btn.textContent = original;
@@ -206,6 +206,7 @@
 
     <div class="card" style="margin-top: 20px;">
       <h2>Time log</h2>
+      <div class="table-wrap">
       <table class="table">
         <thead><tr><th>When</th><th>Engineer</th><th>Minutes</th><th>Description</th><th>Billable</th></tr></thead>
         <tbody>
@@ -225,6 +226,7 @@
           <tr><th colspan="2">Total</th><th>{{ ticket.total_minutes_logged }} min</th><th colspan="2"></th></tr>
         </tfoot>
       </table>
+      </div>
 
       <form method="post" action="{% url 'portal:time_log' ticket.pk %}" style="margin-top: 16px;">
         {% csrf_token %}
@@ -316,7 +318,7 @@
             var data = await resp.json();
             var draft = data && data.draft;
             if (!draft) {
-              alert("KB drafting is unavailable. Set ANTHROPIC_API_KEY to enable.");
+              lumaToast("KB drafting is unavailable. Set ANTHROPIC_API_KEY to enable.", "warning");
               return;
             }
             var title = prompt("Article title", draft.title || "");
@@ -329,7 +331,7 @@
             window.open("/admin/knowledge/article/add/?title=" +
                         encodeURIComponent(title), "_blank");
           } catch (e) {
-            alert("Draft failed: " + e);
+            lumaToast("Draft failed: " + e, "error");
           } finally {
             btn.disabled = false;
             btn.textContent = original;

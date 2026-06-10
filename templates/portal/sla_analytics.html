@@ -44,6 +44,7 @@
   {% if not per_priority %}
     <p class="muted">No closed tickets in this window.</p>
   {% else %}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Priority</th><th>Closed</th><th>Met</th><th>Breached</th><th>Hit-rate</th></tr></thead>
       <tbody>
@@ -58,6 +59,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
 </div>
 
@@ -66,6 +68,7 @@
   {% if not worst %}
     <p class="muted">No SLA breaches in this window.</p>
   {% else %}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Client</th><th>Breached</th><th>Closed</th></tr></thead>
       <tbody>
@@ -78,6 +81,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,6 @@
+{# Friendly empty state: include with title, optional hint, cta_url + cta_label. #}
+<div class="empty-state">
+  <p class="empty-state-title">{{ title }}</p>
+  {% if hint %}<p>{{ hint }}</p>{% endif %}
+  {% if cta_url %}<a class="btn btn-sm" href="{{ cta_url }}">{{ cta_label }}</a>{% endif %}
+</div>

@@ -73,7 +73,10 @@
             <td>{{ lead.assigned_to.email|default:"—" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" class="muted">No leads yet. <a href="{% url 'portal:lead_create' %}">Add one</a>.</td></tr>
+          <tr><td colspan="7">
+            {% url 'portal:lead_create' as create_url %}
+            {% include "portal/_empty_state.html" with title="No leads yet" hint="Capture your first lead to start the pipeline." cta_url=create_url cta_label="Add lead" %}
+          </td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -100,7 +103,10 @@
       </div>
     </a>
   {% empty %}
-    <div class="card muted">No leads yet.</div>
+    <div class="card">
+      {% url 'portal:lead_create' as create_url %}
+      {% include "portal/_empty_state.html" with title="No leads yet" hint="Capture your first lead to start the pipeline." cta_url=create_url cta_label="Add lead" %}
+    </div>
   {% endfor %}
 </div>
 {% endblock %}

@@ -54,6 +54,32 @@ def test_engineer_upload_stamps_uploader(engineer_user, client_record):
     assert doc.uploaded_by == engineer_user
 
 
+def test_disallowed_extension_rejected(engineer_user, client_record):
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        "/api/v1/clients/documents/",
+        {"client": client_record.pk, "title": "x", "file": _pdf("evil.exe")},
+        format="multipart",
+    )
+    assert resp.status_code == 400
+    assert "not allowed" in str(resp.json())
+    assert ClientDocument.objects.count() == 0
+
+
+def test_oversized_document_rejected(engineer_user, client_record, settings):
+    settings.MAX_UPLOAD_BYTES = 10
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        "/api/v1/clients/documents/",
+        {"client": client_record.pk, "title": "x", "file": _pdf("big.pdf")},
+        format="multipart",
+    )
+    assert resp.status_code == 400
+    assert ClientDocument.objects.count() == 0
+
+
 def test_client_user_only_sees_own_visible_docs(client_record):
     other = Client.objects.create(name="Other")
     visible = ClientDocument.objects.create(

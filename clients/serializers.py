@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from luma_support.uploads import validate_upload
+
 from .models import Client, ClientDocument, Contact, ReferralCode, SiteVisit, System
 
 
@@ -29,6 +31,9 @@ class ClientDocumentSerializer(serializers.ModelSerializer):
             "uploaded_by_email",
             "uploaded_at",
         )
+
+    def validate_file(self, f):
+        return validate_upload(f)
 
     def get_file_url(self, obj) -> str:
         request = self.context.get("request")

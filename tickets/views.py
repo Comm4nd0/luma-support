@@ -4,6 +4,8 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
+from luma_support.uploads import validate_upload
+
 from .models import (
     Attachment,
     MaintenanceSchedule,
@@ -121,6 +123,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         f = request.FILES.get("file")
         if not f:
             return Response({"detail": "Missing 'file' field."}, status=400)
+        validate_upload(f)
         att = Attachment.objects.create(
             ticket=ticket, file=f, uploaded_by=request.user
         )

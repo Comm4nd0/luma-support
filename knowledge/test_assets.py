@@ -63,3 +63,30 @@ def test_missing_file_returns_400(engineer_user):
     c.force_authenticate(engineer_user)
     resp = c.post(f"/api/v1/knowledge/articles/{a.slug}/assets/", {})
     assert resp.status_code == 400
+
+
+def test_disallowed_extension_rejected(engineer_user):
+    a = Article.objects.create(title="t", content="x", slug="t")
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        f"/api/v1/knowledge/articles/{a.slug}/assets/",
+        {"file": _png("script.exe")},
+        format="multipart",
+    )
+    assert resp.status_code == 400
+    assert ArticleAsset.objects.count() == 0
+
+
+def test_oversized_asset_rejected(engineer_user, settings):
+    settings.MAX_UPLOAD_BYTES = 10
+    a = Article.objects.create(title="t", content="x", slug="t")
+    c = APIClient()
+    c.force_authenticate(engineer_user)
+    resp = c.post(
+        f"/api/v1/knowledge/articles/{a.slug}/assets/",
+        {"file": _png("big.png")},
+        format="multipart",
+    )
+    assert resp.status_code == 400
+    assert ArticleAsset.objects.count() == 0

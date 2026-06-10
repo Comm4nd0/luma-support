@@ -160,6 +160,15 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# --- Uploads --------------------------------------------------------------
+# Hard cap enforced by luma_support.uploads.validate_upload on every
+# user-supplied file (ticket attachments, KB assets, client documents).
+MAX_UPLOAD_BYTES = config("MAX_UPLOAD_BYTES", default=25 * 1024 * 1024, cast=int)
+# Request-body ceiling: largest allowed file + headroom for the rest of
+# the multipart envelope. Files above 5MB spill to a temp file on disk.
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_BYTES + 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- DRF ----------------------------------------------------------------
@@ -261,6 +270,25 @@ CHANNEL_LAYERS = {
         "CONFIG": {"hosts": [REDIS_URL]},
     }
 }
+
+# --- Cache ----------------------------------------------------------------
+# Mirrors the SQLite fallback: Redis when running alongside Postgres
+# (Docker / production), LocMem otherwise so local pytest needs nothing.
+# LocMem is per-process — fine for the webhook rate limiter's purpose of
+# basic abuse-resistance, but not a shared cache across gunicorn workers.
+if config("POSTGRES_HOST", default=""):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 # --- Celery -------------------------------------------------------------
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://redis:6379/1")

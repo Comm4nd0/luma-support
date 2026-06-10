@@ -5,6 +5,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
+from luma_support.uploads import validate_upload
+
 from .models import Article, ArticleAsset, KbSearchLog
 from .serializers import ArticleSerializer
 
@@ -61,6 +63,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
         f = request.FILES.get("file")
         if not f:
             return Response({"detail": "Missing 'file' field."}, status=400)
+        validate_upload(f)
         asset = ArticleAsset.objects.create(
             article=article, file=f, uploaded_by=request.user
         )

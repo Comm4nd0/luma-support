@@ -50,6 +50,7 @@ class FakeAuth extends ChangeNotifier implements AuthService {
     String email,
     String password, {
     String? totpCode,
+    String? recoveryCode,
   }) async =>
       LoginResult.badCredentials;
 

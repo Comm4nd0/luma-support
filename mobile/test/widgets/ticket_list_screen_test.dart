@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:luma_support_mobile/src/screens/ticket_list_screen.dart';
 import 'package:luma_support_mobile/src/services/api_client.dart';
 import 'package:luma_support_mobile/src/services/auth_service.dart';
+import 'package:luma_support_mobile/src/services/current_user.dart';
 
 import '../helpers/fakes.dart';
 import '../helpers/mock_dio.dart';
@@ -31,6 +32,8 @@ void main() {
       providers: [
         ChangeNotifierProvider<AuthService>.value(value: auth),
         Provider<ApiClient>.value(value: api),
+        ChangeNotifierProvider<CurrentUser>.value(
+            value: FakeCurrentUser(fakeEngineerUser())),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
@@ -88,7 +91,7 @@ void main() {
       wrap(api: ApiClient.withDio(dio), auth: FakeAuthService(access: 't')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('No tickets yet.'), findsOneWidget);
+    expect(find.text('No tickets match.'), findsOneWidget);
   });
 
   testWidgets('shows error state when the API fails', (tester) async {

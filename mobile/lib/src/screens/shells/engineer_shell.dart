@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../../src/services/haptics.dart';
 import '../../../src/widgets/luma_icon.dart';
 
 /// Bottom-nav scaffold shown to admin/engineer roles. The four tabs map
@@ -26,18 +29,39 @@ class EngineerShell extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
     final index = _indexFor(location);
     return Scaffold(
+      // Let content scroll behind the translucent tab bar (iOS-style).
+      extendBody: true,
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => context.go(_destinations[i].route),
-        destinations: [
-          for (final d in _destinations)
-            NavigationDestination(
-              icon: LumaIcon(d.icon),
-              selectedIcon: LumaIcon(d.selectedIcon),
-              label: d.label,
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerTheme.color ??
+                      Theme.of(context).dividerColor,
+                  width: 0.5,
+                ),
+              ),
             ),
-        ],
+            child: NavigationBar(
+              selectedIndex: index,
+              onDestinationSelected: (i) {
+                Haptics.selection();
+                context.go(_destinations[i].route);
+              },
+              destinations: [
+                for (final d in _destinations)
+                  NavigationDestination(
+                    icon: LumaIcon(d.icon),
+                    selectedIcon: LumaIcon(d.selectedIcon),
+                    label: d.label,
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
